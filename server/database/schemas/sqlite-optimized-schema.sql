@@ -17,6 +17,7 @@ CREATE TABLE IF NOT EXISTS users (
     failed_login_attempts INTEGER NOT NULL DEFAULT 0 CHECK (failed_login_attempts >= 0),
     account_locked_until TEXT,
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    deleted_at TEXT NOT NULL DEFAULT (datetime('now')),
     updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
@@ -38,6 +39,7 @@ CREATE TABLE IF NOT EXISTS clients (
     country TEXT DEFAULT 'US' CHECK (length(country) = 2),
     stripe_customer_id TEXT CHECK (stripe_customer_id IS NULL OR length(stripe_customer_id) <= 50),
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    deleted_at TEXT NOT NULL DEFAULT (datetime('now')),
     updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
@@ -76,6 +78,7 @@ CREATE TABLE IF NOT EXISTS invoices (
     email_error TEXT CHECK (email_error IS NULL OR length(email_error) <= 500),
     last_email_attempt TEXT,
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    deleted_at TEXT NOT NULL DEFAULT (datetime('now')),
     updated_at TEXT NOT NULL DEFAULT (datetime('now')),
     
     FOREIGN KEY (client_id) REFERENCES clients (id) ON DELETE RESTRICT,
@@ -93,6 +96,7 @@ CREATE TABLE IF NOT EXISTS invoice_design_templates (
     is_default INTEGER NOT NULL DEFAULT 0 CHECK (is_default IN (0, 1)),
     variables TEXT,
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    deleted_at TEXT NOT NULL DEFAULT (datetime('now')),
     updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
@@ -116,6 +120,7 @@ CREATE TABLE IF NOT EXISTS recurring_invoice_templates (
     shipping_rate_id TEXT CHECK (shipping_rate_id IS NULL OR length(shipping_rate_id) <= 50),
     notes TEXT,
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    deleted_at TEXT NOT NULL DEFAULT (datetime('now')),
     updated_at TEXT NOT NULL DEFAULT (datetime('now')),
     
     FOREIGN KEY (client_id) REFERENCES clients (id) ON DELETE CASCADE
@@ -138,6 +143,7 @@ CREATE TABLE IF NOT EXISTS expenses (
     client_id INTEGER,
     project TEXT,
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    deleted_at TEXT NOT NULL DEFAULT (datetime('now')),
     updated_at TEXT NOT NULL DEFAULT (datetime('now')),
     
     FOREIGN KEY (client_id) REFERENCES clients (id) ON DELETE SET NULL
@@ -157,6 +163,7 @@ CREATE TABLE IF NOT EXISTS payments (
     description TEXT CHECK (description IS NULL OR length(description) <= 500),
     status TEXT NOT NULL DEFAULT 'received' CHECK (status IN ('received', 'pending', 'failed', 'refunded')),
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    deleted_at TEXT NOT NULL DEFAULT (datetime('now')),
     updated_at TEXT NOT NULL DEFAULT (datetime('now')),
     
     FOREIGN KEY (invoice_id) REFERENCES invoices (id) ON DELETE SET NULL
@@ -172,7 +179,8 @@ CREATE TABLE IF NOT EXISTS reports (
     date_range_start TEXT NOT NULL,
     date_range_end TEXT NOT NULL,
     data TEXT,
-    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    deleted_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
 -- =====================================================
@@ -273,12 +281,26 @@ CREATE TRIGGER IF NOT EXISTS update_users_timestamp
         UPDATE users SET updated_at = datetime('now') WHERE id = NEW.id;
     END;
 
+CREATE TRIGGER IF NOT EXISTS delete_users_timestamp 
+    AFTER UPDATE ON users
+    FOR EACH ROW
+    BEGIN
+        UPDATE users SET deleted_at = datetime('now') WHERE id = NEW.id;
+    END;
+
 -- Clients table trigger
 CREATE TRIGGER IF NOT EXISTS update_clients_timestamp 
     AFTER UPDATE ON clients
     FOR EACH ROW
     BEGIN
         UPDATE clients SET updated_at = datetime('now') WHERE id = NEW.id;
+    END;
+
+CREATE TRIGGER IF NOT EXISTS delete_clients_timestamp 
+    AFTER UPDATE ON clients
+    FOR EACH ROW
+    BEGIN
+        UPDATE clients SET deleted_at = datetime('now') WHERE id = NEW.id;
     END;
 
 -- Invoices table trigger
@@ -289,12 +311,26 @@ CREATE TRIGGER IF NOT EXISTS update_invoices_timestamp
         UPDATE invoices SET updated_at = datetime('now') WHERE id = NEW.id;
     END;
 
+CREATE TRIGGER IF NOT EXISTS delete_invoices_timestamp 
+    AFTER UPDATE ON invoices
+    FOR EACH ROW
+    BEGIN
+        UPDATE invoices SET deleted_at = datetime('now') WHERE id = NEW.id;
+    END; 
+
 -- Templates table trigger
 CREATE TRIGGER IF NOT EXISTS update_templates_timestamp 
     AFTER UPDATE ON templates
     FOR EACH ROW
     BEGIN
         UPDATE templates SET updated_at = datetime('now') WHERE id = NEW.id;
+    END;
+
+CREATE TRIGGER IF NOT EXISTS delete_templates_timestamp 
+    AFTER UPDATE ON templates
+    FOR EACH ROW
+    BEGIN
+        UPDATE templates SET deleted_at = datetime('now') WHERE id = NEW.id;
     END;
 
 -- Expenses table trigger
@@ -305,12 +341,26 @@ CREATE TRIGGER IF NOT EXISTS update_expenses_timestamp
         UPDATE expenses SET updated_at = datetime('now') WHERE id = NEW.id;
     END;
 
+CREATE TRIGGER IF NOT EXISTS delete_expenses_timestamp 
+    AFTER UPDATE ON expenses
+    FOR EACH ROW
+    BEGIN
+        UPDATE expenses SET deleted_at = datetime('now') WHERE id = NEW.id;
+    END;
+
 -- Payments table trigger
 CREATE TRIGGER IF NOT EXISTS update_payments_timestamp 
     AFTER UPDATE ON payments
     FOR EACH ROW
     BEGIN
         UPDATE payments SET updated_at = datetime('now') WHERE id = NEW.id;
+    END;
+
+CREATE TRIGGER IF NOT EXISTS delete_payments_timestamp 
+    AFTER UPDATE ON payments
+    FOR EACH ROW
+    BEGIN
+        UPDATE payments SET deleted_at = datetime('now') WHERE id = NEW.id;
     END;
 
 -- Project settings table trigger

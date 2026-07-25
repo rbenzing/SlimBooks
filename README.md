@@ -1,8 +1,23 @@
-# Slimbooks
+# SlimBooks
 
-A secure, self-hosted billing and invoice management application built with React, TypeScript, and SQLite. Perfect for small businesses and freelancers who want complete control over their financial data.
+<div align="center">
+
+[![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![React](https://img.shields.io/badge/React-61DAFB?style=for-the-badge&logo=react&logoColor=black)](https://react.dev/)
+[![Node.js](https://img.shields.io/badge/Node.js-339933?style=for-the-badge&logo=node.js&logoColor=white)](https://nodejs.org/)
+[![SQLite](https://img.shields.io/badge/SQLite-003B57?style=for-the-badge&logo=sqlite&logoColor=white)](https://www.sqlite.org/)
+[![Docker](https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white)](https://www.docker.com/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](./LICENSE)
+
+**A secure, self-hosted billing and invoice management application**
 
 🔒 **Security-First** • 🐳 **Docker Ready** • 🥧 **Raspberry Pi Optimized**
+
+[Features](#-key-features) • [Quick Start](#-quick-start) • [Documentation](#-documentation) • [License](#-license)
+
+</div>
+
+---
 
 ## ✨ Key Features
 
@@ -28,12 +43,14 @@ A secure, self-hosted billing and invoice management application built with Reac
 
 ## 🛠️ Tech Stack
 
-**Frontend**: React 18 + TypeScript + Vite
-**UI**: shadcn/ui + Tailwind CSS + Lucide Icons
-**Backend**: Node.js + Express + SQLite
-**Security**: Helmet + Rate Limiting + JWT + bcrypt
-**Deployment**: Docker + Docker Compose
-**Charts**: Recharts for analytics visualization
+| Component | Technology |
+|-----------|-----------|
+| **Frontend** | React 18 + TypeScript + Vite |
+| **UI** | shadcn/ui + Tailwind CSS + Lucide Icons |
+| **Backend** | Node.js + Express + SQLite |
+| **Security** | Helmet + Rate Limiting + JWT + bcrypt |
+| **Deployment** | Docker + Docker Compose |
+| **Charts** | Recharts for analytics visualization |
 
 ## 🚀 Quick Start
 
@@ -41,7 +58,7 @@ A secure, self-hosted billing and invoice management application built with Reac
 
 ```bash
 # Clone the repository
-git clone <your-repository-url>
+git clone https://github.com/rbenzing/SlimBooks.git
 cd slimbooks
 
 # Generate secure secrets
@@ -117,6 +134,7 @@ Slimbooks includes a powerful recurring invoice system for automated billing:
 - **⚡ Manual Triggers**: Process individual templates or all due templates on-demand
 
 ### API Endpoints
+
 ```
 /api/recurring-templates/*    - Template CRUD operations
 /api/cron/recurring-invoices  - Automated processing endpoint
@@ -164,6 +182,16 @@ MIT License - see [LICENSE](./LICENSE) for details.
 
 ---
 
+## 💬 Support & Community
+
+Found a bug? Have a feature request? Please open an [issue](https://github.com/rbenzing/SlimBooks/issues).
+
+---
+
+<div align="center">
+
 **🏠 Self-hosted • 🔒 Secure • 🚀 Production-ready**
 
-Perfect for small businesses, freelancers, and anyone who values data privacy and control.
+*Perfect for small businesses, freelancers, and anyone who values data privacy and control.*
+
+</div>

@@ -2,7 +2,7 @@
 // Handles user CRUD operations and user profile management
 
 import { databaseService } from '../core/DatabaseService.js';
-import { User, UserPublic, ServiceOptions } from '../types/index.js';
+import { type User, type UserPublic, type ServiceOptions } from '../types/index.js';
 
 /**
  * User Management Service
@@ -108,7 +108,7 @@ export class UserService {
     }
 
     // Get next user ID from counter
-    const nextId = databaseService.getNextId('users');
+    const nextId = databaseService.getNextSequence('users');
     
     // Create user
     const now = new Date().toISOString();
@@ -164,7 +164,7 @@ export class UserService {
 
     // Filter allowed fields and build update data
     const allowedFields = ['name', 'email', 'username', 'role', 'email_verified', 'google_id', 'password_hash'];
-    const updateData: Record<string, any> = {};
+    const updateData: Record<string, unknown> = {};
     
     allowedFields.forEach(field => {
       if (userData[field as keyof typeof userData] !== undefined) {
@@ -178,7 +178,7 @@ export class UserService {
 
     // Validate email if being updated
     if (updateData.email) {
-      if (!this.isValidEmail(updateData.email)) {
+      if (!this.isValidEmail(updateData.email as string)) {
         throw new Error('Invalid email format');
       }
 
@@ -199,7 +199,7 @@ export class UserService {
       updateData.email_verified = updateData.email_verified ? 1 : 0;
     }
 
-    const success = databaseService.updateById('users', id, updateData);
+    const success = databaseService.updateRecord('users', id, updateData);
     return success ? 1 : 0;
   }
 

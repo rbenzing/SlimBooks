@@ -142,7 +142,7 @@ export const initializeSampleClients = (db: IDatabase): void => {
         address: '123 Business St',
         city: 'Business City',
         state: 'CA',
-        zip: '90210',
+        zipCode: '90210',
         country: 'USA',
         tax_id: 'TAX123456',
         is_active: 1
@@ -155,7 +155,7 @@ export const initializeSampleClients = (db: IDatabase): void => {
         address: '456 Innovation Ave',
         city: 'Tech Town',
         state: 'NY',
-        zip: '10001',
+        zipCode: '10001',
         country: 'USA',
         is_active: 1
       },
@@ -167,7 +167,7 @@ export const initializeSampleClients = (db: IDatabase): void => {
         address: '789 Corporate Blvd',
         city: 'Metro City',
         state: 'TX',
-        zip: '75201',
+        zipCode: '75201',
         country: 'USA',
         is_active: 1
       }

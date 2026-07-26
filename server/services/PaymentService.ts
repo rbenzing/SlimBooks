@@ -2,7 +2,7 @@
 // Handles all payment-related business logic and database operations
 
 import { databaseService } from '../core/DatabaseService.js';
-import { Payment, ServiceOptions, PaymentStatus, PaymentMethod } from '../types/index.js';
+import { type Payment, type ServiceOptions, type PaymentStatus, type PaymentMethod } from '../types/index.js';
 
 /**
  * Payment Service
@@ -134,7 +134,7 @@ export class PaymentService {
     }
 
     // Get next payment ID
-    const nextId = databaseService.getNextId('payments');
+    const nextId = databaseService.getNextSequence('payments');
     
     // Prepare payment data
     const now = new Date().toISOString();
@@ -217,7 +217,7 @@ export class PaymentService {
       'reference', 'description', 'status'
     ];
     
-    const updateData: Record<string, any> = {};
+    const updateData: Record<string, unknown> = {};
     allowedFields.forEach(field => {
       if (paymentData[field as keyof typeof paymentData] !== undefined) {
         updateData[field] = paymentData[field as keyof typeof paymentData];
@@ -228,7 +228,7 @@ export class PaymentService {
       throw new Error('No valid fields to update');
     }
 
-    const success = databaseService.updateById('payments', id, updateData);
+    const success = databaseService.updateRecord('payments', id, updateData);
     return success ? 1 : 0;
   }
 

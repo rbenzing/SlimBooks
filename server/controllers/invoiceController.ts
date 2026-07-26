@@ -1,7 +1,7 @@
 // Invoice controller for Slimbooks
 // Handles all invoice-related business logic
 
-import { Request, Response } from 'express';
+import { type Request, type Response } from 'express';
 import { invoiceService } from '../services/InvoiceService.js';
 import { invoiceNumberService } from '../services/InvoiceNumberService.js';
 import {
@@ -10,8 +10,8 @@ import {
   ValidationError,
   asyncHandler
 } from '../middleware/index.js';
-import { InvoiceStatus } from '../types/index.js';
-import { InvoiceRequest } from '../types/api.types.js';
+import { type InvoiceStatus } from '../types/index.js';
+import { type InvoiceRequest } from '../types/api.types.js';
 
 /**
  * Get all invoices
@@ -117,7 +117,7 @@ export const getPublicInvoiceById = asyncHandler(async (req: Request, res: Respo
   try {
     const invoiceData = await invoiceService.getPublicInvoiceById(invoiceId, token);
     res.status(200).json({ success: true, data: invoiceData });
-  } catch (error) {
+  } catch {
     // Don't leak error details for security
     res.status(401).json({
       success: false,

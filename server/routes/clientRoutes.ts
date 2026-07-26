@@ -1,7 +1,8 @@
 // Client routes for Slimbooks API
 // Handles all client-related endpoints
 
-import { Router } from 'express';
+import { Router, type Request, type Response } from 'express';
+import { type BulkImportClientsRequest, type ClientRequest } from '../types/api.types.js';
 import {
   getAllClients,
   getClientById,
@@ -69,15 +70,16 @@ router.delete('/:id',
 // Bulk import clients
 router.post('/bulk-import',
   requireAuth,
-  async (req: any, res: any) => {
+  async (req: Request, res: Response) => {
     try {
-      const { clients } = req.body;
-      
+      const { clients } = req.body as BulkImportClientsRequest;
+
       if (!clients || !Array.isArray(clients)) {
-        return res.status(400).json({
+        res.status(400).json({
           success: false,
           error: 'Clients array is required'
         });
+        return;
       }
 
       let successCount = 0;
@@ -88,7 +90,7 @@ router.post('/bulk-import',
       const { clientService } = await import('../services/ClientService.js');
 
       for (let i = 0; i < clients.length; i++) {
-        const clientData = clients[i];
+        const clientData = clients[i] as ClientRequest;
         try {
           // Use the client service directly instead of the controller
           await clientService.createClient(clientData);

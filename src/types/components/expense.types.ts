@@ -1,6 +1,6 @@
 // Expense component-related types and interfaces
 
-import { Expense, ExpenseFormData } from '@/types/domain/expense.types';
+import { type Expense, type ExpenseFormData } from '@/types/domain/expense.types';
 
 // ExpenseViewModal component props
 export interface ExpenseViewModalProps {
@@ -24,6 +24,6 @@ export interface ExpensesListProps {
   onViewExpense: (expense: Expense) => void;
   onBulkDelete?: (ids: number[]) => void;
   onBulkCategorize?: (ids: number[], category: string) => void;
-  onBulkChangeMerchant?: (ids: number[], merchant: string) => void;
+  onBulkChangeVendor?: (ids: number[], vendor: string) => void;
   categories?: string[];
 }

@@ -3,7 +3,7 @@ import { Edit, CreditCard, Eye, Trash2, Delete, Receipt, Building } from 'lucide
 import { getStatusColor } from '@/utils/themeUtils.util';
 import { formatDateSync } from '@/components/ui/FormattedDate';
 import { FormattedCurrency } from '@/components/ui/FormattedCurrency';
-import { PaymentsListProps } from '@/types';
+import { type PaymentsListProps } from '@/types';
 
 export const PaymentsList: React.FC<PaymentsListProps> = ({ 
   payments, 

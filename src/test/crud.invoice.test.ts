@@ -21,7 +21,6 @@ describe('Invoice CRUD Operations', () => {
 
   describe('CREATE - Invoice', () => {
     it('should create invoice with design_template_id (NOT template_id)', async () => {
-      const newInvoice = mockData.invoice(1, 1);
       mockFetchSuccess({ id: 1 });
 
       const response = await fetch('/api/invoices', {

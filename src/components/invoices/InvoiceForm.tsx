@@ -4,7 +4,7 @@ import { X } from 'lucide-react';
 import { authenticatedFetch } from '@/utils/api';
 import { themeClasses } from '@/utils/themeUtils.util';
 import { formatClientAddressSingleLine } from '@/utils/formatting';
-import type { Invoice, InvoiceFormData, Client } from '@/types';
+import type { Invoice, InvoiceFormData, InvoiceStatus, InvoiceType, Client } from '@/types';
 
 interface InvoiceFormProps {
   isOpen: boolean;
@@ -76,10 +76,18 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({ isOpen, onClose, onSav
     const issueDate = formData.issue_date || currentDate;
     const dueDate = formData.due_date || currentDate;
     
+    const amount = parseFloat(formData.amount) || 0;
+
     onSave({
       ...formData,
+      status: formData.status as InvoiceStatus,
+      type: formData.type as InvoiceType,
       client_id: parseInt(formData.client_id),
-      amount: parseFloat(formData.amount),
+      amount,
+      // This form has no tax or shipping fields, so the total is the amount.
+      tax_amount: 0,
+      shipping_amount: 0,
+      total_amount: amount,
       issue_date: issueDate,
       due_date: dueDate,
       client_name: selectedClient?.name,

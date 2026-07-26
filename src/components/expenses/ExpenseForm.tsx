@@ -3,9 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { ArrowLeft, Upload, X, Receipt } from 'lucide-react';
 import { useFormNavigation } from '@/hooks/useFormNavigation';
 import { themeClasses, getButtonClasses } from '@/utils/themeUtils.util';
-import { Expense, ExpenseFormData } from '@/types';
-import { EXPENSE_CATEGORIES, EXPENSE_STATUSES } from '@/types/constants/enums.types';
-import { ExpenseFormProps } from '@/types/components/expense.types';
+import { EXPENSE_CATEGORIES, EXPENSE_STATUSES, type ExpenseStatus, type ExpenseFormProps } from '@/types';
 
 export const ExpenseForm: React.FC<ExpenseFormProps> = ({ expense, onSave, onCancel }) => {
   const [formData, setFormData] = useState({
@@ -19,7 +17,7 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({ expense, onSave, onCan
   });
 
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
-  const [originalFormData, setOriginalFormData] = useState<any>(null);
+  const [originalFormData, setOriginalFormData] = useState<typeof formData | null>(null);
 
   // Track if form has been modified
   const isDirty = originalFormData ? JSON.stringify(formData) !== JSON.stringify(originalFormData) : false;
@@ -175,7 +173,7 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({ expense, onSave, onCan
               <select
                 className={themeClasses.select}
                 value={formData.status}
-                onChange={(e) => setFormData({ ...formData, status: e.target.value as any })}
+                onChange={(e) => setFormData({ ...formData, status: e.target.value as ExpenseStatus })}
               >
                 {EXPENSE_STATUSES.map(status => (
                   <option key={status} value={status}>

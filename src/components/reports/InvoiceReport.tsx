@@ -1,11 +1,11 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { ArrowLeft, Download, Save, Calendar } from 'lucide-react';
 import { getStatusColor, themeClasses, getButtonClasses } from '@/utils/themeUtils.util';
 import { authenticatedFetch } from '@/utils/api';
 import { formatDateSync, formatDateRangeSync } from '@/utils/formatting';
-import { FormattedCurrency, useCurrencyFormatter } from '@/components/ui/FormattedCurrency';
-import { InvoiceReportData, InvoiceReportProps, ReportDateRange } from '@/types';
+import { FormattedCurrency } from '@/components/ui/FormattedCurrency';
+import { type InvoiceReportData, type InvoiceReportProps, type ReportDateRange } from '@/types';
 
 export const InvoiceReport: React.FC<InvoiceReportProps> = ({ onBack, onSave }) => {
   const [reportData, setReportData] = useState<InvoiceReportData | null>(null);
@@ -16,13 +16,8 @@ export const InvoiceReport: React.FC<InvoiceReportProps> = ({ onBack, onSave }) 
     preset: 'this-month'
   });
 
-  const { formatAmountSync } = useCurrencyFormatter();
 
-  useEffect(() => {
-    generateReportData();
-  }, [dateRange.start, dateRange.end]);
-
-  const generateReportData = async () => {
+  const generateReportData = useCallback(async () => {
     setLoading(true);
     try {
       const response = await authenticatedFetch('/api/reports/generate/invoice', {
@@ -43,7 +38,11 @@ export const InvoiceReport: React.FC<InvoiceReportProps> = ({ onBack, onSave }) 
     } finally {
       setLoading(false);
     }
-  };
+  }, [dateRange.start, dateRange.end]);
+
+  useEffect(() => {
+    generateReportData();
+  }, [generateReportData]);
 
   const handleDatePresetChange = (preset: ReportDateRange['preset']) => {
     const today = new Date();

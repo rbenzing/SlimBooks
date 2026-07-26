@@ -10,7 +10,7 @@ import { EmailSettings } from './settings/EmailSettings';
 import { StripeSettingsTab } from './settings/StripeSettingsTab';
 import { NotificationSettingsTab } from './settings/NotificationSettingsTab';
 import { AppearanceSettingsTab } from './settings/AppearanceSettingsTab';
-import { ProjectSettingsTab, ProjectSettingsRef } from './settings/ProjectSettingsTab';
+import { ProjectSettingsTab, type ProjectSettingsRef } from './settings/ProjectSettingsTab';
 import { DatabaseBackupSection } from './settings/DatabaseBackupSection';
 import { themeClasses, getButtonClasses } from '@/utils/themeUtils.util';
 import { toast } from 'sonner';

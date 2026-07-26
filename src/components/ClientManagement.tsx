@@ -9,7 +9,7 @@ import { usePagination } from '@/hooks/usePagination';
 import { toast } from 'sonner';
 import { formatDateSync } from '@/components/ui/FormattedDate';
 import { themeClasses, getButtonClasses, getIconColorClasses } from '@/utils/themeUtils.util';
-import { Client, ClientFormData } from '@/types';
+import { type Client, type ClientFormData } from '@/types';
 
 export const ClientManagement: React.FC = () => {
   const [uiState, setUiState] = useState({
@@ -49,7 +49,7 @@ export const ClientManagement: React.FC = () => {
       } else {
         throw new Error('Failed to load clients');
       }
-    } catch (error) {
+    } catch {
       toast.error('Failed to load clients');
     }
   };
@@ -106,7 +106,7 @@ export const ClientManagement: React.FC = () => {
       await loadClients();
       updateUiState({ showCreateForm: false });
       setActiveItem({ editing: null });
-    } catch (error) {
+    } catch {
       toast.error('Failed to save client');
     }
   };
@@ -122,7 +122,7 @@ export const ClientManagement: React.FC = () => {
       } else {
         throw new Error('Failed to delete client');
       }
-    } catch (error) {
+    } catch {
       toast.error('Failed to delete client');
     }
   };

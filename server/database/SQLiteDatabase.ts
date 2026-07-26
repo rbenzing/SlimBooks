@@ -10,7 +10,7 @@ import type {
   QueryOptions,
   TransactionCallback
 } from '../types/database.types.js';
-import { getDatabaseConfig, getSQLitePragmas } from './config/sqlite.config.js';
+import { getSQLitePragmas } from './config/sqlite.config.js';
 
 /**
  * SQLite implementation of the abstract database interface
@@ -86,7 +86,7 @@ export class SQLiteDatabase implements IDatabase {
   /**
    * Execute a query with parameters and return result metadata
    */
-  executeQuery(query: string, params: any[] = []): QueryResult {
+  executeQuery(query: string, params: unknown[] = []): QueryResult {
     this.ensureConnected();
     
     try {
@@ -268,13 +268,14 @@ export class SQLiteDatabase implements IDatabase {
   /**
    * Execute a pragma command
    */
-  pragma(setting: string, value?: string | number): any {
+  pragma(setting: string, value?: string | number): unknown {
     this.ensureConnected();
     
     const query = value !== undefined ? `PRAGMA ${setting} = ${value}` : `PRAGMA ${setting}`;
     
     if (value !== undefined) {
       this.db!.exec(query);
+      return undefined;
     } else {
       return this.db!.pragma(setting);
     }
@@ -294,13 +295,13 @@ export class SQLiteDatabase implements IDatabase {
       uptime,
       totalQueries: this.queryCount,
       avgQueryTime,
-      diskUsage: this.pragma('page_count') * this.pragma('page_size')
+      diskUsage: (this.pragma('page_count') as number) * (this.pragma('page_size') as number)
     };
   }
 
   /**
-   * Get the raw better-sqlite3 database instance
-   * This is needed for compatibility with legacy code
+   * Get the raw better-sqlite3 database instance.
+   * Used by graceful shutdown, which needs the handle itself to close it.
    */
   getRawConnection(): Database.Database {
     this.ensureConnected();

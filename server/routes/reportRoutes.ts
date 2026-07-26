@@ -1,9 +1,9 @@
 // Report routes for Slimbooks
 // Handles report generation and management endpoints
 
-import { Router, Request, Response } from 'express';
+import { Router, type Request, type Response } from 'express';
 import { requireAuth } from '../middleware/index.js';
-import { reportService, ReportData } from '../services/ReportService.js';
+import { reportService, type ReportData } from '../services/ReportService.js';
 
 const router: Router = Router();
 

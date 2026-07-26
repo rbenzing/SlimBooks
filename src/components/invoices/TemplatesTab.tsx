@@ -7,12 +7,13 @@ import { TemplateForm } from './TemplateForm';
 import { formatDateSync } from '@/components/ui/FormattedDate';
 import { themeClasses, getButtonClasses, getIconColorClasses } from '@/utils/themeUtils.util';
 import { FormattedCurrency } from '@/components/ui/FormattedCurrency';
+import type { InvoiceTemplateFormData, RecurringTemplateWithClient } from '@/types';
 
 export const TemplatesTab = () => {
   const navigate = useNavigate();
-  const [templates, setTemplates] = useState<any[]>([]);
+  const [templates, setTemplates] = useState<RecurringTemplateWithClient[]>([]);
   const [isFormOpen, setIsFormOpen] = useState(false);
-  const [editingTemplate, setEditingTemplate] = useState<any>(null);
+  const [editingTemplate, setEditingTemplate] = useState<RecurringTemplateWithClient | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [frequencyFilter, setFrequencyFilter] = useState('all');
@@ -57,7 +58,6 @@ export const TemplatesTab = () => {
 
   // Calculate statistics
   // Note: API call to /active endpoint already filters to only active templates (is_active: true)
-  const totalTemplates = templates.length;
   const activeTemplates = templates.length; // All returned templates are active
 
   // Calculate Total MRR (Monthly Recurring Revenue)
@@ -83,20 +83,23 @@ export const TemplatesTab = () => {
   // Calculate Average Template Value (actual template amounts, not monthly normalized)
   const avgTemplateValue = activeTemplates > 0 ? templates.reduce((sum, template) => sum + (template.amount || 0), 0) / activeTemplates : 0;
 
-  const handleSave = async (templateData: any) => {
+  const handleSave = async (templateData: InvoiceTemplateFormData) => {
     try {
+      // Recurring templates live in `recurring_invoice_templates`; /api/templates
+      // is backed by `invoice_design_templates` and would hit an unrelated row.
+      // The API expects the payload wrapped as { templateData }.
       if (editingTemplate) {
-        const response = await authenticatedFetch(`/api/templates/${editingTemplate.id}`, {
+        const response = await authenticatedFetch(`/api/recurring-templates/${editingTemplate.id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(templateData)
+          body: JSON.stringify({ templateData })
         });
         if (!response.ok) throw new Error('Failed to update template');
       } else {
-        const response = await authenticatedFetch('/api/templates', {
+        const response = await authenticatedFetch('/api/recurring-templates', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(templateData)
+          body: JSON.stringify({ templateData })
         });
         if (!response.ok) throw new Error('Failed to create template');
       }
@@ -111,7 +114,7 @@ export const TemplatesTab = () => {
   const handleDelete = async (id: number) => {
     if (confirm('Are you sure you want to delete this template?')) {
       try {
-        const response = await authenticatedFetch(`/api/templates/${id}`, {
+        const response = await authenticatedFetch(`/api/recurring-templates/${id}`, {
           method: 'DELETE'
         });
         if (!response.ok) throw new Error('Failed to delete template');
@@ -122,7 +125,7 @@ export const TemplatesTab = () => {
     }
   };
 
-  const handleEdit = (template: any) => {
+  const handleEdit = (template: RecurringTemplateWithClient) => {
     navigate(`/recurring-invoices/edit/${template.id}`);
   };
 
@@ -143,12 +146,16 @@ export const TemplatesTab = () => {
               <button
                 onClick={() => handleEdit(template)}
                 className="p-1 text-muted-foreground hover:text-blue-600"
+                title="Edit Template"
+                aria-label="Edit Template"
               >
                 <Edit className="h-4 w-4" />
               </button>
               <button
                 onClick={() => handleDelete(template.id)}
                 className="p-1 text-muted-foreground hover:text-red-600"
+                title="Delete Template"
+                aria-label="Delete Template"
               >
                 <Trash2 className="h-4 w-4" />
               </button>

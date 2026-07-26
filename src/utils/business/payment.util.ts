@@ -1,4 +1,4 @@
-import { PaymentMethod, PaymentStatus } from '@/types';
+import { type PaymentMethod, type PaymentStatus } from '@/types';
 
 export const getPaymentMethodDisplayName = (method: PaymentMethod): string => {
   switch (method) {
@@ -12,8 +12,6 @@ export const getPaymentMethodDisplayName = (method: PaymentMethod): string => {
       return 'Bank Transfer';
     case 'paypal':
       return 'PayPal';
-    case 'stripe':
-      return 'Stripe';
     case 'other':
       return 'Other';
     default:
@@ -23,14 +21,12 @@ export const getPaymentMethodDisplayName = (method: PaymentMethod): string => {
 
 export const getPaymentStatusDisplayName = (status: PaymentStatus): string => {
   switch (status) {
+    case 'received':
+      return 'Received';
     case 'pending':
       return 'Pending';
-    case 'completed':
-      return 'Completed';
     case 'failed':
       return 'Failed';
-    case 'cancelled':
-      return 'Cancelled';
     case 'refunded':
       return 'Refunded';
     default:
@@ -40,14 +36,12 @@ export const getPaymentStatusDisplayName = (status: PaymentStatus): string => {
 
 export const getPaymentStatusColor = (status: PaymentStatus): string => {
   switch (status) {
+    case 'received':
+      return 'green';
     case 'pending':
       return 'yellow';
-    case 'completed':
-      return 'green';
     case 'failed':
       return 'red';
-    case 'cancelled':
-      return 'gray';
     case 'refunded':
       return 'blue';
     default:
@@ -67,8 +61,6 @@ export const getPaymentMethodIcon = (method: PaymentMethod): string => {
       return 'Building2';
     case 'paypal':
       return 'Wallet';
-    case 'stripe':
-      return 'CreditCard';
     case 'other':
       return 'HelpCircle';
     default:

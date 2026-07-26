@@ -1,7 +1,7 @@
 // Payment controller for Slimbooks
 // Handles all payment-related business logic
 
-import { Request, Response } from 'express';
+import { type Request, type Response } from 'express';
 import { paymentService } from '../services/PaymentService.js';
 import { 
   AppError, 
@@ -9,8 +9,8 @@ import {
   ValidationError,
   asyncHandler
 } from '../middleware/index.js';
-import { PaymentMethod, PaymentStatus } from '../types/index.js';
-import { PaymentRequest } from '../types/api.types.js';
+import { type PaymentMethod, type PaymentStatus } from '../types/index.js';
+import { type PaymentRequest } from '../types/api.types.js';
 
 /**
  * Get all payments

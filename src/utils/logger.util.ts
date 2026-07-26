@@ -2,32 +2,32 @@
 // Logs only show in development environment
 
 interface Logger {
-  log: (...args: any[]) => void;
-  debug: (...args: any[]) => void;
-  warn: (...args: any[]) => void;
-  error: (...args: any[]) => void;
+  log: (...args: unknown[]) => void;
+  debug: (...args: unknown[]) => void;
+  warn: (...args: unknown[]) => void;
+  error: (...args: unknown[]) => void;
 }
 
 const isDevelopment = import.meta.env.DEV || process.env.NODE_ENV === 'development';
 
 // Create a logger that only outputs in development
 export const logger: Logger = {
-  log: (...args: any[]) => {
+  log: (...args: unknown[]) => {
     if (isDevelopment) {
       console.log(...args);
     }
   },
-  debug: (...args: any[]) => {
+  debug: (...args: unknown[]) => {
     if (isDevelopment) {
       console.debug(...args);
     }
   },
-  warn: (...args: any[]) => {
+  warn: (...args: unknown[]) => {
     if (isDevelopment) {
       console.warn(...args);
     }
   },
-  error: (...args: any[]) => {
+  error: (...args: unknown[]) => {
     // Always show errors, even in production
     console.error(...args);
   }

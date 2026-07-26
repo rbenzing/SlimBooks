@@ -1,7 +1,7 @@
 // Expense controller for Slimbooks
 // Handles all expense-related business logic
 
-import { Request, Response } from 'express';
+import { type Request, type Response } from 'express';
 import { expenseService } from '../services/ExpenseService.js';
 import { 
   AppError, 
@@ -21,7 +21,7 @@ export interface ExpenseFilters {
   is_billable?: boolean;
   client_id?: number;
 }
-import { ExpenseRequest } from '../types/api.types.js';
+import { type ExpenseRequest } from '../types/api.types.js';
 
 /**
  * Get all expenses

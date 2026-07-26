@@ -2,10 +2,10 @@
 // Handles JWT verification, role-based access control, and session management
 
 import jwt from 'jsonwebtoken';
-import { Request, Response, NextFunction } from 'express';
+import { type Request, type Response, type NextFunction } from 'express';
 import { authConfig } from '../config/index.js';
 import { authService } from '../services/AuthService.js';
-import { User, UserPublic, UserRole } from '../types/index.js';
+import { type User, type UserPublic, type UserRole } from '../types/index.js';
 
 // Extend the Request interface to include user property
 declare global {
@@ -28,11 +28,6 @@ interface TokenGenerationUser {
   id: number;
   email: string;
   role: UserRole;
-}
-
-interface AccountLockoutSettings {
-  maxAttempts: number;
-  lockoutDuration: number;
 }
 
 /**
@@ -96,7 +91,7 @@ export const requireAuth = async (req: Request, res: Response, next: NextFunctio
       req.user = user;
       next();
       
-    } catch (jwtError) {
+    } catch {
       res.status(401).json({
         success: false,
         error: 'Invalid or expired token'
@@ -206,7 +201,7 @@ export const optionalAuth = async (req: Request, res: Response, next: NextFuncti
         if (user && (!user.account_locked_until || new Date(user.account_locked_until) <= new Date())) {
           req.user = user;
         }
-      } catch (jwtError) {
+      } catch {
         // Invalid token, but that's okay for optional auth
         console.log('Optional auth: Invalid token provided');
       }
@@ -254,27 +249,6 @@ export const verifyToken = (token: string): JWTPayload => {
  */
 export const isAccountLocked = (user: User | UserPublic): boolean => {
   return user.account_locked_until ? new Date(user.account_locked_until) > new Date() : false;
-};
-
-/**
- * Get account lockout settings from project settings
- */
-const getAccountLockoutSettings = (): AccountLockoutSettings => {
-  try {
-    // Note: This would need to be replaced with proper database access
-    // For now, return default values from config
-    return { 
-      maxAttempts: authConfig.maxLoginAttempts, 
-      lockoutDuration: authConfig.lockoutDuration 
-    };
-  } catch (error) {
-    console.error('Error getting lockout settings:', error);
-    // Return defaults if settings cannot be retrieved
-    return { 
-      maxAttempts: authConfig.maxLoginAttempts, 
-      lockoutDuration: authConfig.lockoutDuration 
-    };
-  }
 };
 
 // updateLoginAttempts has been removed - use authService.updateLoginAttempts directly

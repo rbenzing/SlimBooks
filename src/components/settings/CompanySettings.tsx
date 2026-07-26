@@ -3,9 +3,9 @@ import { forwardRef, useImperativeHandle } from 'react';
 import { Building } from 'lucide-react';
 import { BrandingImageSection } from './BrandingImageSection';
 import { CompanyDetailsSection } from './CompanyDetailsSection';
-import { CompanySettings as CompanySettingsType } from '@/types/shared/common.types';
+import { type CompanySettings as CompanySettingsType } from '@/types/shared/common.types';
 import { useCompanySettings } from '@/hooks/useSettings.hook';
-import { SettingsTabRef } from '../Settings';
+import type { SettingsTabRef } from '@/types';
 
 export const CompanySettings = forwardRef<SettingsTabRef>((props, ref) => {
   const {
@@ -13,8 +13,6 @@ export const CompanySettings = forwardRef<SettingsTabRef>((props, ref) => {
     setSettings,
     saveSettings,
     isLoading,
-    isSaving,
-    isLoaded,
     error
   } = useCompanySettings();
 

@@ -225,10 +225,11 @@ export function useSettings<T extends Record<string, unknown>>({
 
       // Debug logging for company settings
       if (settingsKey === 'company_settings') {
+        const { brandingImage } = dataToSave as { brandingImage?: string };
         debug('[useCompanySettings] Saving settings:', {
-          hasBrandingImage: !!(dataToSave as any)?.brandingImage,
-          brandingImageLength: ((dataToSave as any)?.brandingImage?.length || 0),
-          allKeys: Object.keys(dataToSave as any)
+          hasBrandingImage: !!brandingImage,
+          brandingImageLength: (brandingImage?.length || 0),
+          allKeys: Object.keys(dataToSave)
         });
       }
 
@@ -303,19 +304,24 @@ export function useSettings<T extends Record<string, unknown>>({
     setError(null);
   }, [defaultSettings]);
 
-  // Cleanup timeout on unmount
+  // Cleanup timeout on unmount. The ref object is captured (not `.current`), so
+  // the cleanup clears whichever timeout is pending at unmount.
   useEffect(() => {
+    const pendingSave = saveTimeoutRef;
     return () => {
-      if (saveTimeoutRef.current) {
-        clearTimeout(saveTimeoutRef.current);
+      if (pendingSave.current) {
+        clearTimeout(pendingSave.current);
       }
     };
   }, []);
 
-  // Load settings on mount - only run once
+  // Load settings once on mount. `loadSettings` is not a dependency: callers
+  // pass inline `transformLoad`/`transformSave` closures, so its identity
+  // changes every render and depending on it would reload in a loop.
+  const loadSettingsRef = useRef(loadSettings);
   useEffect(() => {
-    loadSettings();
-  }, []); // Empty dependency array to run only once
+    loadSettingsRef.current();
+  }, []);
 
   return {
     settings,
@@ -503,7 +509,11 @@ export function useNotificationSettings() {
         return defaultNotificationSettings;
       }
       // Handle both direct settings and nested structure from API
-      const settings = (data as any).notification_settings || data;
+      type StoredNotificationSettings = Partial<typeof defaultNotificationSettings>;
+      const payload = data as StoredNotificationSettings & {
+        notification_settings?: StoredNotificationSettings;
+      };
+      const settings = payload.notification_settings || payload;
       return {
         showToastNotifications: settings.showToastNotifications ?? defaultNotificationSettings.showToastNotifications,
         showSuccessToasts: settings.showSuccessToasts ?? defaultNotificationSettings.showSuccessToasts,

@@ -2,7 +2,7 @@
 // Handles all expense-related business logic and database operations
 
 import { databaseService } from '../core/DatabaseService.js';
-import { Expense, ServiceOptions } from '../types/index.js';
+import { type Expense, type ServiceOptions } from '../types/index.js';
 
 /**
  * Expense Service
@@ -140,7 +140,7 @@ export class ExpenseService {
     }
 
     // Get next expense ID
-    const nextId = databaseService.getNextId('expenses');
+    const nextId = databaseService.getNextSequence('expenses');
     
     // Prepare expense data
     const now = new Date().toISOString();
@@ -228,7 +228,7 @@ export class ExpenseService {
       'receipt_url', 'is_billable', 'client_id', 'project'
     ];
     
-    const updateData: Record<string, any> = {};
+    const updateData: Record<string, unknown> = {};
     allowedFields.forEach(field => {
       if (expenseData[field as keyof typeof expenseData] !== undefined) {
         let value = expenseData[field as keyof typeof expenseData];
@@ -246,7 +246,7 @@ export class ExpenseService {
       throw new Error('No valid fields to update');
     }
 
-    const success = databaseService.updateById('expenses', id, updateData);
+    const success = databaseService.updateRecord('expenses', id, updateData);
     return success ? 1 : 0;
   }
 

@@ -1,4 +1,4 @@
-import { InvoiceStatus } from '@/types';
+import { type InvoiceStatus } from '@/types';
 
 export interface InvoiceStatusPermissions {
   canEdit: boolean;
@@ -10,12 +10,8 @@ export interface InvoiceStatusPermissions {
 
 export const getInvoiceStatusPermissions = (
   status: InvoiceStatus | undefined,
-  dueDate?: string
+  _dueDate?: string
 ): InvoiceStatusPermissions => {
-  const today = new Date();
-  const dueDateObj = dueDate ? new Date(dueDate) : null;
-  const isOverdue = dueDateObj && dueDateObj < today;
-
   switch (status) {
     case 'paid':
       return {

@@ -6,7 +6,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { InvoiceService } from '@/services/invoices.svc';
 import { mockFetchSuccess, mockFetchError } from '../apiMock';
-import type { InvoiceEmailData, EmailStatus } from '@/types';
+import type { InvoiceEmailData } from '@/types';
 
 // Mock the email service
 vi.mock('@/services/email.svc', () => ({

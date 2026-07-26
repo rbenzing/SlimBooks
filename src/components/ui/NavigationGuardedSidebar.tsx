@@ -56,9 +56,8 @@ interface NavigationGuardedSidebarProps {
 export const NavigationGuardedSidebar: React.FC<NavigationGuardedSidebarProps> = ({ onNavigate }) => {
   const { logout, user } = useAuth();
   const location = useLocation();
-  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
-  const [pendingPath, setPendingPath] = useState<string>('');
-  const { settings: companySettings, isLoading: companySettingsLoading } = useCompanySettings();
+  const [_pendingPath, setPendingPath] = useState<string>('');
+  const { settings: companySettings } = useCompanySettings();
 
   const isActive = (path: string) => {
     if (path === '/') {

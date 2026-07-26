@@ -2,7 +2,7 @@
 // Handles PDF generation requests to the server
 
 import { envConfig } from '@/lib/env-config';
-import { PDFGenerationOptions } from '@/types';
+import { type PDFGenerationOptions } from '@/types';
 import { getToken } from '@/utils/api';
 
 // PDFGenerationOptions moved to @/types/common.types.ts
@@ -17,7 +17,7 @@ class PDFService {
   /**
    * Generate PDF for an invoice using auto-generated token
    */
-  async generateInvoicePDF(invoiceId: number, options?: PDFGenerationOptions): Promise<Blob> {
+  async generateInvoicePDF(invoiceId: number, _options?: PDFGenerationOptions): Promise<Blob> {
     try {
       const token = getToken();
       const response = await fetch(`${this.baseUrl}/invoice/${invoiceId}/download`, {
@@ -63,7 +63,7 @@ class PDFService {
   /**
    * Generate PDF for an invoice with provided token (for public access)
    */
-  async generatePublicInvoicePDF(invoiceId: number, token: string, options?: PDFGenerationOptions): Promise<Blob> {
+  async generatePublicInvoicePDF(invoiceId: number, token: string, _options?: PDFGenerationOptions): Promise<Blob> {
     try {
       const response = await fetch(`${this.baseUrl}/invoice/${invoiceId}?token=${token}`, {
         method: 'GET',

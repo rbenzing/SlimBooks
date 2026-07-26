@@ -1,7 +1,7 @@
 // Settings routes for Slimbooks
 // Handles application settings and project configuration endpoints
 
-import { Router, Request, Response } from 'express';
+import { Router, type Request, type Response } from 'express';
 import multer from 'multer';
 import { fileURLToPath } from 'url';
 import { dirname, resolve, extname } from 'path';
@@ -281,7 +281,7 @@ router.put('/appearance', requireAuth, async (req: Request, res: Response): Prom
     
     // Only allow appearance-related settings to be saved through this endpoint
     const allowedSettings = ['theme', 'invoice_template_preference', 'pdf_format_preference'];
-    const filteredSettings: Record<string, any> = {};
+    const filteredSettings: Record<string, Record<string, unknown>> = {};
     
     for (const [key, value] of Object.entries(settings)) {
       if (allowedSettings.includes(key)) {

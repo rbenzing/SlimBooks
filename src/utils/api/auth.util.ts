@@ -1,70 +1,138 @@
+// Single source of truth for auth token persistence (read + write).
+// Nothing else in the app may touch localStorage/sessionStorage for auth keys.
+
+import { type PasswordRequirements } from '@/types';
+
 const TOKEN_KEY = 'auth_token';
 const REFRESH_TOKEN_KEY = 'refresh_token';
+const REMEMBER_ME_KEY = 'remember_me';
 
-export const getToken = (): string | null => {
-  if (typeof window === 'undefined') return null;
+/**
+ * Where a token is persisted. Required on every write so a caller can never
+ * accidentally persist a session-only token to localStorage.
+ */
+export const TokenPersistence = {
+  /** Survives a browser restart - the "remember me" choice. */
+  Persistent: 'persistent',
+  /** Discarded when the tab closes. */
+  Session: 'session'
+} as const;
 
-  // Check localStorage first (for "remember me" tokens)
-  const localToken = localStorage.getItem(TOKEN_KEY);
-  const sessionToken = sessionStorage.getItem(TOKEN_KEY);
+export type TokenPersistence = typeof TokenPersistence[keyof typeof TokenPersistence];
 
-  if (localToken) return localToken;
+/** Decoded (unverified) JWT payload. Verification happens server side. */
+export interface JwtPayload {
+  exp?: number;
+  iat?: number;
+  userId?: number;
+  email?: string;
+  type?: string;
+  [claim: string]: unknown;
+}
 
-  // Fall back to sessionStorage (for session-only tokens)
-  return sessionToken;
+const isBrowser = (): boolean => typeof window !== 'undefined';
+
+/** Read a key preferring localStorage ("remember me") then sessionStorage. */
+const readKey = (key: string): string | null => {
+  if (!isBrowser()) return null;
+  return localStorage.getItem(key) ?? sessionStorage.getItem(key);
 };
 
-export const setToken = (token: string): void => {
-  if (typeof window === 'undefined') return;
-  localStorage.setItem(TOKEN_KEY, token);
+/**
+ * Write a key to the chosen storage and remove it from the other one, so a
+ * stale value can never shadow the value that was just written.
+ */
+const writeKey = (key: string, value: string, persistence: TokenPersistence): void => {
+  if (!isBrowser()) return;
+  const isPersistent = persistence === TokenPersistence.Persistent;
+  const target = isPersistent ? localStorage : sessionStorage;
+  const other = isPersistent ? sessionStorage : localStorage;
+  other.removeItem(key);
+  target.setItem(key, value);
 };
 
-export const removeToken = (): void => {
-  if (typeof window === 'undefined') return;
-  localStorage.removeItem(TOKEN_KEY);
+/** Remove a key from both storages. */
+const removeKey = (key: string): void => {
+  if (!isBrowser()) return;
+  localStorage.removeItem(key);
+  sessionStorage.removeItem(key);
 };
 
-export const getRefreshToken = (): string | null => {
-  if (typeof window === 'undefined') return null;
-  // Check localStorage first (for "remember me" tokens)
-  const localToken = localStorage.getItem(REFRESH_TOKEN_KEY);
-  if (localToken) return localToken;
-
-  // Fall back to sessionStorage (for session-only tokens)
-  return sessionStorage.getItem(REFRESH_TOKEN_KEY);
-};
-
-export const setRefreshToken = (token: string): void => {
-  if (typeof window === 'undefined') return;
-  localStorage.setItem(REFRESH_TOKEN_KEY, token);
-};
-
-export const removeRefreshToken = (): void => {
-  if (typeof window === 'undefined') return;
-  localStorage.removeItem(REFRESH_TOKEN_KEY);
-};
-
-export const clearAuthTokens = (): void => {
-  removeToken();
-  removeRefreshToken();
-};
-
-export const isTokenExpired = (token: string): boolean => {
-  try {
-    const payload = JSON.parse(atob(token.split('.')[1]));
-    const currentTime = Date.now() / 1000;
-    return payload.exp < currentTime;
-  } catch {
-    return true;
+/** Record the remember-me choice so later writes (token refresh) can honour it. */
+const recordPersistence = (persistence: TokenPersistence): void => {
+  if (!isBrowser()) return;
+  if (persistence === TokenPersistence.Persistent) {
+    localStorage.setItem(REMEMBER_ME_KEY, 'true');
+  } else {
+    localStorage.removeItem(REMEMBER_ME_KEY);
   }
 };
 
-export const getTokenPayload = (token: string): any => {
+/** The persistence the current session was established with. */
+export const getTokenPersistence = (): TokenPersistence => {
+  if (!isBrowser()) return TokenPersistence.Session;
+  return localStorage.getItem(REMEMBER_ME_KEY) === 'true'
+    ? TokenPersistence.Persistent
+    : TokenPersistence.Session;
+};
+
+export const getToken = (): string | null => readKey(TOKEN_KEY);
+
+export const getRefreshToken = (): string | null => readKey(REFRESH_TOKEN_KEY);
+
+export const setToken = (token: string, persistence: TokenPersistence): void => {
+  writeKey(TOKEN_KEY, token, persistence);
+  recordPersistence(persistence);
+};
+
+export const setRefreshToken = (refreshToken: string, persistence: TokenPersistence): void => {
+  writeKey(REFRESH_TOKEN_KEY, refreshToken, persistence);
+  recordPersistence(persistence);
+};
+
+/**
+ * Store a freshly issued token pair. A missing refresh token clears any
+ * previously stored one rather than leaving it behind.
+ */
+export const setAuthTokens = (
+  token: string,
+  refreshToken: string | undefined,
+  persistence: TokenPersistence
+): void => {
+  setToken(token, persistence);
+  if (refreshToken) {
+    setRefreshToken(refreshToken, persistence);
+  } else {
+    removeKey(REFRESH_TOKEN_KEY);
+  }
+};
+
+/** Remove every auth key from BOTH storages so nothing survives a sign-out. */
+export const clearAuthTokens = (): void => {
+  removeKey(TOKEN_KEY);
+  removeKey(REFRESH_TOKEN_KEY);
+  removeKey(REMEMBER_ME_KEY);
+};
+
+/** Decode a JWT payload without verifying it. Returns null for malformed input. */
+export const getTokenPayload = (token: string): JwtPayload | null => {
   try {
-    return JSON.parse(atob(token.split('.')[1]));
+    const parts = token.split('.');
+    if (parts.length !== 3) return null;
+
+    const segment = parts[1];
+    const padded = segment + '='.repeat((4 - segment.length % 4) % 4);
+    return JSON.parse(atob(padded)) as JwtPayload;
   } catch {
     return null;
   }
+};
+
+/** A token with no readable expiry is treated as expired. */
+export const isTokenExpired = (token: string): boolean => {
+  const payload = getTokenPayload(token);
+  if (!payload || typeof payload.exp !== 'number') return true;
+  return payload.exp <= Date.now() / 1000;
 };
 
 export const isAuthenticated = (): boolean => {
@@ -78,7 +146,7 @@ export class AuthUtils {
     return emailRegex.test(email);
   }
 
-  static validatePassword(password: string, requirements: any): { isValid: boolean; errors: string[] } {
+  static validatePassword(password: string, requirements: Partial<PasswordRequirements>): { isValid: boolean; errors: string[] } {
     const errors: string[] = [];
 
     if (password.length < (requirements.min_length || 8)) {
@@ -150,39 +218,19 @@ export class AuthUtils {
   }
 
   static verifyPasswordResetToken(token: string): { email: string } | null {
-    try {
-      // Decode the JWT token
-      const parts = token.split('.');
-      if (parts.length !== 3) {
-        return null;
-      }
+    const payload = getTokenPayload(token);
+    if (!payload) return null;
 
-      const payload = JSON.parse(atob(parts[1]));
-
-      // Check if token has expired
-      const currentTime = Date.now() / 1000;
-      if (payload.exp && payload.exp < currentTime) {
-        return null;
-      }
-
-      // Check if it's a password reset token
-      if (payload.type !== 'password_reset') {
-        return null;
-      }
-
-      // Return the email from the token payload
-      return { email: payload.email };
-    } catch (error) {
+    // Reject expired tokens
+    if (typeof payload.exp === 'number' && payload.exp <= Date.now() / 1000) {
       return null;
     }
-  }
 
-  static async hashPassword(password: string): Promise<string> {
-    // Use Web Crypto API for hashing
-    const encoder = new TextEncoder();
-    const data = encoder.encode(password);
-    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    // Reject anything that is not a password reset token
+    if (payload.type !== 'password_reset' || !payload.email) {
+      return null;
+    }
+
+    return { email: payload.email };
   }
 }

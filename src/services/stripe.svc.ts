@@ -2,17 +2,18 @@
 
 import { sqliteService } from './sqlite.svc';
 import {
-  StripeInvoice,
-  StripeSubscription, 
-  StripePaymentIntent,
-  StripeAccountInfo,
-  StripeConnectionTestResult,
-  StripePaymentLink,
-  StripePaymentLinkResult,
-  StripeWebhookResult,
-  StripeOperationResult,
-  StripeInvoiceData,
-  StripeSettings
+  type StripeInvoice,
+  type StripeSubscription, 
+  type StripePaymentIntent,
+  type StripeAccountInfo,
+  type StripeConnectionTestResult,
+  type StripePaymentLink,
+  type StripePaymentLinkResult,
+  type StripeWebhookResult,
+  type StripeOperationResult,
+  type StripeInvoiceData,
+  type StripeSettings,
+  type Invoice
 } from '@/types';
 
 export class StripeService {
@@ -231,7 +232,7 @@ export class StripeService {
   /**
    * Deactivates a payment link
    */
-  async deactivatePaymentLink(linkId: string): Promise<StripeOperationResult> {
+  async deactivatePaymentLink(_linkId: string): Promise<StripeOperationResult> {
     try {
       const settings = await this.loadSettings();
 
@@ -258,7 +259,7 @@ export class StripeService {
   /**
    * Processes Stripe webhook events
    */
-  async processWebhook(payload: string, signature: string): Promise<StripeWebhookResult> {
+  async processWebhook(payload: string, _signature: string): Promise<StripeWebhookResult> {
     try {
       const settings = await this.loadSettings();
 
@@ -321,8 +322,8 @@ export class StripeService {
       // Update local invoice status to paid
       const response = await authenticatedFetch('/api/invoices');
       const result = await response.json();
-      const localInvoices = result.data;
-      const localInvoice = localInvoices.find((inv: any) => inv.stripe_invoice_id === invoice.id);
+      const localInvoices: Invoice[] = result.data;
+      const localInvoice = localInvoices.find(inv => inv.stripe_invoice_id === invoice.id);
 
       if (localInvoice) {
         await authenticatedFetch(`/api/invoices/${localInvoice.id}`, {
@@ -349,8 +350,8 @@ export class StripeService {
       // Update local invoice status
       const response = await authenticatedFetch('/api/invoices');
       const result = await response.json();
-      const localInvoices = result.data;
-      const localInvoice = localInvoices.find((inv: any) => inv.stripe_invoice_id === invoice.id);
+      const localInvoices: Invoice[] = result.data;
+      const localInvoice = localInvoices.find(inv => inv.stripe_invoice_id === invoice.id);
 
       if (localInvoice) {
         await authenticatedFetch(`/api/invoices/${localInvoice.id}`, {
@@ -370,7 +371,7 @@ export class StripeService {
   /**
    * Handles subscription events
    */
-  private async handleSubscriptionEvent(subscription: StripeSubscription, eventType: string): Promise<void> {
+  private async handleSubscriptionEvent(_subscription: StripeSubscription, _eventType: string): Promise<void> {
     try {
       // Handle subscription updates in your local database
     } catch (error) {
@@ -381,7 +382,7 @@ export class StripeService {
   /**
    * Handles successful payment intent
    */
-  private async handlePaymentIntentSucceeded(paymentIntent: StripePaymentIntent): Promise<void> {
+  private async handlePaymentIntentSucceeded(_paymentIntent: StripePaymentIntent): Promise<void> {
     try {
       // Handle successful payment
     } catch (error) {

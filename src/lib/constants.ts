@@ -1,5 +1,5 @@
 // Global constants for the Slimbooks application
-import { CurrencySettings } from '@/types';
+import { type CurrencySettings } from '@/types';
 
 // ===== CURRENCY CONSTANTS =====
 

@@ -1,7 +1,7 @@
 // Main database model module for Slimbooks
 // Exports database instance and initialization functions
 
-import Database from 'better-sqlite3';
+import type Database from 'better-sqlite3';
 import { createTables } from '../database/schemas/tables.schema.js';
 import { 
   initializeCounters, 

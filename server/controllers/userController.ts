@@ -1,14 +1,14 @@
 // User controller for Slimbooks
 // Handles all user-related business logic
 
-import { Request, Response } from 'express';
+import { type Request, type Response } from 'express';
 import { userService } from '../services/UserService.js';
 import { 
   NotFoundError, 
   ValidationError,
   asyncHandler
 } from '../middleware/index.js';
-import { CreateUserRequest, UpdateUserRequest, UpdateUserResponse } from '../types/api.types.js';
+import { type CreateUserRequest, type UpdateUserRequest, type UpdateUserResponse } from '../types/api.types.js';
 
 /**
  * Get all users
@@ -305,6 +305,6 @@ export const verifyUserEmail = asyncHandler(async (req: Request, res: Response):
     throw new ValidationError('Invalid user ID');
   }
 
-  const success = await userService.verifyUserEmail(userId);
+  await userService.verifyUserEmail(userId);
   res.json({ success: true, message: 'Email verified successfully' });
 });

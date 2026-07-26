@@ -1,5 +1,7 @@
 // Common types and interfaces used across the application
 
+import type { SavedReport } from '../domain/reports.types';
+
 // Note: ApiResponse is now defined in shared/api.types.ts to avoid duplication
 
 // Pagination interface
@@ -156,7 +158,7 @@ export interface Report {
   type: ReportType;
   date_range_start: string;
   date_range_end: string;
-  data: any; // Report data object
+  data: SavedReport['data']; // Generated report payload for this report type
   created_at: string;
 }
 

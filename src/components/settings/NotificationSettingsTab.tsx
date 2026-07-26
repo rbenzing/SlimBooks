@@ -4,8 +4,7 @@ import { Bell, CheckCircle, AlertTriangle } from 'lucide-react';
 import { themeClasses } from '@/utils/themeUtils.util';
 import { toast } from 'sonner';
 import { useNotificationSettings } from '@/hooks/useSettings.hook';
-import type { NotificationSettings } from '@/types';
-import type { SettingsTabRef } from '../Settings';
+import type { SettingsTabRef } from '@/types';
 
 export const NotificationSettingsTab = forwardRef<SettingsTabRef>((props, ref) => {
   const {
@@ -13,8 +12,6 @@ export const NotificationSettingsTab = forwardRef<SettingsTabRef>((props, ref) =
     setSettings,
     saveSettings,
     isLoading,
-    isSaving,
-    isLoaded,
     error
   } = useNotificationSettings();
 
@@ -35,11 +32,6 @@ export const NotificationSettingsTab = forwardRef<SettingsTabRef>((props, ref) =
       ...prev,
       [key]: value
     }));
-  };
-
-  const applyToastSettings = (settings: NotificationSettings) => {
-    // This would integrate with the toast system to apply settings
-    // For now, we'll just log the settings
   };
 
   const testNotification = (type: 'success' | 'error' | 'warning' | 'info') => {

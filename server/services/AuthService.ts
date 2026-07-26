@@ -3,7 +3,7 @@
 
 import { databaseService } from '../core/DatabaseService.js';
 import { settingsService } from './SettingsService.js';
-import { User, UserPublic } from '../types/index.js';
+import { type User, type UserPublic } from '../types/index.js';
 
 /**
  * Authentication Service
@@ -56,7 +56,7 @@ export class AuthService {
     }
 
     // Get next user ID from counter
-    const nextId = databaseService.getNextId('users');
+    const nextId = databaseService.getNextSequence('users');
     
     // Create user
     const now = new Date().toISOString();
@@ -96,8 +96,8 @@ export class AuthService {
     const newAttempts = (user?.failed_login_attempts || 0) + 1;
     
     // Get current lockout settings
-    const maxAttempts = await settingsService.getSecuritySetting('max_failed_login_attempts');
-    const lockoutDuration = await settingsService.getSecuritySetting('account_lockout_duration');
+    const maxAttempts = await settingsService.getSecuritySetting('max_failed_login_attempts') as number;
+    const lockoutDuration = await settingsService.getSecuritySetting('account_lockout_duration') as number;
     
     let lockedUntil: string | null = null;
     if (newAttempts >= maxAttempts) {
@@ -125,7 +125,7 @@ export class AuthService {
    * Check if email verification is required
    */
   async isEmailVerificationRequired(): Promise<boolean> {
-    return await settingsService.getSecuritySetting('require_email_verification');
+    return await settingsService.getSecuritySetting('require_email_verification') as boolean;
   }
 
   /**
@@ -136,7 +136,7 @@ export class AuthService {
       throw new Error('Valid user ID is required');
     }
 
-    const changes = databaseService.updateById('users', userId, { 
+    const changes = databaseService.updateRecord('users', userId, { 
       email_verified: 1,
       email_verified_at: new Date().toISOString()
     });
@@ -155,7 +155,7 @@ export class AuthService {
       throw new Error('Valid password hash is required');
     }
 
-    const changes = databaseService.updateById('users', userId, { 
+    const changes = databaseService.updateRecord('users', userId, { 
       password_hash: passwordHash,
       password_updated_at: new Date().toISOString()
     });
@@ -190,7 +190,7 @@ export class AuthService {
     }
 
     const allowedFields = ['name', 'username', 'email'];
-    const updateData: Record<string, any> = {};
+    const updateData: Record<string, unknown> = {};
     
     // Filter to only allowed fields
     for (const field of allowedFields) {
@@ -214,7 +214,7 @@ export class AuthService {
       }
     }
 
-    const changes = databaseService.updateById('users', userId, updateData);
+    const changes = databaseService.updateRecord('users', userId, updateData);
     return changes;
   }
 
@@ -303,7 +303,7 @@ export class AuthService {
     }
 
     const lockedUntil = new Date(Date.now() + lockDuration).toISOString();
-    const changes = databaseService.updateById('users', userId, {
+    const changes = databaseService.updateRecord('users', userId, {
       account_locked_until: lockedUntil
     });
     return changes;
@@ -317,7 +317,7 @@ export class AuthService {
       throw new Error('Valid user ID is required');
     }
 
-    const changes = databaseService.updateById('users', userId, {
+    const changes = databaseService.updateRecord('users', userId, {
       failed_login_attempts: 0,
       account_locked_until: null
     });

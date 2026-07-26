@@ -1,21 +1,6 @@
 // Pagination settings utilities for consistent pagination across the application
 import type { PaginationSettings } from '@/types';
-import {
-  DEFAULT_PAGINATION_SETTINGS,
-  DEFAULT_ITEMS_PER_PAGE_OPTIONS,
-  MAX_ITEMS_PER_PAGE_OPTIONS,
-  AVAILABLE_PAGE_SIZES_OPTIONS,
-  MAX_PAGE_NUMBERS_OPTIONS
-} from '@/types';
-
-// Re-export constants for backward compatibility
-export {
-  DEFAULT_PAGINATION_SETTINGS,
-  DEFAULT_ITEMS_PER_PAGE_OPTIONS,
-  MAX_ITEMS_PER_PAGE_OPTIONS,
-  AVAILABLE_PAGE_SIZES_OPTIONS,
-  MAX_PAGE_NUMBERS_OPTIONS
-};
+import { DEFAULT_PAGINATION_SETTINGS } from '@/types';
 
 // Get current pagination settings from SQLite (asynchronous version)
 export const getPaginationSettings = async (): Promise<PaginationSettings> => {

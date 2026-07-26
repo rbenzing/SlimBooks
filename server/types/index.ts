@@ -139,6 +139,9 @@ export interface QueryResult {
   lastInsertRowid: number;
 }
 
+// Value stored against a settings key (JSON-encoded in the database)
+export type SettingValue = string | number | boolean | object | null;
+
 export interface Setting extends BaseEntity {
   key: string;
   value: string;
@@ -197,7 +200,7 @@ export interface ProjectSetting {
   category?: string;
   created_at: string;
   updated_at: string;
-  email?: any;
+  email?: Partial<ProjectSettings['email']>;
   google_oauth?: {
     enabled?: boolean;
     client_id?: string;

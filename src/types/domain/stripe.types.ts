@@ -1,4 +1,5 @@
 // Stripe-specific types and interfaces
+import type { StripeSettings } from './settings.types';
 
 // Stripe Invoice object (simplified version of what we use)
 export interface StripeInvoice {
@@ -71,9 +72,6 @@ export interface StripeConnectionTestResult {
   accountInfo?: StripeAccountInfo;
 }
 
-// Alias for backward compatibility
-export type StripeTestResult = StripeConnectionTestResult;
-
 // Note: StripeSettings is now defined in domain/settings.types.ts to avoid duplication
 
 // Stripe Payment Link
@@ -119,7 +117,7 @@ export interface StripeOperationResult {
 
 // Stripe settings save result - imports StripeSettings from settings.types.ts
 export interface StripeSettingsSaveResult extends StripeOperationResult {
-  settings?: import('./settings.types').StripeSettings;
+  settings?: StripeSettings;
 }
 
 // Stripe Invoice data for creating payment links

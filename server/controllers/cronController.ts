@@ -1,19 +1,9 @@
 // Cron job controller for scheduled tasks
 // Handles cron endpoints for recurring invoices and other scheduled operations
 
-import { Request, Response } from 'express';
+import { type Request, type Response } from 'express';
 import { recurringInvoiceProcessorService } from '../services/RecurringInvoiceProcessorService.js';
 import { asyncHandler } from '../middleware/index.js';
-
-/**
- * Recurring invoices processing result interface
- */
-interface RecurringProcessResult {
-  success: boolean;
-  processed?: number;
-  message?: string;
-  errors?: string[];
-}
 
 /**
  * Process recurring invoices - Cron endpoint

@@ -43,10 +43,6 @@ describe('Type Validation - Invoice', () => {
   });
 
   it('should enforce template_id fields are separate', () => {
-    const invoice: any = {
-      template_id: 1, // This should NOT exist
-    };
-
     // TypeScript interface should not have template_id
     const validInvoice: Invoice = {
       id: 1,

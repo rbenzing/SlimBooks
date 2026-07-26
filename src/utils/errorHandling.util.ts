@@ -6,7 +6,7 @@ export interface ErrorOptions {
   severity?: ErrorSeverity;
   logToConsole?: boolean;
   userMessage?: string;
-  technicalDetails?: any;
+  technicalDetails?: unknown;
 }
 
 export const handleError = (

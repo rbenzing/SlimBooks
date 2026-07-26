@@ -10,9 +10,7 @@ import {
   deleteTemplate
 } from '../controllers/templateController.js';
 import {
-  requireAuth,
-  validateRequest,
-  validationSets
+  requireAuth
 } from '../middleware/index.js';
 
 const router: Router = Router();

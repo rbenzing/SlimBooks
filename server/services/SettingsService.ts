@@ -2,7 +2,7 @@
 // Handles all settings-related business logic and database operations
 
 import { databaseService } from '../core/DatabaseService.js';
-import { Setting, ProjectSettings } from '../types/index.js';
+import { type Setting, type ProjectSettings, type SettingValue } from '../types/index.js';
 
 /**
  * Settings Service
@@ -63,7 +63,7 @@ export class SettingsService {
   /**
    * Save individual setting
    */
-  async saveSetting(key: string, value: any, category: string = 'general'): Promise<boolean> {
+  async saveSetting(key: string, value: SettingValue, category: string = 'general'): Promise<boolean> {
     if (!key || typeof key !== 'string') {
       throw new Error('Setting key is required');
     }
@@ -84,7 +84,7 @@ export class SettingsService {
   /**
    * Update format-related settings (PDF format, date format, currency format, etc.)
    */
-  async updateFormatSettings(settings: Record<string, any>): Promise<boolean> {
+  async updateFormatSettings(settings: Record<string, SettingValue>): Promise<boolean> {
     if (!settings || typeof settings !== 'object') {
       throw new Error('Format settings object is required');
     }
@@ -111,7 +111,7 @@ export class SettingsService {
    * Save multiple settings in a transaction
    */
   async saveMultipleSettings(settings: Record<string, {
-    value: any;
+    value: SettingValue;
     category?: string;
   }>): Promise<boolean> {
     if (!settings || typeof settings !== 'object') {
@@ -224,7 +224,7 @@ export class SettingsService {
     }
 
     // Flatten the settings object for database storage
-    const flattenSettings = (obj: any, prefix: string = '', parentEnabled: number | null = null): Setting[] => {
+    const flattenSettings = (obj: Record<string, unknown>, prefix: string = '', parentEnabled: number | null = null): Setting[] => {
       const flattened: Setting[] = [];
       const currentEnabled = obj.enabled !== undefined ? (obj.enabled ? 1 : 0) : parentEnabled;
       
@@ -236,7 +236,7 @@ export class SettingsService {
           continue;
         } else if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
           // Recursively flatten nested objects
-          flattened.push(...flattenSettings(value, fullKey, currentEnabled));
+          flattened.push(...flattenSettings(value as Record<string, unknown>, fullKey, currentEnabled));
         } else {
           // Store primitive values with their enabled status
           flattened.push({
@@ -252,7 +252,7 @@ export class SettingsService {
       return flattened;
     };
 
-    const flatSettings = flattenSettings(settings);
+    const flatSettings = flattenSettings(settings as Record<string, unknown>);
 
     // Use transaction for bulk updates
     const operations = () => {
@@ -271,7 +271,7 @@ export class SettingsService {
   /**
    * Get security setting value
    */
-  async getSecuritySetting(settingName: string): Promise<any> {
+  async getSecuritySetting(settingName: string): Promise<SettingValue> {
     if (!settingName || typeof settingName !== 'string') {
       throw new Error('Setting name is required');
     }

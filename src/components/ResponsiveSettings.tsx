@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Save, ChevronDown } from 'lucide-react';
 import { TaxSettings } from './settings/TaxSettings';
@@ -9,7 +9,7 @@ import { EmailSettings } from './settings/EmailSettings';
 import { StripeSettingsTab } from './settings/StripeSettingsTab';
 import { NotificationSettingsTab } from './settings/NotificationSettingsTab';
 import { AppearanceSettingsTab } from './settings/AppearanceSettingsTab';
-import { ProjectSettingsTab, ProjectSettingsRef } from './settings/ProjectSettingsTab';
+import { ProjectSettingsTab, type ProjectSettingsRef } from './settings/ProjectSettingsTab';
 import { DatabaseBackupSection } from './settings/DatabaseBackupSection';
 import { themeClasses, getButtonClasses } from '@/utils/themeUtils.util';
 import { toast } from 'sonner';
@@ -22,6 +22,18 @@ interface SettingsTab {
   name: string;
   enabled?: boolean;
 }
+
+const baseTabs: SettingsTab[] = [
+  { id: 'company', name: 'Company' },
+  { id: 'general', name: 'General' },
+  { id: 'tax', name: 'Tax Rates' },
+  { id: 'shipping', name: 'Shipping' },
+  { id: 'email', name: 'Email Settings' },
+  { id: 'notifications', name: 'Notifications' },
+  { id: 'appearance', name: 'Appearance' },
+  { id: 'project', name: 'Project Settings' },
+  { id: 'backup', name: 'Backup & Restore' }
+];
 
 export const ResponsiveSettings = () => {
   const [activeTab, setActiveTab] = useState('company');
@@ -43,23 +55,11 @@ export const ResponsiveSettings = () => {
   const notificationSettingsRef = useRef<SettingsTabRef>(null);
   const appearanceSettingsRef = useRef<SettingsTabRef>(null);
 
-  const baseTabs: SettingsTab[] = [
-    { id: 'company', name: 'Company' },
-    { id: 'general', name: 'General' },
-    { id: 'tax', name: 'Tax Rates' },
-    { id: 'shipping', name: 'Shipping' },
-    { id: 'email', name: 'Email Settings' },
-    { id: 'notifications', name: 'Notifications' },
-    { id: 'appearance', name: 'Appearance' },
-    { id: 'project', name: 'Project Settings' },
-    { id: 'backup', name: 'Backup & Restore' }
-  ];
-
   // Add conditional tabs
-  const availableTabs = [
+  const availableTabs = useMemo<SettingsTab[]>(() => [
     ...baseTabs,
     ...(projectSettings?.stripe?.enabled ? [{ id: 'stripe', name: 'Stripe Integration' }] : [])
-  ];
+  ], [projectSettings?.stripe?.enabled]);
 
   useEffect(() => {
     const hash = location.hash.replace('#', '');

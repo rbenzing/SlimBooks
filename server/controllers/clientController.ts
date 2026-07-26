@@ -1,7 +1,7 @@
 // Client controller for Slimbooks
 // Handles all client-related business logic
 
-import { Request, Response } from 'express';
+import { type Request, type Response } from 'express';
 import { clientService } from '../services/ClientService.js';
 import {
   NotFoundError,
@@ -19,7 +19,7 @@ interface ClientRequest {
   address?: string;
   city?: string;
   state?: string;
-  zip?: string;
+  zipCode?: string;
   country?: string;
   company?: string;
   tax_id?: string;

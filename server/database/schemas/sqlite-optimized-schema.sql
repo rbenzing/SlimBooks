@@ -1,5 +1,11 @@
 -- SQLite-Optimized Database Schema for Slimbooks
--- Production-ready with proper field types, constraints, and indexes for SQLite
+-- Production-ready • Soft-delete physics corrected • better-sqlite3 tuned
+
+PRAGMA foreign_keys = ON;
+PRAGMA journal_mode = WAL;
+PRAGMA synchronous = NORMAL;
+PRAGMA temp_store = MEMORY;
+PRAGMA cache_size = -64000;
 
 -- =====================================================
 -- USERS TABLE - Authentication and user management
@@ -17,8 +23,8 @@ CREATE TABLE IF NOT EXISTS users (
     failed_login_attempts INTEGER NOT NULL DEFAULT 0 CHECK (failed_login_attempts >= 0),
     account_locked_until TEXT,
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
-    deleted_at TEXT NOT NULL DEFAULT (datetime('now')),
-    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+    updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+    deleted_at TEXT                                   -- nullable soft-delete
 );
 
 -- =====================================================
@@ -39,12 +45,52 @@ CREATE TABLE IF NOT EXISTS clients (
     country TEXT DEFAULT 'US' CHECK (length(country) = 2),
     stripe_customer_id TEXT CHECK (stripe_customer_id IS NULL OR length(stripe_customer_id) <= 50),
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
-    deleted_at TEXT NOT NULL DEFAULT (datetime('now')),
-    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+    updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+    deleted_at TEXT
 );
 
 -- =====================================================
--- INVOICES TABLE - Invoice management
+-- INVOICE DESIGN TEMPLATES
+-- =====================================================
+CREATE TABLE IF NOT EXISTS invoice_design_templates (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL CHECK (length(trim(name)) >= 2 AND length(name) <= 100),
+    content TEXT NOT NULL,
+    is_default INTEGER NOT NULL DEFAULT 0 CHECK (is_default IN (0, 1)),
+    variables TEXT,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+    deleted_at TEXT
+);
+
+-- =====================================================
+-- RECURRING INVOICE TEMPLATES
+-- =====================================================
+CREATE TABLE IF NOT EXISTS recurring_invoice_templates (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL CHECK (length(trim(name)) >= 2 AND length(name) <= 100),
+    client_id INTEGER NOT NULL,
+    amount REAL NOT NULL CHECK (amount >= 0),
+    description TEXT,
+    frequency TEXT NOT NULL CHECK (frequency IN ('weekly', 'monthly', 'quarterly', 'yearly', 'custom')),
+    payment_terms TEXT NOT NULL CHECK (length(payment_terms) <= 100),
+    next_invoice_date TEXT NOT NULL,
+    is_active INTEGER NOT NULL DEFAULT 1 CHECK (is_active IN (0, 1)),
+    line_items TEXT,
+    tax_amount REAL NOT NULL DEFAULT 0 CHECK (tax_amount >= 0),
+    tax_rate_id TEXT CHECK (tax_rate_id IS NULL OR length(tax_rate_id) <= 50),
+    shipping_amount REAL NOT NULL DEFAULT 0 CHECK (shipping_amount >= 0),
+    shipping_rate_id TEXT CHECK (shipping_rate_id IS NULL OR length(shipping_rate_id) <= 50),
+    notes TEXT,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+    deleted_at TEXT,
+    
+    FOREIGN KEY (client_id) REFERENCES clients (id) ON DELETE CASCADE
+);
+
+-- =====================================================
+-- INVOICES TABLE
 -- =====================================================
 CREATE TABLE IF NOT EXISTS invoices (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -78,8 +124,8 @@ CREATE TABLE IF NOT EXISTS invoices (
     email_error TEXT CHECK (email_error IS NULL OR length(email_error) <= 500),
     last_email_attempt TEXT,
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
-    deleted_at TEXT NOT NULL DEFAULT (datetime('now')),
     updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+    deleted_at TEXT,
     
     FOREIGN KEY (client_id) REFERENCES clients (id) ON DELETE RESTRICT,
     FOREIGN KEY (design_template_id) REFERENCES invoice_design_templates (id) ON DELETE SET NULL,
@@ -87,47 +133,7 @@ CREATE TABLE IF NOT EXISTS invoices (
 );
 
 -- =====================================================
--- INVOICE DESIGN TEMPLATES TABLE - Invoice layout/design templates
--- =====================================================
-CREATE TABLE IF NOT EXISTS invoice_design_templates (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT NOT NULL CHECK (length(trim(name)) >= 2 AND length(name) <= 100),
-    content TEXT NOT NULL,
-    is_default INTEGER NOT NULL DEFAULT 0 CHECK (is_default IN (0, 1)),
-    variables TEXT,
-    created_at TEXT NOT NULL DEFAULT (datetime('now')),
-    deleted_at TEXT NOT NULL DEFAULT (datetime('now')),
-    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
-);
-
--- =====================================================
--- RECURRING INVOICE TEMPLATES TABLE - Recurring invoice business templates
--- =====================================================
-CREATE TABLE IF NOT EXISTS recurring_invoice_templates (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT NOT NULL CHECK (length(trim(name)) >= 2 AND length(name) <= 100),
-    client_id INTEGER NOT NULL,
-    amount REAL NOT NULL CHECK (amount >= 0),
-    description TEXT,
-    frequency TEXT NOT NULL CHECK (frequency IN ('weekly', 'monthly', 'quarterly', 'yearly', 'custom')),
-    payment_terms TEXT NOT NULL CHECK (length(payment_terms) <= 100),
-    next_invoice_date TEXT NOT NULL,
-    is_active INTEGER NOT NULL DEFAULT 1 CHECK (is_active IN (0, 1)),
-    line_items TEXT,
-    tax_amount REAL NOT NULL DEFAULT 0 CHECK (tax_amount >= 0),
-    tax_rate_id TEXT CHECK (tax_rate_id IS NULL OR length(tax_rate_id) <= 50),
-    shipping_amount REAL NOT NULL DEFAULT 0 CHECK (shipping_amount >= 0),
-    shipping_rate_id TEXT CHECK (shipping_rate_id IS NULL OR length(shipping_rate_id) <= 50),
-    notes TEXT,
-    created_at TEXT NOT NULL DEFAULT (datetime('now')),
-    deleted_at TEXT NOT NULL DEFAULT (datetime('now')),
-    updated_at TEXT NOT NULL DEFAULT (datetime('now')),
-    
-    FOREIGN KEY (client_id) REFERENCES clients (id) ON DELETE CASCADE
-);
-
--- =====================================================
--- EXPENSES TABLE - Expense tracking
+-- EXPENSES TABLE
 -- =====================================================
 CREATE TABLE IF NOT EXISTS expenses (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -143,14 +149,14 @@ CREATE TABLE IF NOT EXISTS expenses (
     client_id INTEGER,
     project TEXT,
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
-    deleted_at TEXT NOT NULL DEFAULT (datetime('now')),
     updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+    deleted_at TEXT,
     
     FOREIGN KEY (client_id) REFERENCES clients (id) ON DELETE SET NULL
 );
 
 -- =====================================================
--- PAYMENTS TABLE - Payment tracking
+-- PAYMENTS TABLE
 -- =====================================================
 CREATE TABLE IF NOT EXISTS payments (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -163,14 +169,14 @@ CREATE TABLE IF NOT EXISTS payments (
     description TEXT CHECK (description IS NULL OR length(description) <= 500),
     status TEXT NOT NULL DEFAULT 'received' CHECK (status IN ('received', 'pending', 'failed', 'refunded')),
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
-    deleted_at TEXT NOT NULL DEFAULT (datetime('now')),
     updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+    deleted_at TEXT,
     
     FOREIGN KEY (invoice_id) REFERENCES invoices (id) ON DELETE SET NULL
 );
 
 -- =====================================================
--- REPORTS TABLE - Report storage
+-- REPORTS TABLE
 -- =====================================================
 CREATE TABLE IF NOT EXISTS reports (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -180,11 +186,11 @@ CREATE TABLE IF NOT EXISTS reports (
     date_range_end TEXT NOT NULL,
     data TEXT,
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
-    deleted_at TEXT NOT NULL DEFAULT (datetime('now'))
+    deleted_at TEXT
 );
 
 -- =====================================================
--- COUNTERS TABLE - Auto-increment counters
+-- COUNTERS TABLE
 -- =====================================================
 CREATE TABLE IF NOT EXISTS counters (
     name TEXT PRIMARY KEY CHECK (length(trim(name)) >= 2 AND length(name) <= 50),
@@ -192,7 +198,7 @@ CREATE TABLE IF NOT EXISTS counters (
 );
 
 -- =====================================================
--- SETTINGS TABLE - Application settings
+-- SETTINGS TABLE
 -- =====================================================
 CREATE TABLE IF NOT EXISTS settings (
     key TEXT PRIMARY KEY CHECK (length(trim(key)) >= 2 AND length(key) <= 100),
@@ -201,7 +207,7 @@ CREATE TABLE IF NOT EXISTS settings (
 );
 
 -- =====================================================
--- PROJECT_SETTINGS TABLE - Environment overrides
+-- PROJECT_SETTINGS TABLE
 -- =====================================================
 CREATE TABLE IF NOT EXISTS project_settings (
     key TEXT PRIMARY KEY CHECK (length(trim(key)) >= 2 AND length(key) <= 100),
@@ -212,24 +218,49 @@ CREATE TABLE IF NOT EXISTS project_settings (
 );
 
 -- =====================================================
+-- TOKEN TABLES (password reset + email verification)
+-- =====================================================
+CREATE TABLE IF NOT EXISTS password_reset_tokens (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id     INTEGER NOT NULL,
+    token_hash  TEXT    NOT NULL UNIQUE,
+    expires_at  TEXT    NOT NULL,
+    used_at     TEXT    DEFAULT NULL,
+    created_at  TEXT    NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS email_verification_tokens (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id     INTEGER NOT NULL,
+    token_hash  TEXT    NOT NULL UNIQUE,
+    expires_at  TEXT    NOT NULL,
+    used_at     TEXT    DEFAULT NULL,
+    created_at  TEXT    NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+);
+
+-- =====================================================
 -- PERFORMANCE INDEXES
 -- =====================================================
 
--- Users table indexes
+-- Users
 CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
 CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);
 CREATE INDEX IF NOT EXISTS idx_users_google_id ON users(google_id);
 CREATE INDEX IF NOT EXISTS idx_users_last_login ON users(last_login);
+CREATE INDEX IF NOT EXISTS idx_users_deleted_at ON users(deleted_at);
 
--- Clients table indexes
+-- Clients
 CREATE INDEX IF NOT EXISTS idx_clients_email ON clients(email);
 CREATE INDEX IF NOT EXISTS idx_clients_name ON clients(name);
 CREATE INDEX IF NOT EXISTS idx_clients_first_last ON clients(first_name, last_name);
 CREATE INDEX IF NOT EXISTS idx_clients_company ON clients(company);
 CREATE INDEX IF NOT EXISTS idx_clients_stripe_id ON clients(stripe_customer_id);
 CREATE INDEX IF NOT EXISTS idx_clients_created_at ON clients(created_at);
+CREATE INDEX IF NOT EXISTS idx_clients_deleted_at ON clients(deleted_at);
 
--- Invoices table indexes
+-- Invoices
 CREATE INDEX IF NOT EXISTS idx_invoices_number ON invoices(invoice_number);
 CREATE INDEX IF NOT EXISTS idx_invoices_client_id ON invoices(client_id);
 CREATE INDEX IF NOT EXISTS idx_invoices_status ON invoices(status);
@@ -238,14 +269,16 @@ CREATE INDEX IF NOT EXISTS idx_invoices_issue_date ON invoices(issue_date);
 CREATE INDEX IF NOT EXISTS idx_invoices_stripe_id ON invoices(stripe_invoice_id);
 CREATE INDEX IF NOT EXISTS idx_invoices_client_status ON invoices(client_id, status);
 CREATE INDEX IF NOT EXISTS idx_invoices_date_range ON invoices(issue_date, due_date);
+CREATE INDEX IF NOT EXISTS idx_invoices_deleted_at ON invoices(deleted_at);
 
--- Templates table indexes
-CREATE INDEX IF NOT EXISTS idx_templates_client_id ON templates(client_id);
-CREATE INDEX IF NOT EXISTS idx_templates_active ON templates(is_active);
-CREATE INDEX IF NOT EXISTS idx_templates_next_date ON templates(next_invoice_date);
-CREATE INDEX IF NOT EXISTS idx_templates_frequency ON templates(frequency);
+-- Recurring templates (fixed table name)
+CREATE INDEX IF NOT EXISTS idx_recurring_client_id ON recurring_invoice_templates(client_id);
+CREATE INDEX IF NOT EXISTS idx_recurring_is_active ON recurring_invoice_templates(is_active);
+CREATE INDEX IF NOT EXISTS idx_recurring_next_date ON recurring_invoice_templates(next_invoice_date);
+CREATE INDEX IF NOT EXISTS idx_recurring_frequency ON recurring_invoice_templates(frequency);
+CREATE INDEX IF NOT EXISTS idx_recurring_deleted_at ON recurring_invoice_templates(deleted_at);
 
--- Expenses table indexes
+-- Expenses
 CREATE INDEX IF NOT EXISTS idx_expenses_date ON expenses(date);
 CREATE INDEX IF NOT EXISTS idx_expenses_category ON expenses(category);
 CREATE INDEX IF NOT EXISTS idx_expenses_vendor ON expenses(vendor);
@@ -253,8 +286,9 @@ CREATE INDEX IF NOT EXISTS idx_expenses_client_id ON expenses(client_id);
 CREATE INDEX IF NOT EXISTS idx_expenses_is_billable ON expenses(is_billable);
 CREATE INDEX IF NOT EXISTS idx_expenses_amount ON expenses(amount);
 CREATE INDEX IF NOT EXISTS idx_expenses_date_category ON expenses(date, category);
+CREATE INDEX IF NOT EXISTS idx_expenses_deleted_at ON expenses(deleted_at);
 
--- Payments table indexes
+-- Payments
 CREATE INDEX IF NOT EXISTS idx_payments_date ON payments(date);
 CREATE INDEX IF NOT EXISTS idx_payments_client_name ON payments(client_name);
 CREATE INDEX IF NOT EXISTS idx_payments_invoice_id ON payments(invoice_id);
@@ -263,17 +297,31 @@ CREATE INDEX IF NOT EXISTS idx_payments_method ON payments(method);
 CREATE INDEX IF NOT EXISTS idx_payments_amount ON payments(amount);
 CREATE INDEX IF NOT EXISTS idx_payments_date_status ON payments(date, status);
 CREATE INDEX IF NOT EXISTS idx_payments_client_date ON payments(client_name, date);
+CREATE INDEX IF NOT EXISTS idx_payments_deleted_at ON payments(deleted_at);
 
--- Reports table indexes
+-- Reports
 CREATE INDEX IF NOT EXISTS idx_reports_type ON reports(type);
 CREATE INDEX IF NOT EXISTS idx_reports_date_range ON reports(date_range_start, date_range_end);
 CREATE INDEX IF NOT EXISTS idx_reports_created_at ON reports(created_at);
+CREATE INDEX IF NOT EXISTS idx_reports_deleted_at ON reports(deleted_at);
+
+-- Token indexes
+CREATE INDEX IF NOT EXISTS idx_password_reset_tokens_user_id ON password_reset_tokens(user_id);
+CREATE INDEX IF NOT EXISTS idx_password_reset_tokens_expires_at ON password_reset_tokens(expires_at);
+CREATE INDEX IF NOT EXISTS idx_password_reset_tokens_active
+    ON password_reset_tokens(token_hash, expires_at, used_at)
+    WHERE used_at IS NULL;
+
+CREATE INDEX IF NOT EXISTS idx_email_verification_tokens_user_id ON email_verification_tokens(user_id);
+CREATE INDEX IF NOT EXISTS idx_email_verification_tokens_expires_at ON email_verification_tokens(expires_at);
+CREATE INDEX IF NOT EXISTS idx_email_verification_tokens_active
+    ON email_verification_tokens(token_hash, expires_at, used_at)
+    WHERE used_at IS NULL;
 
 -- =====================================================
--- TRIGGERS FOR AUTOMATIC TIMESTAMP UPDATES
+-- TRIGGERS – only automatic updated_at (soft-delete is explicit)
 -- =====================================================
 
--- Users table trigger
 CREATE TRIGGER IF NOT EXISTS update_users_timestamp 
     AFTER UPDATE ON users
     FOR EACH ROW
@@ -281,14 +329,6 @@ CREATE TRIGGER IF NOT EXISTS update_users_timestamp
         UPDATE users SET updated_at = datetime('now') WHERE id = NEW.id;
     END;
 
-CREATE TRIGGER IF NOT EXISTS delete_users_timestamp 
-    AFTER UPDATE ON users
-    FOR EACH ROW
-    BEGIN
-        UPDATE users SET deleted_at = datetime('now') WHERE id = NEW.id;
-    END;
-
--- Clients table trigger
 CREATE TRIGGER IF NOT EXISTS update_clients_timestamp 
     AFTER UPDATE ON clients
     FOR EACH ROW
@@ -296,14 +336,6 @@ CREATE TRIGGER IF NOT EXISTS update_clients_timestamp
         UPDATE clients SET updated_at = datetime('now') WHERE id = NEW.id;
     END;
 
-CREATE TRIGGER IF NOT EXISTS delete_clients_timestamp 
-    AFTER UPDATE ON clients
-    FOR EACH ROW
-    BEGIN
-        UPDATE clients SET deleted_at = datetime('now') WHERE id = NEW.id;
-    END;
-
--- Invoices table trigger
 CREATE TRIGGER IF NOT EXISTS update_invoices_timestamp 
     AFTER UPDATE ON invoices
     FOR EACH ROW
@@ -311,29 +343,20 @@ CREATE TRIGGER IF NOT EXISTS update_invoices_timestamp
         UPDATE invoices SET updated_at = datetime('now') WHERE id = NEW.id;
     END;
 
-CREATE TRIGGER IF NOT EXISTS delete_invoices_timestamp 
-    AFTER UPDATE ON invoices
+CREATE TRIGGER IF NOT EXISTS update_invoice_design_templates_timestamp 
+    AFTER UPDATE ON invoice_design_templates
     FOR EACH ROW
     BEGIN
-        UPDATE invoices SET deleted_at = datetime('now') WHERE id = NEW.id;
-    END; 
-
--- Templates table trigger
-CREATE TRIGGER IF NOT EXISTS update_templates_timestamp 
-    AFTER UPDATE ON templates
-    FOR EACH ROW
-    BEGIN
-        UPDATE templates SET updated_at = datetime('now') WHERE id = NEW.id;
+        UPDATE invoice_design_templates SET updated_at = datetime('now') WHERE id = NEW.id;
     END;
 
-CREATE TRIGGER IF NOT EXISTS delete_templates_timestamp 
-    AFTER UPDATE ON templates
+CREATE TRIGGER IF NOT EXISTS update_recurring_invoice_templates_timestamp 
+    AFTER UPDATE ON recurring_invoice_templates
     FOR EACH ROW
     BEGIN
-        UPDATE templates SET deleted_at = datetime('now') WHERE id = NEW.id;
+        UPDATE recurring_invoice_templates SET updated_at = datetime('now') WHERE id = NEW.id;
     END;
 
--- Expenses table trigger
 CREATE TRIGGER IF NOT EXISTS update_expenses_timestamp 
     AFTER UPDATE ON expenses
     FOR EACH ROW
@@ -341,14 +364,6 @@ CREATE TRIGGER IF NOT EXISTS update_expenses_timestamp
         UPDATE expenses SET updated_at = datetime('now') WHERE id = NEW.id;
     END;
 
-CREATE TRIGGER IF NOT EXISTS delete_expenses_timestamp 
-    AFTER UPDATE ON expenses
-    FOR EACH ROW
-    BEGIN
-        UPDATE expenses SET deleted_at = datetime('now') WHERE id = NEW.id;
-    END;
-
--- Payments table trigger
 CREATE TRIGGER IF NOT EXISTS update_payments_timestamp 
     AFTER UPDATE ON payments
     FOR EACH ROW
@@ -356,17 +371,9 @@ CREATE TRIGGER IF NOT EXISTS update_payments_timestamp
         UPDATE payments SET updated_at = datetime('now') WHERE id = NEW.id;
     END;
 
-CREATE TRIGGER IF NOT EXISTS delete_payments_timestamp 
-    AFTER UPDATE ON payments
-    FOR EACH ROW
-    BEGIN
-        UPDATE payments SET deleted_at = datetime('now') WHERE id = NEW.id;
-    END;
-
--- Project settings table trigger
 CREATE TRIGGER IF NOT EXISTS update_project_settings_timestamp 
     AFTER UPDATE ON project_settings
     FOR EACH ROW
     BEGIN
-        UPDATE project_settings SET updated_at = datetime('now') WHERE id = NEW.id;
+        UPDATE project_settings SET updated_at = datetime('now') WHERE key = NEW.key;
     END;

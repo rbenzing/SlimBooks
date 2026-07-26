@@ -1,5 +1,5 @@
 // Invoice-related types and interfaces
-import { InvoiceStatus } from '../constants/enums.types';
+import { type InvoiceStatus } from '../constants/enums.types';
 export type { InvoiceStatus };
 export type InvoiceType = 'one-time' | 'recurring' | 'subscription';
 export type EmailStatus = 'not_sent' | 'sent' | 'sending' | 'failed' | 'bounced';
@@ -11,10 +11,6 @@ export interface InvoiceItem {
   unit_price: number;
   total: number;
 }
-
-// Alias for compatibility with server code
-export type LineItem = InvoiceItem;
-export type Template = InvoiceTemplate;
 
 export interface Invoice {
   id: number;
@@ -52,21 +48,32 @@ export interface Invoice {
 }
 
 export interface InvoiceFormData {
+  invoice_number?: string;
   client_id: number;
   design_template_id?: number;
   recurring_template_id?: number;
   amount: number;
   tax_amount: number;
+  tax_rate_id?: string | null;
   total_amount: number;
   status: InvoiceStatus;
   due_date: string;
   issue_date: string;
   description?: string;
-  items: InvoiceItem[];
+  items?: InvoiceItem[];
+  /** Line items serialised as JSON — this is what the API persists. */
+  line_items?: string;
   notes?: string;
   payment_terms?: string;
   type: InvoiceType;
   shipping_amount: number;
+  shipping_rate_id?: string | null;
+  stripe_invoice_id?: string | null;
+  // Client details denormalised onto the invoice at save time.
+  client_name?: string;
+  client_email?: string;
+  client_phone?: string;
+  client_address?: string;
 }
 
 export interface InvoiceTemplate {

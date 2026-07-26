@@ -1,9 +1,10 @@
 import { useState, forwardRef, useImperativeHandle } from 'react';
 import { Mail, CheckCircle, XCircle, AlertTriangle } from 'lucide-react';
+import { toast } from 'sonner';
 import { EmailService } from '@/services/email.svc';
 import { themeClasses } from '@/utils/themeUtils.util';
 import { useEmailSettings } from '@/hooks/useSettings.hook';
-import type { SettingsTabRef } from '../Settings';
+import type { SettingsTabRef } from '@/types';
 
 export const EmailSettings = forwardRef<SettingsTabRef>((props, ref) => {
   const {
@@ -11,8 +12,6 @@ export const EmailSettings = forwardRef<SettingsTabRef>((props, ref) => {
     setSettings,
     saveSettings,
     isLoading,
-    isSaving,
-    isLoaded,
     error
   } = useEmailSettings();
 

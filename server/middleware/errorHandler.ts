@@ -1,9 +1,9 @@
 // Error handling middleware for Slimbooks
 // Centralized error handling and logging
 
-import { Request, Response, NextFunction } from 'express';
-import { Server } from 'http';
-import { Database } from 'better-sqlite3';
+import { type Request, type Response, type NextFunction } from 'express';
+import { type Server } from 'http';
+import { type Database } from 'better-sqlite3';
 import { loggingConfig } from '../config/index.js';
 
 interface SQLiteError extends Error {
@@ -33,8 +33,8 @@ interface ErrorLogInfo {
   error: {
     message: string;
     stack: string | undefined;
-    type: any;
-    statusCode: any;
+    type: string | undefined;
+    statusCode: number | undefined;
   };
 }
 
@@ -135,7 +135,7 @@ export const errorHandler = (
   err: Error | AppError | SQLiteError | MulterError | JWTError | ParseError,
   req: Request,
   res: Response,
-  next: NextFunction
+  _next: NextFunction
 ): void => {
   // Log error details
   logError(err, req);
@@ -257,6 +257,7 @@ const handleSQLiteError = (err: SQLiteError, res: Response): void => {
  */
 const logError = (err: Error, req: Request): void => {
   const userAgent = req.get('User-Agent');
+  const errorWithMeta = err as Error & Partial<AppError>;
   const errorInfo: ErrorLogInfo = {
     timestamp: new Date().toISOString(),
     method: req.method,
@@ -266,8 +267,8 @@ const logError = (err: Error, req: Request): void => {
     error: {
       message: err.message,
       stack: err.stack,
-      type: 'type' in err ? (err as any).type : err.name,
-      statusCode: 'statusCode' in err ? (err as any).statusCode : undefined
+      type: 'type' in err ? errorWithMeta.type : err.name,
+      statusCode: 'statusCode' in err ? errorWithMeta.statusCode : undefined
     }
   };
   

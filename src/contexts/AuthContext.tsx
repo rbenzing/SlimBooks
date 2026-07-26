@@ -1,11 +1,18 @@
 
 // Authentication context for React application
 
-import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
-import { User, AuthResponse } from '@/types';
+import { type User, type AuthResponse } from '@/types';
 import { AuthService } from '@/services/auth.svc';
 import { TokenManagerService } from '@/services/tokenManager.svc';
+import {
+  clearAuthTokens,
+  getToken,
+  isTokenExpired,
+  setAuthTokens,
+  TokenPersistence
+} from '@/utils/api/auth.util';
 import { toast } from 'sonner';
 
 interface AuthContextType {
@@ -28,106 +35,64 @@ interface AuthProviderProps {
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const authService = AuthService.getInstance();
-  const tokenManager = TokenManagerService.getInstance();
-  
-  // Track current warning toast to dismiss when user becomes active
-  const [currentWarningToast, setCurrentWarningToast] = useState<string | number | null>(null);
+  const authService = useMemo(() => AuthService.getInstance(), []);
+  const tokenManager = useMemo(() => TokenManagerService.getInstance(), []);
 
-  // Initialize authentication state
-  useEffect(() => {
-    initializeAuth();
+  // The outstanding expiry-warning toast, held in a ref rather than state: as
+  // state it was a dependency of the monitoring effect below *and* written from
+  // inside that effect's own warning callback, so raising a warning re-ran the
+  // effect, whose cleanup stopped monitoring and dismissed the toast it had
+  // just raised.
+  const warningToastRef = useRef<string | number | null>(null);
+
+  const dismissWarningToast = useCallback(() => {
+    if (warningToastRef.current !== null) {
+      toast.dismiss(warningToastRef.current);
+      warningToastRef.current = null;
+    }
   }, []);
 
-  // Activity-aware token expiry monitoring
-  useEffect(() => {
-    if (user) {
-      // Start activity-aware expiry monitoring when user is authenticated
-      tokenManager.startMonitoring(
-        () => {
-          // Handle token expiration - redirect to login
-          toast.error('Your session has expired. Please log in again.');
-          handleAutoLogout();
-        },
-        (minutesLeft) => {
-          // Handle token warning - show notification but track it for dismissal
-          const toastId = toast.warning(`Your session will expire in ${minutesLeft} minutes.`, {
-            duration: 10000 // Show for 10 seconds
-          });
-          setCurrentWarningToast(toastId);
-        },
-        () => {
-          // Handle warning dismissal when user becomes active
-          if (currentWarningToast) {
-            toast.dismiss(currentWarningToast);
-            setCurrentWarningToast(null);
-            // Show success message that session was extended
-            toast.success('Session extended due to activity', {
-              duration: 3000
-            });
-          }
-        }
-      );
-    } else {
-      // Stop monitoring when user is not authenticated
-      tokenManager.stopMonitoring();
-      // Clear any pending warning toast
-      if (currentWarningToast) {
-        toast.dismiss(currentWarningToast);
-        setCurrentWarningToast(null);
-      }
-    }
+  /** Tears the session down locally. Shared by manual and automatic logout. */
+  const clearSession = useCallback(() => {
+    setUser(null);
+    authService.logout();
+    tokenManager.stopMonitoring();
+    dismissWarningToast();
+    // Clear tokens from both storages
+    clearAuthTokens();
+  }, [authService, tokenManager, dismissWarningToast]);
 
-    // Cleanup on unmount
-    return () => {
-      tokenManager.stopMonitoring();
-      if (currentWarningToast) {
-        toast.dismiss(currentWarningToast);
-        setCurrentWarningToast(null);
-      }
-    };
-  }, [user, currentWarningToast]);
+  const handleAutoLogout = useCallback(() => {
+    clearSession();
+    // Force redirect to login page
+    window.location.href = '/login';
+  }, [clearSession]);
 
-  const initializeAuth = async () => {
+  const initializeAuth = useCallback(async () => {
     try {
       setLoading(true);
 
       // Check for existing session with simple expiry check
-      const token = localStorage.getItem('auth_token') || sessionStorage.getItem('auth_token');
+      const token = getToken();
       if (token) {
         // Simple expiry check before attempting backend verification
-        const isExpired = tokenManager.isTokenExpired();
-        
-        if (isExpired) {
-          // Clear expired tokens
-          localStorage.removeItem('auth_token');
-          localStorage.removeItem('refresh_token');
-          localStorage.removeItem('remember_me');
-          sessionStorage.removeItem('auth_token');
-          sessionStorage.removeItem('refresh_token');
+        if (isTokenExpired(token)) {
+          clearAuthTokens();
         } else {
           // Token not expired, try to verify with backend
           try {
-            const user = await authService.verifyToken(token);
-            if (user) {
-              setUser(user);
-              authService.setCurrentUser(user);
+            const verifiedUser = await authService.verifyToken(token);
+            if (verifiedUser) {
+              setUser(verifiedUser);
+              authService.setCurrentUser(verifiedUser);
             } else {
               // Backend verification failed, clear tokens
-              localStorage.removeItem('auth_token');
-              localStorage.removeItem('refresh_token');
-              localStorage.removeItem('remember_me');
-              sessionStorage.removeItem('auth_token');
-              sessionStorage.removeItem('refresh_token');
+              clearAuthTokens();
             }
           } catch (error) {
             console.warn('Token verification failed:', error);
             // Clear tokens on verification error
-            localStorage.removeItem('auth_token');
-            localStorage.removeItem('refresh_token');
-            localStorage.removeItem('remember_me');
-            sessionStorage.removeItem('auth_token');
-            sessionStorage.removeItem('refresh_token');
+            clearAuthTokens();
           }
         }
       }
@@ -136,7 +101,49 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [authService]);
+
+  // Initialize authentication state
+  useEffect(() => {
+    initializeAuth();
+  }, [initializeAuth]);
+
+  // Activity-aware token expiry monitoring. Depends only on `user`, so the
+  // monitor is armed once per session rather than restarted on every warning.
+  useEffect(() => {
+    if (!user) {
+      tokenManager.stopMonitoring();
+      dismissWarningToast();
+      return;
+    }
+
+    tokenManager.startMonitoring(
+      () => {
+        // Handle token expiration - redirect to login
+        toast.error('Your session has expired. Please log in again.');
+        handleAutoLogout();
+      },
+      (minutesLeft) => {
+        // Handle token warning - track it so activity can dismiss it
+        warningToastRef.current = toast.warning(
+          `Your session will expire in ${minutesLeft} minutes.`,
+          { duration: 10000 }
+        );
+      },
+      () => {
+        // Handle warning dismissal when user becomes active
+        if (warningToastRef.current !== null) {
+          dismissWarningToast();
+          toast.success('Session extended due to activity', { duration: 3000 });
+        }
+      }
+    );
+
+    return () => {
+      tokenManager.stopMonitoring();
+      dismissWarningToast();
+    };
+  }, [user, tokenManager, handleAutoLogout, dismissWarningToast]);
 
   const login = async (email: string, password: string, rememberMe: boolean = false): Promise<AuthResponse> => {
     try {
@@ -144,21 +151,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       if (response.success && response.user && response.session_token) {
         // Store tokens BEFORE setting user state to ensure they're available for API calls
-        if (rememberMe) {
-          // Use localStorage for persistent storage
-          localStorage.setItem('auth_token', response.session_token);
-          localStorage.setItem('remember_me', 'true');
-          if (response.refresh_token) {
-            localStorage.setItem('refresh_token', response.refresh_token);
-          }
-        } else {
-          // Use sessionStorage for session-only storage
-          sessionStorage.setItem('auth_token', response.session_token);
-          localStorage.removeItem('remember_me');
-          if (response.refresh_token) {
-            sessionStorage.setItem('refresh_token', response.refresh_token);
-          }
-        }
+        setAuthTokens(
+          response.session_token,
+          response.refresh_token,
+          rememberMe ? TokenPersistence.Persistent : TokenPersistence.Session
+        );
 
         // Set user state AFTER tokens are stored
         setUser(response.user);
@@ -196,49 +193,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
 
   const logout = () => {
-    setUser(null);
-    authService.logout();
-    tokenManager.stopMonitoring();
-    
-    // Clear any pending warning toast
-    if (currentWarningToast) {
-      toast.dismiss(currentWarningToast);
-      setCurrentWarningToast(null);
-    }
-    
-    // Clear tokens from both storages
-    localStorage.removeItem('auth_token');
-    localStorage.removeItem('refresh_token');
-    localStorage.removeItem('remember_me');
-    sessionStorage.removeItem('auth_token');
-    sessionStorage.removeItem('refresh_token');
-  };
-
-  const handleAutoLogout = () => {
-    setUser(null);
-    authService.logout();
-    tokenManager.stopMonitoring();
-    
-    // Clear any pending warning toast
-    if (currentWarningToast) {
-      toast.dismiss(currentWarningToast);
-      setCurrentWarningToast(null);
-    }
-    
-    // Clear tokens from both storages
-    localStorage.removeItem('auth_token');
-    localStorage.removeItem('refresh_token');
-    localStorage.removeItem('remember_me');
-    sessionStorage.removeItem('auth_token');
-    sessionStorage.removeItem('refresh_token');
-    
-    // Force redirect to login page
-    window.location.href = '/login';
+    clearSession();
   };
 
   const refreshUser = async () => {
     try {
-      const token = localStorage.getItem('auth_token') || sessionStorage.getItem('auth_token');
+      const token = getToken();
       if (token && user) {
         const updatedUser = await authService.verifyToken(token);
         if (updatedUser) {

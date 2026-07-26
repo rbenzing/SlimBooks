@@ -5,7 +5,7 @@ import { ArrowLeft, Save, User, Building, Mail, Phone, MapPin } from 'lucide-rea
 import { authenticatedFetch } from '@/utils/api';
 import { useFormNavigation } from '@/hooks/useFormNavigation';
 import { InternationalAddressForm } from '@/components/ui/InternationalAddressForm';
-import { ClientFormData } from '@/types';
+import { type ClientFormData } from '@/types';
 
 export const EditClientPage = () => {
   const navigate = useNavigate();

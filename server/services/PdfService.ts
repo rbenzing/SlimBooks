@@ -1,10 +1,16 @@
 // PDF Service - Domain-specific service for PDF generation operations
 // Handles PDF-related database operations, settings retrieval, and PDF generation
 
-import puppeteer, { Browser, Page } from 'puppeteer';
+import puppeteer, { type Browser, type Page, type PDFOptions, type PaperFormat } from 'puppeteer';
 import { databaseService } from '../core/DatabaseService.js';
 import { settingsService } from './SettingsService.js';
-import { InvoiceWithClient } from '../types/index.js';
+import { type InvoiceWithClient } from '../types/index.js';
+
+/**
+ * Shape returned by the settings service when a settings row is stored as a
+ * JSON object that still wraps its payload in a `value` string.
+ */
+type StoredSettingRow = { value?: string } | null;
 
 /**
  * PDF Service
@@ -44,7 +50,7 @@ export class PdfService {
   /**
    * Generate PDF from invoice URL with settings-aware styling
    */
-  async generateInvoicePDF(invoiceId: number, token: string, options: any = {}): Promise<Buffer> {
+  async generateInvoicePDF(invoiceId: number, token: string, options: PDFOptions = {}): Promise<Buffer> {
     if (!this.isInitialized) {
       await this.initialize();
     }
@@ -157,7 +163,7 @@ export class PdfService {
 
       // Get PDF format from options or settings
       const pdfOptions = await this.getPDFOptionsFromSettings();
-      const mergedOptions = {
+      const mergedOptions: PDFOptions = {
         ...pdfOptions,
         ...options
       };
@@ -193,7 +199,7 @@ export class PdfService {
   /**
    * Generate PDF for reports or other pages
    */
-  async generatePagePDF(url: string, options: any = {}): Promise<Buffer> {
+  async generatePagePDF(url: string, options: PDFOptions = {}): Promise<Buffer> {
     if (!this.isInitialized) {
       await this.initialize();
     }
@@ -216,7 +222,7 @@ export class PdfService {
         timeout: 30000
       });
 
-      const pdfOptions = {
+      const pdfOptions: PDFOptions = {
         format: 'A4',
         printBackground: true,
         margin: {
@@ -281,7 +287,7 @@ export class PdfService {
    * Get PDF generation options based on user settings
    */
   async getPDFOptionsFromSettings(): Promise<{
-    format: string;
+    format: PaperFormat;
     printBackground: boolean;
     margin: {
       top: string;
@@ -292,13 +298,17 @@ export class PdfService {
   }> {
     try {
       // Get appearance settings for PDF format preference
-      const pdfFormatSettings = await settingsService.getSettingByKey('pdf_format');
-      
+      const pdfFormatSettings = await settingsService.getSettingByKey('pdf_format') as StoredSettingRow;
+
       // Get company settings for branding
-      const companySettings = await settingsService.getSettingByKey('company_settings');
+      const companySettings = await settingsService.getSettingByKey('company_settings') as StoredSettingRow;
 
       // Default PDF options
-      const options = {
+      const options: {
+        format: PaperFormat;
+        printBackground: boolean;
+        margin: { top: string; right: string; bottom: string; left: string };
+      } = {
         format: 'A4',
         printBackground: true,
         margin: {
@@ -310,28 +320,28 @@ export class PdfService {
       };
 
       // Apply format preference if set
-      if ((pdfFormatSettings as any)?.value) {
+      if (pdfFormatSettings?.value) {
         try {
-          const formatSetting = JSON.parse((pdfFormatSettings as any).value);
+          const formatSetting = JSON.parse(pdfFormatSettings.value) as { format?: PaperFormat };
           if (formatSetting.format) {
             options.format = formatSetting.format;
           }
-        } catch (e) {
+        } catch {
           // Use default if parsing fails
           console.warn('Failed to parse PDF format settings, using defaults');
         }
       }
 
       // Apply company-specific settings if needed
-      if ((companySettings as any)?.value) {
+      if (companySettings?.value) {
         try {
-          const company = JSON.parse((companySettings as any).value);
+          const company = JSON.parse(companySettings.value) as { pdfOptions?: Record<string, unknown> };
           // Could add company-specific PDF options here
           // e.g., letterhead margins, custom page size, etc.
           if (company.pdfOptions) {
             Object.assign(options, company.pdfOptions);
           }
-        } catch (e) {
+        } catch {
           // Use defaults if parsing fails
           console.warn('Failed to parse company settings for PDF, using defaults');
         }
@@ -360,10 +370,10 @@ export class PdfService {
   async getPDFFormat(): Promise<string> {
     try {
       // Get appearance settings for PDF format preference
-      const formatSetting = await settingsService.getSettingByKey('pdf_format');
+      const formatSetting = await settingsService.getSettingByKey('pdf_format') as StoredSettingRow;
 
-      if ((formatSetting as any)?.value) {
-        const parsed = JSON.parse((formatSetting as any).value);
+      if (formatSetting?.value) {
+        const parsed = JSON.parse(formatSetting.value) as { format?: string };
         return parsed.format || 'A4';
       }
       
@@ -390,12 +400,12 @@ export class PdfService {
   /**
    * Get company settings for PDF branding
    */
-  async getCompanySettingsForPDF(): Promise<any | null> {
+  async getCompanySettingsForPDF(): Promise<Record<string, unknown> | null> {
     try {
-      const companySettings = await settingsService.getSettingByKey('company_settings');
-      
-      if ((companySettings as any)?.value) {
-        return JSON.parse((companySettings as any).value);
+      const companySettings = await settingsService.getSettingByKey('company_settings') as StoredSettingRow;
+
+      if (companySettings?.value) {
+        return JSON.parse(companySettings.value) as Record<string, unknown>;
       }
       
       return null;
@@ -408,7 +418,7 @@ export class PdfService {
   /**
    * Validate invoice exists and user has access
    */
-  async validateInvoiceAccess(invoiceId: number, userId?: number): Promise<InvoiceWithClient> {
+  async validateInvoiceAccess(invoiceId: number, _userId?: number): Promise<InvoiceWithClient> {
     if (!invoiceId || typeof invoiceId !== 'number') {
       throw new Error('Valid invoice ID is required');
     }
@@ -471,7 +481,7 @@ export class PdfService {
   async logPDFActivity(
     invoiceId: number, 
     action: string, 
-    metadata: Record<string, any> = {}
+    metadata: Record<string, unknown> = {}
   ): Promise<boolean> {
     try {
       const logData = {

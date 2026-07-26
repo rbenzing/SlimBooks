@@ -4,10 +4,6 @@
 import { z } from 'zod';
 import type {
   ProjectSettings,
-  GoogleOAuthSettings,
-  StripeSettings,
-  EmailServiceSettings,
-  SecurityConfig,
   CurrencySettings,
   DateTimeSettings,
   InvoiceNumberSettings,

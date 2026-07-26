@@ -5,16 +5,23 @@ import { authenticatedFetch } from '@/utils/api';
 import { exportToCSV, parseCSV, validateExpenseData } from '@/utils/data';
 import { toast } from 'sonner';
 import { themeClasses, getIconColorClasses, getButtonClasses } from '@/utils/themeUtils.util';
-import { FieldMapping, ImportExportProps, EXPENSE_FIELDS } from '@/types/shared/import.types';
-import { EXPENSE_STATUSES } from '@/types/constants/enums.types';
+import {
+  type FieldMapping,
+  type ImportExportProps,
+  type CSVRecord,
+  type PreviewDataItem,
+  type ExpenseValidationResult,
+  EXPENSE_FIELDS,
+  isExpenseStatus
+} from '@/types';
 
 export const ExpenseImportExport: React.FC<ImportExportProps> = ({ onClose, onImportComplete }) => {
   const [mode, setMode] = useState<'select' | 'import' | 'export'>('select');
-  const [csvData, setCsvData] = useState<any[]>([]);
+  const [csvData, setCsvData] = useState<CSVRecord[]>([]);
   const [csvHeaders, setCsvHeaders] = useState<string[]>([]);
   const [fieldMappings, setFieldMappings] = useState<FieldMapping[]>([]);
-  const [previewData, setPreviewData] = useState<any[]>([]);
-  const [validationResults, setValidationResults] = useState<any[]>([]);
+  const [previewData, setPreviewData] = useState<PreviewDataItem[]>([]);
+  const [validationResults, setValidationResults] = useState<ExpenseValidationResult[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
 
   const handleExport = async () => {
@@ -36,7 +43,7 @@ export const ExpenseImportExport: React.FC<ImportExportProps> = ({ onClose, onIm
       
       const exportData = expenses.map(expense => ({
         date: expense.date,
-        merchant: expense.merchant,
+        vendor: expense.vendor,
         category: expense.category,
         amount: expense.amount,
         description: expense.description || '',
@@ -97,43 +104,49 @@ export const ExpenseImportExport: React.FC<ImportExportProps> = ({ onClose, onIm
     );
   };
 
+  /**
+   * Applies the configured field mappings and import defaults to one CSV row.
+   * Shared by the preview and the real import so the two can never drift.
+   */
+  const mapRowToExpense = (row: CSVRecord): PreviewDataItem => {
+    const mappedRow: PreviewDataItem = {};
+
+    fieldMappings.forEach(mapping => {
+      if (!mapping.csvField) return;
+
+      const raw = row[mapping.csvField] || '';
+      let value: string | number = raw;
+
+      if (mapping.dbField === 'amount') {
+        // Handle negative amounts and remove currency symbols
+        value = Math.abs(parseFloat(raw.replace(/[$,]/g, '')) || 0);
+      } else if (mapping.dbField === 'category') {
+        // Allow any category, don't restrict to predefined list
+        value = raw || 'Other';
+      } else if (mapping.dbField === 'status' && !isExpenseStatus(raw)) {
+        value = 'pending';
+      } else if (mapping.dbField === 'vendor' && !raw && mappedRow.description) {
+        // Use description as vendor if vendor field is empty
+        value = row[fieldMappings.find(m => m.dbField === 'description')?.csvField || ''] || 'Unknown Vendor';
+      }
+
+      mappedRow[mapping.dbField] = value;
+    });
+
+    if (!mappedRow.status) mappedRow.status = 'pending';
+    if (!mappedRow.category) mappedRow.category = 'Other';
+    if (!mappedRow.vendor && mappedRow.description) {
+      mappedRow.vendor = mappedRow.description;
+    }
+    if (!mappedRow.vendor) mappedRow.vendor = 'Unknown Vendor';
+
+    return mappedRow;
+  };
+
   const generatePreview = () => {
     if (csvData.length === 0) return;
 
-    const mappedData = csvData.slice(0, 5).map(row => {
-      const mappedRow: Record<string, string | number | boolean> = {};
-      fieldMappings.forEach(mapping => {
-        if (mapping.csvField) {
-          let value = row[mapping.csvField] || '';
-          
-          // Apply transformations (same as handleImport)
-          if (mapping.dbField === 'amount') {
-            // Handle negative amounts and remove currency symbols
-            value = Math.abs(parseFloat(String(value).replace(/[$,]/g, '')) || 0);
-          } else if (mapping.dbField === 'category') {
-            // Allow any category, don't restrict to predefined list
-            value = value || 'Other';
-          } else if (mapping.dbField === 'status' && !EXPENSE_STATUSES.includes(value)) {
-            value = 'pending';
-          } else if (mapping.dbField === 'merchant' && !value && mappedRow.description) {
-            // Use description as merchant if merchant field is empty
-            value = row[fieldMappings.find(m => m.dbField === 'description')?.csvField || ''] || 'Unknown Merchant';
-          }
-          
-          mappedRow[mapping.dbField] = value;
-        }
-      });
-      
-      // Set defaults and handle special mappings (same as handleImport)
-      if (!mappedRow.status) mappedRow.status = 'pending';
-      if (!mappedRow.category) mappedRow.category = 'Other';
-      if (!mappedRow.merchant && mappedRow.description) {
-        mappedRow.merchant = mappedRow.description;
-      }
-      if (!mappedRow.merchant) mappedRow.merchant = 'Unknown Merchant';
-      
-      return mappedRow;
-    });
+    const mappedData = csvData.slice(0, 5).map(mapRowToExpense);
 
     const validationResults = mappedData.map(row => validateExpenseData(row));
     
@@ -146,40 +159,7 @@ export const ExpenseImportExport: React.FC<ImportExportProps> = ({ onClose, onIm
     
     try {
       // Map all CSV data to expense format
-      const mappedExpenses = csvData.map(row => {
-        const mappedRow: Record<string, string | number | boolean> = {};
-        fieldMappings.forEach(mapping => {
-          if (mapping.csvField) {
-            let value = row[mapping.csvField] || '';
-            
-            // Apply transformations
-            if (mapping.dbField === 'amount') {
-              // Handle negative amounts and remove currency symbols
-              value = Math.abs(parseFloat(String(value).replace(/[$,]/g, '')) || 0);
-            } else if (mapping.dbField === 'category') {
-              // Allow any category, don't restrict to predefined list
-              value = value || 'Other';
-            } else if (mapping.dbField === 'status' && !EXPENSE_STATUSES.includes(value)) {
-              value = 'pending';
-            } else if (mapping.dbField === 'merchant' && !value && mappedRow.description) {
-              // Use description as merchant if merchant field is empty
-              value = row[fieldMappings.find(m => m.dbField === 'description')?.csvField || ''] || 'Unknown Merchant';
-            }
-            
-            mappedRow[mapping.dbField] = value;
-          }
-        });
-        
-        // Set defaults and handle special mappings for your CSV format
-        if (!mappedRow.status) mappedRow.status = 'pending';
-        if (!mappedRow.category) mappedRow.category = 'Other';
-        if (!mappedRow.merchant && mappedRow.description) {
-          mappedRow.merchant = mappedRow.description;
-        }
-        if (!mappedRow.merchant) mappedRow.merchant = 'Unknown Merchant';
-        
-        return mappedRow;
-      });
+      const mappedExpenses = csvData.map(mapRowToExpense);
 
       // Filter out invalid expenses before sending to bulk import
       const validExpenses = mappedExpenses.filter(expense => {

@@ -1,7 +1,7 @@
 // Invoice routes for Slimbooks API
 // Handles all invoice-related endpoints
 
-import { Router, Request, Response, NextFunction } from 'express';
+import { Router } from 'express';
 import {
   getAllInvoices,
   getInvoiceById,
@@ -41,6 +41,10 @@ router.get('/stats', getInvoiceStats);
 // Get overdue invoices
 router.get('/overdue', getOverdueInvoices);
 
+// Preview next invoice number (without incrementing counter)
+// MUST stay above '/:id' so the literal path is not captured by the ID param route
+router.get('/preview-number', previewNextInvoiceNumber);
+
 // Get invoice by ID
 router.get('/:id', 
   validationSets.updateInvoice.slice(0, 1), // Just ID validation
@@ -48,8 +52,12 @@ router.get('/:id',
   getInvoiceById
 );
 
+// Generate next invoice number
+// MUST stay above '/:id' style POST routes for the same reason
+router.post('/generate-number', generateInvoiceNumber);
+
 // Create new invoice
-router.post('/', 
+router.post('/',
   validationSets.createInvoice,
   validateRequest,
   createInvoice
@@ -90,11 +98,5 @@ router.post('/:id/public-token',
   requireAuth,
   generatePublicInvoiceToken
 );
-
-// Generate next invoice number
-router.post('/generate-number', generateInvoiceNumber);
-
-// Preview next invoice number (without incrementing counter)
-router.get('/preview-number', previewNextInvoiceNumber);
 
 export default router;

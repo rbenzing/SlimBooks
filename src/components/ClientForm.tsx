@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
-import { Client, ClientFormData } from '@/types';
+import { type Client, type ClientFormData } from '@/types';
 
 interface ClientFormProps {
   isOpen?: boolean;

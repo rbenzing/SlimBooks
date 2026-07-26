@@ -2,8 +2,8 @@
 // Handles application settings and project configuration
 
 import { 
-  Request, 
-  Response 
+  type Request, 
+  type Response 
 } from 'express';
 import { settingsService } from '../services/SettingsService.js';
 import {
@@ -12,9 +12,9 @@ import {
   asyncHandler
 } from '../middleware/index.js';
 import { 
-  IndividualSettingSaveRequest, 
-  ProjectSettingsRequest, 
-  SettingsSaveRequest 
+  type IndividualSettingSaveRequest, 
+  type ProjectSettingsRequest, 
+  type SettingsSaveRequest 
 } from '../types/api.types.js';
 
 /**

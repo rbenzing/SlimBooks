@@ -1,7 +1,7 @@
 // Recurring Invoice Template controller for Slimbooks
 // Handles all recurring invoice template-related business logic
 
-import { Request, Response } from 'express';
+import { type Request, type Response } from 'express';
 import { recurringInvoiceTemplateService } from '../services/RecurringInvoiceTemplateService.js';
 import { recurringInvoiceProcessorService } from '../services/RecurringInvoiceProcessorService.js';
 import {

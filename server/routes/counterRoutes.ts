@@ -1,13 +1,9 @@
 // Counter routes for Slimbooks
 // Handles ID counter management endpoints
 
-import { Router, Request, Response } from 'express';
+import { Router, type Request, type Response } from 'express';
 import { requireAuth } from '../middleware/index.js';
 import { counterService } from '../services/CounterService.js';
-
-interface AuthenticatedRequest extends Request {
-  user?: any;
-}
 
 const router: Router = Router();
 
@@ -71,7 +67,7 @@ router.get('/:counterName', async (req: Request, res: Response): Promise<void> =
 });
 
 // Reset counter (admin only)
-router.put('/:counterName/reset', async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+router.put('/:counterName/reset', async (req: Request, res: Response): Promise<void> => {
   try {
     const { counterName } = req.params;
     const { value = 0 } = req.body;

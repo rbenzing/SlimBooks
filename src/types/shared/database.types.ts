@@ -1,6 +1,12 @@
 // Abstract database types and interfaces
 // Provides database-agnostic interfaces for SQLite operations
 
+// Values that can be bound to a prepared statement or stored in a column
+export type SQLParameter = string | number | boolean | null;
+
+// Raw row as returned by the driver, before it is mapped onto a domain entity
+export type DatabaseRow = Record<string, SQLParameter>;
+
 // Database connection configuration
 export interface DatabaseConfig {
   path: string;
@@ -11,7 +17,7 @@ export interface DatabaseOptions {
   readonly?: boolean;
   fileMustExist?: boolean;
   timeout?: number;
-  verbose?: (message?: any, ...additionalArgs: any[]) => void;
+  verbose?: (message?: unknown, ...additionalArgs: unknown[]) => void;
 }
 
 // Query result interfaces
@@ -20,7 +26,7 @@ export interface QueryResult {
   lastInsertRowid: number;
 }
 
-export interface SelectResult<T = any> {
+export interface SelectResult<T = DatabaseRow> {
   data: T[];
   total?: number;
 }
@@ -47,7 +53,7 @@ export interface QueryOptions extends PaginationOptions {
 }
 
 // Transaction interface
-export interface TransactionCallback<T = any> {
+export interface TransactionCallback<T = unknown> {
   (): T;
 }
 
@@ -59,10 +65,10 @@ export interface IDatabase {
   isConnected(): boolean;
   
   // Query execution
-  executeQuery(query: string, params?: any[]): QueryResult;
-  getOne<T = any>(query: string, params?: any[]): T | null;
-  getMany<T = any>(query: string, params?: any[]): T[];
-  getWithPagination<T = any>(query: string, params?: any[], options?: QueryOptions): SelectResult<T>;
+  executeQuery(query: string, params?: SQLParameter[]): QueryResult;
+  getOne<T = DatabaseRow>(query: string, params?: SQLParameter[]): T | null;
+  getMany<T = DatabaseRow>(query: string, params?: SQLParameter[]): T[];
+  getWithPagination<T = DatabaseRow>(query: string, params?: SQLParameter[], options?: QueryOptions): SelectResult<T>;
   
   // Transaction support
   beginTransaction(): void;
@@ -78,7 +84,7 @@ export interface IDatabase {
   // Utility operations
   backup(path: string): void;
   vacuum(): void;
-  pragma(setting: string, value?: string | number): any;
+  pragma(setting: string, value?: string | number): unknown;
 }
 
 // Database service options
@@ -118,7 +124,7 @@ export interface IndexDefinition {
 // Seed data interface
 export interface SeedData {
   table: string;
-  data: Record<string, any>[];
+  data: DatabaseRow[];
   truncate?: boolean;
 }
 

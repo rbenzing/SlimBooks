@@ -6,7 +6,7 @@ import { ClientSelector } from './ClientSelector';
 import { CompanyHeader } from './CompanyHeader';
 import { useFormNavigation } from '@/hooks/useFormNavigation';
 import { themeClasses } from '@/utils/themeUtils.util';
-import type { InvoiceTemplate, TaxRate, ShippingRate } from '@/types';
+import type { Client, InvoiceTemplate, TaxRate, ShippingRate } from '@/types';
 
 interface LineItem {
   id: string;
@@ -23,26 +23,28 @@ interface CreateRecurringInvoicePageProps {
 
 export const CreateRecurringInvoicePage: React.FC<CreateRecurringInvoicePageProps> = ({ onBack, editingTemplate }) => {
   const { id } = useParams<{ id: string }>();
-  const [clients, setClients] = useState<any[]>([]);
-  const [selectedClient, setSelectedClient] = useState<any>(null);
+  const [clients, setClients] = useState<Client[]>([]);
+  const [selectedClient, setSelectedClient] = useState<Client | null>(null);
+  // `recurring_invoice_templates` tracks scheduling state in `is_active`; there
+  // is no `status` column.
   const [templateData, setTemplateData] = useState({
     name: '',
     frequency: 'monthly',
     next_invoice_date: '',
-    status: 'active',
+    is_active: true,
     payment_terms: 'net_30'
   });
   const [lineItems, setLineItems] = useState<LineItem[]>([
     { id: '1', description: '', quantity: 1, unit_price: 0, total: 0 }
   ]);
-  const [selectedTaxRate, setSelectedTaxRate] = useState<any>(null);
-  const [selectedShippingRate, setSelectedShippingRate] = useState<any>(null);
-  const [taxRates, setTaxRates] = useState<any[]>([]);
-  const [shippingRates, setShippingRates] = useState<any[]>([]);
+  const [selectedTaxRate, setSelectedTaxRate] = useState<TaxRate | null>(null);
+  const [selectedShippingRate, setSelectedShippingRate] = useState<ShippingRate | null>(null);
+  const [taxRates, setTaxRates] = useState<TaxRate[]>([]);
+  const [shippingRates, setShippingRates] = useState<ShippingRate[]>([]);
   const [thankYouMessage, setThankYouMessage] = useState('Thank you for your business!');
   const [companyLogo, setCompanyLogo] = useState<string | null>(null);
   const [isDirty, setIsDirty] = useState(false);
-  const [loadedTemplate, setLoadedTemplate] = useState<any>(null);
+  const [loadedTemplate, setLoadedTemplate] = useState<InvoiceTemplate | null>(null);
   const [loading, setLoading] = useState(false);
 
   const { confirmNavigation, NavigationGuard } = useFormNavigation({
@@ -65,7 +67,7 @@ export const CreateRecurringInvoicePage: React.FC<CreateRecurringInvoicePageProp
 
         // Load template data if editing (from URL parameter)
         if (id) {
-          const response = await authenticatedFetch(`/api/templates/${id}`);
+          const response = await authenticatedFetch(`/api/recurring-templates/${id}`);
           const result = await response.json();
           if (result.data) {
             setLoadedTemplate(result.data);
@@ -85,7 +87,7 @@ export const CreateRecurringInvoicePage: React.FC<CreateRecurringInvoicePageProp
         if (savedShippingRates) {
           const rates = JSON.parse(savedShippingRates);
           setShippingRates(rates);
-          setSelectedShippingRate(rates.find((r: TaxRate) => r.isDefault) || rates[0]);
+          setSelectedShippingRate(rates.find((r: ShippingRate) => r.isDefault) || rates[0]);
         }
 
       } catch (error) {
@@ -100,14 +102,15 @@ export const CreateRecurringInvoicePage: React.FC<CreateRecurringInvoicePageProp
   // Load editing template data
   useEffect(() => {
     const loadTemplateData = async () => {
-      const template = editingTemplate || loadedTemplate;
+      const template: InvoiceTemplate | null = editingTemplate || loadedTemplate;
       if (template) {
         // Load template data
         setTemplateData({
           name: template.name || '',
           frequency: template.frequency || 'monthly',
           next_invoice_date: template.next_invoice_date || '',
-          status: template.status || 'active',
+          // SQLite stores the flag as 0/1.
+          is_active: Boolean(template.is_active),
           payment_terms: template.payment_terms || 'net_30'
         });
 
@@ -156,7 +159,7 @@ export const CreateRecurringInvoicePage: React.FC<CreateRecurringInvoicePageProp
 
   // Update tax and shipping rates when rates are loaded and we have a template
   useEffect(() => {
-    const template = editingTemplate || loadedTemplate;
+    const template: InvoiceTemplate | null = editingTemplate || loadedTemplate;
     if (template && taxRates.length > 0 && shippingRates.length > 0) {
       // Set tax rate if saved in template
       if (template.tax_rate_id) {
@@ -178,14 +181,14 @@ export const CreateRecurringInvoicePage: React.FC<CreateRecurringInvoicePageProp
 
   // Track form changes - set dirty when any field changes
   useEffect(() => {
-    const template = editingTemplate || loadedTemplate;
+    const template: InvoiceTemplate | null = editingTemplate || loadedTemplate;
     if (template) {
       // For editing, check if current values differ from original template
       const hasChanges =
         templateData.name !== (template.name || '') ||
         templateData.frequency !== (template.frequency || 'monthly') ||
         templateData.next_invoice_date !== (template.next_invoice_date || '') ||
-        templateData.status !== (template.status || 'active') ||
+        templateData.is_active !== Boolean(template.is_active) ||
         templateData.payment_terms !== (template.payment_terms || 'net_30') ||
         selectedClient?.id !== template.client_id ||
         thankYouMessage !== (template.notes || 'Thank you for your business!') ||
@@ -266,7 +269,9 @@ export const CreateRecurringInvoicePage: React.FC<CreateRecurringInvoicePageProp
       description: lineItems.map(item => item.description).join(', '),
       payment_terms: templateData.payment_terms,
       next_invoice_date: templateData.next_invoice_date,
-      is_active: 1, // SQLite uses INTEGER for boolean (1 = true, 0 = false)
+      // Carry the template's own schedule state through; hardcoding this
+      // silently re-activated paused templates on every save.
+      is_active: templateData.is_active,
       line_items: JSON.stringify(lineItems),
       tax_amount: taxAmount,
       tax_rate_id: selectedTaxRate?.id || null,
@@ -278,14 +283,14 @@ export const CreateRecurringInvoicePage: React.FC<CreateRecurringInvoicePageProp
 
 
     try {
-      const template = editingTemplate || loadedTemplate;
+      const template: InvoiceTemplate | null = editingTemplate || loadedTemplate;
       if (template) {
-        await authenticatedFetch(`/api/templates/${template.id}`, {
+        await authenticatedFetch(`/api/recurring-templates/${template.id}`, {
           method: 'PUT',
           body: JSON.stringify({ templateData: templatePayload })
         });
       } else {
-        await authenticatedFetch('/api/templates', {
+        await authenticatedFetch('/api/recurring-templates', {
           method: 'POST',
           body: JSON.stringify({ templateData: templatePayload })
         });

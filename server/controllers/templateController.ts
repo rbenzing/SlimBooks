@@ -1,7 +1,7 @@
 // Template controller for Slimbooks
 // Handles all template-related business logic
 
-import { Request, Response } from 'express';
+import { type Request, type Response } from 'express';
 import { templateService } from '../services/TemplateService.js';
 import {
   NotFoundError,

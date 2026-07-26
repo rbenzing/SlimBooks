@@ -1,5 +1,5 @@
 
-import { useState, useEffect, forwardRef, useImperativeHandle } from 'react';
+import { useState, useEffect, useCallback, forwardRef, useImperativeHandle } from 'react';
 import { CreditCard, AlertTriangle, CheckCircle, Copy, ExternalLink, Webhook, Key, Eye, EyeOff } from 'lucide-react';
 import { themeClasses } from '@/utils/themeUtils.util';
 import { toast } from 'sonner';
@@ -73,7 +73,7 @@ export const StripeSettingsTab = forwardRef<SettingsTabRef>((props, ref) => {
     }
   };
 
-  const saveSettings = async () => {
+  const saveSettings = useCallback(async () => {
     try {
       // Use dynamic import to avoid circular dependencies
       const { sqliteService } = await import('@/services/sqlite.svc');
@@ -88,19 +88,10 @@ export const StripeSettingsTab = forwardRef<SettingsTabRef>((props, ref) => {
       console.error('Error saving Stripe settings:', error);
       toast.error('Failed to save Stripe settings');
     }
-  };
+  }, [settings]);
 
   // Expose saveSettings method to parent component
-  useImperativeHandle(ref, () => ({
-    saveSettings: async () => {
-      try {
-        await saveSettings();
-      } catch (error) {
-        console.error('Error saving Stripe settings:', error);
-        throw error;
-      }
-    }
-  }), [settings]);
+  useImperativeHandle(ref, () => ({ saveSettings }), [saveSettings]);
 
   const testConnection = async () => {
     if (!settings.publishableKey || !settings.secretKey) {

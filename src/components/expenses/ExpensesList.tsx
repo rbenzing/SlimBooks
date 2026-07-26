@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Edit, Receipt, Eye, Trash2, Delete, Tag, Building } from 'lucide-react';
 import { formatDateSync } from '@/components/ui/FormattedDate';
 import { FormattedCurrency } from '@/components/ui/FormattedCurrency';
-import { ExpensesListProps } from '@/types/components/expense.types';
+import { type ExpensesListProps } from '@/types/components/expense.types';
 
 export const ExpensesList: React.FC<ExpensesListProps> = ({ 
   expenses, 
@@ -12,18 +12,16 @@ export const ExpensesList: React.FC<ExpensesListProps> = ({
   onViewExpense,
   onBulkDelete,
   onBulkCategorize,
-  onBulkChangeMerchant,
+  onBulkChangeVendor,
   categories = []
 }) => {
   const [selectedExpenses, setSelectedExpenses] = useState<number[]>([]);
   const [bulkCategory, setBulkCategory] = useState('');
-  const [bulkMerchant, setBulkMerchant] = useState('');
-  const [showBulkActions, setShowBulkActions] = useState(false);
+  const [bulkVendor, setBulkVendor] = useState('');
 
   // Reset selection when expenses change
   useEffect(() => {
     setSelectedExpenses([]);
-    setShowBulkActions(false);
   }, [expenses]);
 
   const handleSelectAll = (checked: boolean) => {
@@ -54,8 +52,7 @@ export const ExpensesList: React.FC<ExpensesListProps> = ({
     if (window.confirm(`Are you sure you want to delete ${selectedExpenses.length} selected expense(s)?`)) {
       onBulkDelete?.(selectedExpenses);
       setSelectedExpenses([]);
-      setShowBulkActions(false);
-    }
+      }
   };
 
   const handleBulkCategorize = () => {
@@ -64,16 +61,14 @@ export const ExpensesList: React.FC<ExpensesListProps> = ({
     onBulkCategorize?.(selectedExpenses, bulkCategory);
     setSelectedExpenses([]);
     setBulkCategory('');
-    setShowBulkActions(false);
   };
 
-  const handleBulkChangeMerchant = () => {
-    if (selectedExpenses.length === 0 || !bulkMerchant) return;
-    
-    onBulkChangeMerchant?.(selectedExpenses, bulkMerchant);
+  const handleBulkChangeVendor = () => {
+    if (selectedExpenses.length === 0 || !bulkVendor) return;
+
+    onBulkChangeVendor?.(selectedExpenses, bulkVendor);
     setSelectedExpenses([]);
-    setBulkMerchant('');
-    setShowBulkActions(false);
+    setBulkVendor('');
   };
 
   const isAllSelected = expenses.length > 0 && selectedExpenses.length === expenses.length;
@@ -124,23 +119,23 @@ export const ExpensesList: React.FC<ExpensesListProps> = ({
                 </div>
               )}
               
-              {/* Bulk Change Merchant */}
-              {onBulkChangeMerchant && (
+              {/* Bulk Change Vendor */}
+              {onBulkChangeVendor && (
                 <div className="flex items-center gap-2">
                   <input
                     type="text"
-                    placeholder="Enter merchant name..."
-                    value={bulkMerchant}
-                    onChange={(e) => setBulkMerchant(e.target.value)}
+                    placeholder="Enter vendor name..."
+                    value={bulkVendor}
+                    onChange={(e) => setBulkVendor(e.target.value)}
                     className="text-sm border border-border rounded-md px-2 py-1.5 bg-background w-48"
                   />
                   <button
-                    onClick={handleBulkChangeMerchant}
-                    disabled={!bulkMerchant.trim()}
+                    onClick={handleBulkChangeVendor}
+                    disabled={!bulkVendor.trim()}
                     className="flex items-center gap-1 px-3 py-1.5 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <Building className="h-4 w-4" />
-                    Change Merchant
+                    Change Vendor
                   </button>
                 </div>
               )}

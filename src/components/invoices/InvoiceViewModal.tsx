@@ -1,13 +1,13 @@
 
-import React, { useState, useEffect } from 'react';
+import { toast } from 'sonner';
+import React, { useState } from 'react';
 import { X, Upload, Download, DollarSign } from 'lucide-react';
 import { getStatusColor } from '@/utils/themeUtils.util';
 import { formatDateSync } from '@/components/ui/FormattedDate';
 import { FormattedCurrency } from '@/components/ui/FormattedCurrency';
 import { pdfService } from '@/services/pdf.svc';
 import { useCompanySettings } from '@/hooks/useSettings.hook';
-import { formatClientAddress } from '@/utils/formatting';
-import type { Invoice } from '@/types';
+import type { Invoice, InvoiceViewLineItem } from '@/types';
 
 interface InvoiceViewModalProps {
   invoice: Invoice | null;
@@ -48,11 +48,11 @@ export const InvoiceViewModal: React.FC<InvoiceViewModalProps> = ({ invoice, isO
   }
 
   // Handle line items - create from description if none exist
-  let lineItems = [];
+  let lineItems: InvoiceViewLineItem[] = [];
   if (invoice.line_items) {
     try {
       lineItems = JSON.parse(invoice.line_items);
-    } catch (e) {
+    } catch {
       lineItems = [];
     }
   }
@@ -166,53 +166,11 @@ export const InvoiceViewModal: React.FC<InvoiceViewModalProps> = ({ invoice, isO
     } catch (error) {
       console.error('Error downloading PDF:', error);
 
-      // Show user-friendly error dialog
-      const errorMessage = error instanceof Error ? error.message : 'Failed to generate PDF. Please try again.';
-
-      // Create and show error dialog
-      const dialog = document.createElement('div');
-      dialog.innerHTML = `
-        <div style="
-          position: fixed;
-          top: 0;
-          left: 0;
-          width: 100%;
-          height: 100%;
-          background: rgba(0, 0, 0, 0.5);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          z-index: 10000;
-        ">
-          <div style="
-            background: white;
-            padding: 24px;
-            border-radius: 8px;
-            max-width: 400px;
-            margin: 20px;
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
-          ">
-            <h3 style="margin: 0 0 16px 0; color: #dc2626;">PDF Generation Failed</h3>
-            <p style="margin: 0 0 20px 0; color: #374151;">${errorMessage}</p>
-            <button onclick="this.closest('div').remove()" style="
-              background: #dc2626;
-              color: white;
-              border: none;
-              padding: 8px 16px;
-              border-radius: 4px;
-              cursor: pointer;
-            ">Close</button>
-          </div>
-        </div>
-      `;
-      document.body.appendChild(dialog);
-
-      // Auto-remove after 10 seconds
-      setTimeout(() => {
-        if (dialog.parentNode) {
-          dialog.remove();
-        }
-      }, 10000);
+      // Interpolating a server-supplied message into innerHTML made this an
+      // injection sink; the app already has a toast for exactly this.
+      const errorMessage =
+        error instanceof Error ? error.message : 'Failed to generate PDF. Please try again.';
+      toast.error(`PDF generation failed: ${errorMessage}`);
     } finally {
       setIsGeneratingPDF(false);
     }
@@ -317,7 +275,7 @@ export const InvoiceViewModal: React.FC<InvoiceViewModalProps> = ({ invoice, isO
                 </tr>
               </thead>
               <tbody>
-                {lineItems.length > 0 ? lineItems.map((item: any, index: number) => (
+                {lineItems.length > 0 ? lineItems.map((item, index) => (
                   <tr key={index} className={`${styles.tableBorder} border-b last:border-b-0 hover:bg-muted/10`}>
                     <td className={`py-4 px-4 ${styles.tableText}`}>{item.description}</td>
                     <td className={`py-4 px-4 text-center ${styles.tableText}`}>{item.quantity}</td>

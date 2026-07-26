@@ -1,12 +1,12 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { ArrowLeft, Download, Save, Calendar } from 'lucide-react';
 import { authenticatedFetch } from '@/utils/api';
 import { themeClasses, getButtonClasses } from '@/utils/themeUtils.util';
 import { formatDateSync, formatDateRangeSync } from '@/utils/formatting';
-import { FormattedCurrency, useCurrencyFormatter } from '@/components/ui/FormattedCurrency';
-import { Expense } from '@/types';
-import { ExpenseReportData, ExpenseReportProps, ReportDateRange } from '@/types';
+import { FormattedCurrency } from '@/components/ui/FormattedCurrency';
+import { type Expense } from '@/types';
+import { type ExpenseReportData, type ExpenseReportProps, type ReportDateRange } from '@/types';
 
 export const ExpenseReport: React.FC<ExpenseReportProps> = ({ onBack, onSave }) => {
   const [reportData, setReportData] = useState<ExpenseReportData | null>(null);
@@ -17,13 +17,8 @@ export const ExpenseReport: React.FC<ExpenseReportProps> = ({ onBack, onSave }) 
     preset: 'this-month'
   });
 
-  const { formatAmountSync } = useCurrencyFormatter();
 
-  useEffect(() => {
-    generateReportData();
-  }, [dateRange.start, dateRange.end]);
-
-  const generateReportData = async () => {
+  const generateReportData = useCallback(async () => {
     setLoading(true);
     try {
       const response = await authenticatedFetch('/api/reports/generate/expense', {
@@ -44,7 +39,11 @@ export const ExpenseReport: React.FC<ExpenseReportProps> = ({ onBack, onSave }) 
     } finally {
       setLoading(false);
     }
-  };
+  }, [dateRange.start, dateRange.end]);
+
+  useEffect(() => {
+    generateReportData();
+  }, [generateReportData]);
 
   const handleDatePresetChange = (preset: ReportDateRange['preset']) => {
     const today = new Date();

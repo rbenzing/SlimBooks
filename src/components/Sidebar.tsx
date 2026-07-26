@@ -57,7 +57,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ onNavigationAttempt }) => {
   const { logout, user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const { settings: companySettings, isLoading: companySettingsLoading } = useCompanySettings();
+  const { settings: companySettings } = useCompanySettings();
   
   const isOnFormPage = location.pathname.includes('/new') || location.pathname.includes('/edit') || 
                        location.pathname.includes('/create');

@@ -47,6 +47,23 @@ export interface EmailSettings {
   isEnabled: boolean;
 }
 
+// Raw email settings record as persisted in the settings table.
+// Stored keys are snake_case and older records use alternative key names,
+// so every field is optional and read defensively before mapping to EmailSettings.
+export interface StoredEmailSettings {
+  smtp_host?: string;
+  smtp_port?: number | string;
+  smtp_username?: string;
+  smtp_user?: string;
+  smtp_password?: string;
+  smtp_secure?: string;
+  from_email?: string;
+  from_name?: string;
+  reply_to_email?: string;
+  is_enabled?: boolean;
+  isEnabled?: boolean;
+}
+
 // Notification Settings
 export interface NotificationSettings {
   showToastNotifications: boolean;

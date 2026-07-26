@@ -69,8 +69,15 @@ export const TemplateForm: React.FC<TemplateFormProps> = ({ isOpen, onClose, onS
     e.preventDefault();
     onSave({
       ...formData,
+      frequency: formData.frequency as InvoiceTemplateFormData['frequency'],
       client_id: parseInt(formData.client_id),
-      amount: parseFloat(formData.amount)
+      amount: parseFloat(formData.amount) || 0,
+      // This form captures the recurrence only; line items, tax and shipping
+      // are set when each invoice is generated from the template.
+      is_active: true,
+      items: [],
+      tax_amount: 0,
+      shipping_amount: 0
     });
   };
 

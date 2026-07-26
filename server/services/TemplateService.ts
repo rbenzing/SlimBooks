@@ -2,6 +2,7 @@
 // Handles all template-related business logic and database operations
 
 import { databaseService } from '../core/DatabaseService.js';
+import type { SQLParams } from '../types/database.types.js';
 
 /**
  * Template interface
@@ -113,7 +114,7 @@ export class TemplateService {
     }
 
     const updates: string[] = [];
-    const values: any[] = [];
+    const values: SQLParams = [];
 
     if (templateData.name !== undefined) {
       updates.push('name = ?');

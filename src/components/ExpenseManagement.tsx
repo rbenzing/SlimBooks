@@ -29,11 +29,10 @@ import {
   getButtonClasses, 
   getStatusColor 
 } from '@/utils/themeUtils.util';
-import { filterByDateRange, getDefaultDateRange, getDateRangeForPeriod } from '@/utils/data';
+import { filterByDateRange, getDateRangeForPeriod, type DateRangePeriod } from '@/utils/data';
 import { formatDateSync } from '@/components/ui/FormattedDate';
 import { FormattedCurrency } from '@/components/ui/FormattedCurrency';
-import { Expense } from '@/types';
-import { TimePeriod, DateRange } from '@/types';
+import { type Expense, type DateRange } from '@/types';
 
 export const ExpenseManagement: React.FC = () => {
   const [uiState, setUiState] = useState({
@@ -47,7 +46,7 @@ export const ExpenseManagement: React.FC = () => {
     searchTerm: '',
     categoryFilter: 'all',
     statusFilter: 'all',
-    dateFilter: 'this-month' as TimePeriod,
+    dateFilter: 'this_month' as DateRangePeriod,
     customDateRange: undefined as DateRange | undefined
   });
 
@@ -90,6 +89,7 @@ export const ExpenseManagement: React.FC = () => {
         throw new Error('Failed to load expenses');
       }
     } catch (error) {
+      console.error('Error loading expenses:', error);
       toast.error('Failed to load expenses');
       setExpenses([]); // Set empty array as fallback
     }
@@ -133,7 +133,7 @@ export const ExpenseManagement: React.FC = () => {
   const approvedCount = dateFilteredExpenses.filter(exp => exp.status === 'approved').length;
   const reimbursedCount = dateFilteredExpenses.filter(exp => exp.status === 'reimbursed').length;
 
-  const handleDateFilterChange = (period: TimePeriod, customRange?: DateRange) => {
+  const handleDateFilterChange = (period: DateRangePeriod, customRange?: DateRange) => {
     updateFilters({ dateFilter: period, customDateRange: customRange });
   };
 
@@ -219,11 +219,11 @@ export const ExpenseManagement: React.FC = () => {
     }
   };
 
-  const handleBulkChangeMerchant = async (expenseIds: number[], merchant: string) => {
+  const handleBulkChangeVendor = async (expenseIds: number[], vendor: string) => {
     try {
-      const response = await apiPost('/api/expenses/bulk-update', { expenseIds, updates: { vendor: merchant } });
+      const response = await apiPost('/api/expenses/bulk-update', { expenseIds, updates: { vendor } });
       if (response.success) {
-        toast.success(`${expenseIds.length} expenses updated to vendor "${merchant}"`);
+        toast.success(`${expenseIds.length} expenses updated to vendor "${vendor}"`);
         await loadExpenses();
       } else {
         throw new Error(response.error || 'Failed to update vendor');
@@ -234,8 +234,8 @@ export const ExpenseManagement: React.FC = () => {
   };
 
   const handleCloseForm = () => {
-    setShowCreateForm(false);
-    setEditingExpense(null);
+    updateUiState({ showCreateForm: false });
+    setActiveItem(prev => ({ ...prev, editing: null }));
   };
 
   const renderPanelView = () => (
@@ -244,7 +244,7 @@ export const ExpenseManagement: React.FC = () => {
         <div key={expense.id} className="bg-card rounded-lg shadow-sm border border-border p-6">
           <div className="flex justify-between items-start mb-4">
             <div>
-              <h3 className="font-semibold text-foreground">{expense.merchant}</h3>
+              <h3 className="font-semibold text-foreground">{expense.vendor}</h3>
               <p className="text-sm text-muted-foreground">{expense.category}</p>
             </div>
             <div className="flex space-x-2">
@@ -473,7 +473,7 @@ export const ExpenseManagement: React.FC = () => {
               onViewExpense={handleViewExpense}
               onBulkDelete={handleBulkDelete}
               onBulkCategorize={handleBulkCategorize}
-              onBulkChangeMerchant={handleBulkChangeMerchant}
+              onBulkChangeVendor={handleBulkChangeVendor}
               categories={Array.from(new Set(expenses.map(e => e.category).filter(Boolean)))}
             />
           )}
@@ -506,7 +506,7 @@ export const ExpenseManagement: React.FC = () => {
               <Receipt className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
               <h3 className="text-lg font-medium text-foreground mb-2">No expenses found</h3>
               <p className="text-muted-foreground mb-4">
-                {filters.searchTerm || filters.categoryFilter !== 'all' || filters.statusFilter !== 'all' || filters.dateFilter !== 'this-month'
+                {filters.searchTerm || filters.categoryFilter !== 'all' || filters.statusFilter !== 'all' || filters.dateFilter !== 'this_month'
                   ? 'Try adjusting your search or filters'
                   : 'Add your first expense to get started'
                 }

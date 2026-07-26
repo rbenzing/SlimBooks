@@ -1,29 +1,28 @@
 // Authentication controller for Slimbooks
 // Handles login, registration, password reset, and email verification
 
-import { Request, Response } from 'express';
+import { type Request, type Response } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { authConfig } from '../config/index.js';
 import { authService } from '../services/AuthService.js';
 import { tokenService } from '../services/TokenService.js';
-import { 
-  AppError, 
-  NotFoundError, 
+import {
+  NotFoundError,
   ValidationError,
   AuthenticationError,
   asyncHandler,
   generateToken
 } from '../middleware/index.js';
 import { 
-  LoginRequest, 
-  LoginResponse, 
-  RegisterRequest, 
-  RegisterResponse,
-  RefreshTokenRequest,
-  RefreshTokenResponse 
+  type LoginRequest, 
+  type LoginResponse, 
+  type RegisterRequest, 
+  type RegisterResponse,
+  type RefreshTokenRequest,
+  type RefreshTokenResponse 
 } from '../types/api.types.js';
-import { User, UserPublic } from '../types/index.js';
+import { type User, type UserPublic } from '../types/index.js';
 
 interface DecodedToken {
   userId: number;
@@ -241,7 +240,7 @@ export const verifyEmail = asyncHandler(async (req: Request, res: Response): Pro
       success: true,
       message: 'Email verified successfully'
     });
-  } catch (tokenError) {
+  } catch {
     throw new ValidationError('Invalid or expired token');
   }
 });
@@ -287,7 +286,7 @@ export const refreshToken = asyncHandler(async (req: Request<object, RefreshToke
       },
       message: 'Token refreshed successfully'
     });
-  } catch (error) {
+  } catch {
     throw new AuthenticationError('Token refresh failed');
   }
 });

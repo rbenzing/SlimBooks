@@ -5,7 +5,7 @@ import DashboardChart from './DashboardChart';
 import { authenticatedFetch } from '@/utils/api';
 import { themeClasses, getIconColorClasses, getStatusColor } from '@/utils/themeUtils.util';
 import { FormattedCurrency } from '@/components/ui/FormattedCurrency';
-import { TimePeriod, Invoice, Expense } from '@/types';
+import { type TimePeriod, type Invoice, type Expense } from '@/types';
 
 export const DashboardOverview = () => {
   const [selectedPeriod, setSelectedPeriod] = useState<TimePeriod>('year-to-date');
@@ -96,18 +96,22 @@ export const DashboardOverview = () => {
 
   const stats = useMemo(() => {
     const totalRevenue = filteredInvoices.reduce((sum, invoice) => {
-      const amount = parseFloat(invoice.amount) || 0;
+      const amount = invoice.amount || 0;
       return amount > 0 ? sum + amount : sum;
     }, 0);
 
-    const pendingInvoices = filteredInvoices.filter(invoice => invoice.status === 'pending').length;
+    // 'pending' is not an InvoiceStatus, so this tile always read 0. It counts
+    // invoices that are out with the client and still unpaid.
+    const pendingInvoices = filteredInvoices.filter(
+      invoice => invoice.status === 'sent' || invoice.status === 'overdue'
+    ).length;
     const sentInvoices = filteredInvoices.filter(invoice => invoice.status === 'sent').length;
     const paidInvoices = filteredInvoices.filter(invoice => invoice.status === 'paid').length;
     const overdueInvoices = filteredInvoices.filter(invoice => invoice.status === 'overdue').length;
     const draftInvoices = filteredInvoices.filter(invoice => invoice.status === 'draft').length;
 
     const creditsRefunds = Math.abs(filteredInvoices.reduce((sum, invoice) => {
-      const amount = parseFloat(invoice.amount) || 0;
+      const amount = invoice.amount || 0;
       return amount < 0 ? sum + amount : sum;
     }, 0));
 

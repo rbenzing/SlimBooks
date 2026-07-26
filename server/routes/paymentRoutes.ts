@@ -1,7 +1,8 @@
 // Payment routes for Slimbooks API
 // Handles all payment-related endpoints
 
-import { Router } from 'express';
+import { Router, type Request, type Response } from 'express';
+import { type BulkImportPaymentsRequest, type PaymentRequest } from '../types/api.types.js';
 import {
   getAllPayments,
   getPaymentById,
@@ -45,15 +46,16 @@ router.post('/bulk-delete',
 // POST /api/payments/bulk-import - Bulk import payments
 router.post('/bulk-import',
   requireAuth,
-  async (req: any, res: any) => {
+  async (req: Request, res: Response) => {
     try {
-      const { payments } = req.body;
-      
+      const { payments } = req.body as BulkImportPaymentsRequest;
+
       if (!payments || !Array.isArray(payments)) {
-        return res.status(400).json({
+        res.status(400).json({
           success: false,
           error: 'Payments array is required'
         });
+        return;
       }
 
       let successCount = 0;
@@ -64,7 +66,7 @@ router.post('/bulk-import',
       const { paymentService } = await import('../services/PaymentService.js');
 
       for (let i = 0; i < payments.length; i++) {
-        const paymentData = payments[i];
+        const paymentData = payments[i] as PaymentRequest;
         try {
           // Use the payment service directly instead of the controller
           await paymentService.createPayment(paymentData);

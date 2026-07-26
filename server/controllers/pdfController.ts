@@ -1,6 +1,6 @@
 // PDF controller for Slimbooks
 // Handles PDF generation requests
-import { Request, Response } from 'express';
+import { type Request, type Response } from 'express';
 import { pdfService } from '../services/PdfService.js';
 import { invoiceService } from '../services/InvoiceService.js';
 import {

@@ -2,6 +2,7 @@
 // Handles all recurring invoice template-related business logic and database operations
 
 import { databaseService } from '../core/DatabaseService.js';
+import type { SQLParams } from '../types/database.types.js';
 
 /**
  * Recurring Invoice Template interface
@@ -211,7 +212,7 @@ export class RecurringInvoiceTemplateService {
     }
 
     const updates: string[] = [];
-    const values: any[] = [];
+    const values: SQLParams = [];
 
     if (templateData.name !== undefined) {
       updates.push('name = ?');

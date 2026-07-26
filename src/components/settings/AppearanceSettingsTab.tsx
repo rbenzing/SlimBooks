@@ -1,11 +1,11 @@
 
-import { useState, useEffect, forwardRef, useImperativeHandle } from 'react';
+import { useState, useEffect, useCallback, forwardRef, useImperativeHandle } from 'react';
 import { toast } from 'sonner';
 import { themeClasses } from '@/utils/themeUtils.util';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/hooks/useTheme.hook';
 import { getToken } from '@/utils/api';
-import type { SettingsTabRef } from '../Settings';
+import type { SettingsTabRef } from '@/types';
 
 export const AppearanceSettingsTab = forwardRef<SettingsTabRef>((props, ref) => {
   const { isAdmin, user } = useAuth();
@@ -16,7 +16,7 @@ export const AppearanceSettingsTab = forwardRef<SettingsTabRef>((props, ref) => 
   const [saveError, setSaveError] = useState<string>('');
 
   // Manual save function for Save button
-  const saveSettings = async () => {
+  const saveSettings = useCallback(async () => {
     if (!isLoaded) return;
     
     // Clear any previous error
@@ -70,7 +70,7 @@ export const AppearanceSettingsTab = forwardRef<SettingsTabRef>((props, ref) => 
       toast.error(`Failed to save appearance settings: ${error.message}`);
       throw error;
     }
-  };
+  }, [isLoaded, invoiceTemplate, pdfFormat, isAdmin, user?.role]);
 
   // Load settings from database on component mount
   useEffect(() => {
@@ -87,7 +87,6 @@ export const AppearanceSettingsTab = forwardRef<SettingsTabRef>((props, ref) => 
 
         // Migrate from localStorage if database settings don't exist
         if (!settings || (!settings.theme && !settings.invoice_template)) {
-          const localTheme = localStorage.getItem('theme') || 'system';
           const localTemplate = localStorage.getItem('invoiceTemplate') || 'modern-blue';
           setInvoiceTemplate(localTemplate);
           setPdfFormat('A4'); // Default PDF format
@@ -129,16 +128,7 @@ export const AppearanceSettingsTab = forwardRef<SettingsTabRef>((props, ref) => 
   // Theme changes are now handled by useTheme hook
 
   // Expose saveSettings method to parent component
-  useImperativeHandle(ref, () => ({
-    saveSettings: async () => {
-      try {
-        await saveSettings();
-      } catch (error) {
-        console.error('Error saving appearance settings:', error);
-        throw error;
-      }
-    }
-  }), [invoiceTemplate, pdfFormat, isLoaded, isAdmin, user?.role]);
+  useImperativeHandle(ref, () => ({ saveSettings }), [saveSettings]);
 
   const handleThemeChange = (newTheme: string) => {
     setGlobalTheme(newTheme as 'light' | 'dark' | 'system');

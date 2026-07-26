@@ -76,7 +76,7 @@ export const CLIENT_FIELDS: ImportField[] = [
 
 export const EXPENSE_FIELDS: ImportField[] = [
   { key: 'date', label: 'Date', required: true },
-  { key: 'merchant', label: 'Merchant/Vendor', required: true },
+  { key: 'vendor', label: 'Merchant/Vendor', required: true },
   { key: 'amount', label: 'Amount', required: true },
   { key: 'category', label: 'Category', required: false },
   { key: 'description', label: 'Description', required: false },

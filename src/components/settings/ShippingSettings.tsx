@@ -2,8 +2,8 @@
 import { useState, useEffect, forwardRef, useImperativeHandle } from 'react';
 import { Plus, Edit2, Trash2 } from 'lucide-react';
 import { themeClasses } from '@/utils/themeUtils.util';
-import { ShippingRate, validateShippingRateArray } from '@/types';
-import type { SettingsTabRef } from '../Settings';
+import { type ShippingRate, validateShippingRateArray } from '@/types';
+import type { SettingsTabRef } from '@/types';
 
 export const ShippingSettings = forwardRef<SettingsTabRef>((props, ref) => {
   const [shippingRates, setShippingRates] = useState<ShippingRate[]>([]);

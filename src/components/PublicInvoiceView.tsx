@@ -6,7 +6,7 @@ import { formatDateSync } from '@/components/ui/FormattedDate';
 import { FormattedCurrency } from '@/components/ui/FormattedCurrency';
 import { pdfService } from '@/services/pdf.svc';
 import { envConfig } from '@/lib/env-config';
-import { InvoiceItem } from '@/types';
+import { type InvoiceItem, type PublicInvoiceData } from '@/types';
 import { formatClientAddress } from '@/utils/formatting';
 
 export const PublicInvoiceView: React.FC = () => {
@@ -14,26 +14,12 @@ export const PublicInvoiceView: React.FC = () => {
   const [searchParams] = useSearchParams();
   const token = searchParams.get('token');
   
-  const [invoice, setInvoice] = useState<any>(null);
+  const [invoice, setInvoice] = useState<PublicInvoiceData | null>(null);
   const [lineItems, setLineItems] = useState<InvoiceItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [companyLogo, setCompanyLogo] = useState<string>('');
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
-
-  // Helper function to clean up stored client address that may contain "null" values
-  const cleanClientAddress = (address: string) => {
-    if (!address) return '';
-
-    // Remove "null" strings and clean up the address
-    const cleanedAddress = address
-      .split(',')
-      .map(part => part.trim())
-      .filter(part => part && part !== 'null' && part !== 'undefined')
-      .join(', ');
-
-    return cleanedAddress || '';
-  };
 
   useEffect(() => {
     const loadInvoice = async () => {
@@ -81,7 +67,7 @@ export const PublicInvoiceView: React.FC = () => {
                 { id: 1, description: invoiceRecord.description || '', quantity: 1, unit_price: fallbackAmount, total: fallbackAmount }
               ]);
             }
-          } catch (e) {
+          } catch {
             const fallbackAmount = invoiceRecord.total_amount || invoiceRecord.amount || 0;
             setLineItems([
               { id: 1, description: invoiceRecord.description || '', quantity: 1, unit_price: fallbackAmount, total: fallbackAmount }
@@ -105,17 +91,6 @@ export const PublicInvoiceView: React.FC = () => {
 
     loadInvoice();
   }, [id, token]);
-
-  const verifyInvoiceToken = async (invoiceId: string, token: string): Promise<boolean> => {
-    // Simple token verification - in production, this should be more secure
-    // For now, we'll use a simple hash of invoice ID + a secret
-    const expectedToken = btoa(`invoice-${invoiceId}-${new Date().toDateString()}`);
-    return token === expectedToken;
-  };
-
-  const generateInvoiceToken = (invoiceId: string): string => {
-    return btoa(`invoice-${invoiceId}-${new Date().toDateString()}`);
-  };
 
   const subtotal = lineItems.reduce((sum, item) => sum + item.total, 0);
   const taxAmount = invoice?.tax_amount || 0;
@@ -237,13 +212,13 @@ export const PublicInvoiceView: React.FC = () => {
               {invoice.client_company && <div>{invoice.client_company}</div>}
               {invoice.client_email && <div>{invoice.client_email}</div>}
               {invoice.client_phone && <div>{invoice.client_phone}</div>}
-              {(invoice.client_address || invoice.client_city || invoice.client_state || invoice.client_zipCode) && (
+              {(invoice.client_address || invoice.client_city || invoice.client_state || invoice.client_zip) && (
                 <div className="whitespace-pre-line">
                   {formatClientAddress({
                     address: invoice.client_address,
                     city: invoice.client_city,
                     state: invoice.client_state,
-                    zipCode: invoice.client_zipCode,
+                    zipCode: invoice.client_zip,
                     country: invoice.client_country
                   })}
                 </div>

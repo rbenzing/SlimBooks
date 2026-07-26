@@ -1,5 +1,5 @@
-import { JwtPayload } from "jsonwebtoken";
-import { InvoiceWithClient } from "./index.js";
+import { type JwtPayload } from "jsonwebtoken";
+import { type InvoiceWithClient } from "./index.js";
 
 /**
  * Public invoice token payload interface
@@ -13,7 +13,7 @@ export interface PublicInvoiceTokenPayload extends JwtPayload {
  * Public invoice display interface
  */
 export interface PublicInvoiceDisplay extends InvoiceWithClient {
-  companySettings?: any;
-  currencySettings?: any;
+  companySettings?: Record<string, unknown> | null;
+  currencySettings?: Record<string, unknown> | null;
   invoiceTemplate?: string;
 }

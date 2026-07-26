@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { formatCurrency, formatCurrencySync } from '@/utils/formatting';
-import { CurrencySettings } from '@/types';
+import { type CurrencySettings } from '@/types';
 
 interface FormattedCurrencyProps {
   amount: number | undefined | null;

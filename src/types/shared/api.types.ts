@@ -29,12 +29,13 @@ export interface AsyncState<T> {
   error: string | null;
 }
 
-// Generic API response patterns
-// Note: ApiResponse is also defined in common.types.ts with more comprehensive structure
-// This simpler version is kept for backward compatibility with basic API calls
-export interface ApiResponse<T = unknown> {
+// Generic API response envelope returned by every backend endpoint.
+// Write endpoints put their result payload (`{ changes }`, `{ id }`) in `data`.
+// A few endpoints (settings) add extra top-level payload fields alongside these;
+// callers describe those through an intersection rather than a second generic.
+export interface ApiResponse<TData = unknown> {
   success: boolean;
-  data?: T;
+  data?: TData;
   message?: string;
   error?: string;
 }

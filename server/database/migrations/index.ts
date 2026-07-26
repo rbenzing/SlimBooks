@@ -6,6 +6,8 @@ import { up as migration001 } from './001_add_deleted_at_to_clients.js';
 import { up as migration002 } from './002_add_category_to_settings.js';
 import { up as migration003 } from './003_separate_template_tables.js';
 import { up as migration004 } from './004_fix_expenses_table_schema.js';
+import { up as migration006 } from './006_align_tables_with_schema.js';
+import { up as migration007 } from './007_drop_clients_zip.js';
 
 interface Migration {
   id: string;
@@ -36,6 +38,16 @@ const migrations: Migration[] = [
     id: '004',
     name: 'fix_expenses_table_schema',
     up: migration004
+  },
+  {
+    id: '006',
+    name: 'align_tables_with_schema',
+    up: migration006
+  },
+  {
+    id: '007',
+    name: 'drop_clients_zip',
+    up: migration007
   }
 ];
 
@@ -59,7 +71,7 @@ const isMigrationApplied = (db: IDatabase, migrationId: string): boolean => {
   try {
     const result = db.getMany('SELECT id FROM migrations WHERE id = ?', [migrationId]);
     return result.length > 0;
-  } catch (error) {
+  } catch {
     return false;
   }
 };

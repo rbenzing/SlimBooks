@@ -9,11 +9,10 @@ import { authenticatedFetch } from '@/utils/api';
 import { themeClasses } from '@/utils/themeUtils.util';
 import { toast } from 'sonner';
 import { formatDateSync, formatDateRangeSync } from '@/utils/formatting';
-import { Report, ReportType } from '@/types';
-import { ReportDateRange } from '@/types';
+import { type Report, type ReportType } from '@/types';
+import { type ReportDateRange, type SavedReport } from '@/types';
 
 export type { ReportType };
-export type { ReportDateRange as DateRange }; // Re-export for backward compatibility
 
 export const ReportsManagement: React.FC = () => {
   const [selectedReport, setSelectedReport] = useState<ReportType | null>(null);
@@ -69,7 +68,7 @@ export const ReportsManagement: React.FC = () => {
     }
   ];
 
-  const handleSaveReport = async (reportData: any, reportType: ReportType, dateRange: ReportDateRange) => {
+  const handleSaveReport = async (reportData: SavedReport['data'], reportType: ReportType, dateRange: ReportDateRange) => {
     try {
       const reportName = `${reportTypes.find(r => r.id === reportType)?.name} - ${formatDateRangeSync(dateRange.start, dateRange.end)}`;
       const response = await authenticatedFetch('/api/reports', {
@@ -115,10 +114,6 @@ export const ReportsManagement: React.FC = () => {
         console.error('Error deleting report:', error);
       }
     }
-  };
-
-  const getFormattedDateRange = (dateRange: ReportDateRange) => {
-    return formatDateRangeSync(dateRange.start, dateRange.end);
   };
 
   const renderReport = () => {

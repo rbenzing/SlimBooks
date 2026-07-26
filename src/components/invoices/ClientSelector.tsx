@@ -2,7 +2,7 @@
 import React from 'react';
 import { User, Plus } from 'lucide-react';
 import { themeClasses } from '@/utils/themeUtils.util';
-import { Client } from '@/types';
+import { type Client } from '@/types';
 
 interface ClientSelectorProps {
   clients: Client[];
@@ -43,7 +43,7 @@ export const ClientSelector: React.FC<ClientSelectorProps> = ({
                     <div>
                       {selectedClient.city && `${selectedClient.city}, `}
                       {selectedClient.state && `${selectedClient.state} `}
-                      {selectedClient.zipCode || selectedClient.zip_code}
+                      {selectedClient.zipCode}
                     </div>
                   </div>
                 )}

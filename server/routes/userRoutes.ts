@@ -1,7 +1,7 @@
 // User routes for Slimbooks API
 // Handles all user-related endpoints
 
-import { Router, Request, Response, NextFunction } from 'express';
+import { Router, type Request, type Response, type NextFunction } from 'express';
 import {
   getAllUsers,
   getUserById,
@@ -63,7 +63,7 @@ router.get('/:id',
 );
 
 // Get user by email (public for admin check, otherwise admin only)
-router.get('/email/:email', async (req: Request, res: Response, next: NextFunction): Promise<any> => {
+router.get('/email/:email', async (req: Request, res: Response, next: NextFunction): Promise<Response | void> => {
   const { email } = req.params;
 
   // Allow public access for admin user check during initialization
@@ -94,9 +94,9 @@ router.get('/email/:email', async (req: Request, res: Response, next: NextFuncti
     }
   } else {
     // For all other emails, require authentication and admin privileges
-    requireAuth(req, res, (err: any) => {
+    requireAuth(req, res, (err?: unknown) => {
       if (err) return next(err);
-      requireAdmin(req, res, (err: any) => {
+      requireAdmin(req, res, (err?: unknown) => {
         if (err) return next(err);
         getUserByEmail(req, res, next);
       });
@@ -113,15 +113,6 @@ router.get('/google/:googleId',
 
 // Create new user (admin only)
 router.post('/', 
-  requireAuth, 
-  requireAdmin, 
-  validationSets.createUser,
-  validateRequest,
-  createUser
-);
-
-// Alternative create user endpoint (legacy support)
-router.post('/create', 
   requireAuth, 
   requireAdmin, 
   validationSets.createUser,

@@ -1,4 +1,4 @@
-import { CurrencySettings } from '@/types';
+import { type CurrencySettings } from '@/types';
 import {
   DEFAULT_CURRENCY_SETTINGS,
   CURRENCY_OPTIONS,

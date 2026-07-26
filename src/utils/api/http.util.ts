@@ -1,11 +1,5 @@
 import { getToken } from './auth.util';
-import { log, warn } from '@/utils/logger.util';
-
-interface ApiResponse<T = any> {
-  data?: T;
-  error?: string;
-  message?: string;
-}
+import { type ApiResponse } from '@/types';
 
 class ApiError extends Error {
   constructor(
@@ -39,7 +33,7 @@ export const authenticatedFetch = async (
   };
 
   if (token) {
-    headers.Authorization = `Bearer ${token}`;
+    headers['Authorization'] = `Bearer ${token}`;
   }
 
   const config: RequestInit = {
@@ -81,7 +75,7 @@ export const authenticatedFetch = async (
   }
 };
 
-export const apiRequest = async <T = any>(
+export const apiRequest = async <T = ApiResponse>(
   url: string,
   options: RequestInit = {}
 ): Promise<T> => {
@@ -95,13 +89,13 @@ export const apiRequest = async <T = any>(
   return await response.text() as unknown as T;
 };
 
-export const apiGet = async <T = any>(url: string): Promise<T> => {
+export const apiGet = async <T = ApiResponse>(url: string): Promise<T> => {
   return apiRequest<T>(url, { method: 'GET' });
 };
 
-export const apiPost = async <T = any>(
+export const apiPost = async <T = ApiResponse>(
   url: string,
-  data: any
+  data: unknown
 ): Promise<T> => {
   return apiRequest<T>(url, {
     method: 'POST',
@@ -109,9 +103,9 @@ export const apiPost = async <T = any>(
   });
 };
 
-export const apiPut = async <T = any>(
+export const apiPut = async <T = ApiResponse>(
   url: string,
-  data: any
+  data: unknown
 ): Promise<T> => {
   return apiRequest<T>(url, {
     method: 'PUT',
@@ -119,9 +113,9 @@ export const apiPut = async <T = any>(
   });
 };
 
-export const apiPatch = async <T = any>(
+export const apiPatch = async <T = ApiResponse>(
   url: string,
-  data: any
+  data: unknown
 ): Promise<T> => {
   return apiRequest<T>(url, {
     method: 'PATCH',
@@ -129,7 +123,7 @@ export const apiPatch = async <T = any>(
   });
 };
 
-export const apiDelete = async <T = any>(url: string): Promise<T> => {
+export const apiDelete = async <T = ApiResponse>(url: string): Promise<T> => {
   return apiRequest<T>(url, { method: 'DELETE' });
 };
 

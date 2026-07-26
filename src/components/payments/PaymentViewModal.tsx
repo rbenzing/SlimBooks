@@ -3,7 +3,7 @@ import { X, Calendar, DollarSign, User, CreditCard, Hash, FileText, Clock, Recei
 import { getStatusColor, themeClasses } from '@/utils/themeUtils.util';
 import { formatDateSync } from '@/components/ui/FormattedDate';
 import { FormattedCurrency } from '@/components/ui/FormattedCurrency';
-import { PaymentViewModalProps } from '@/types';
+import { type PaymentViewModalProps } from '@/types';
 
 export const PaymentViewModal: React.FC<PaymentViewModalProps> = ({ payment, isOpen, onClose }) => {
   if (!isOpen || !payment) return null;

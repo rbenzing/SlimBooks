@@ -1,6 +1,15 @@
 // Email service for browser environment (simulation for development)
 
-import { EmailSettings, EmailTemplate } from '@/types';
+import { type EmailSettings, type EmailTemplate, type SmtpSecurityType, type StoredEmailSettings } from '@/types';
+
+const SMTP_SECURITY_TYPES: readonly SmtpSecurityType[] = ['tls', 'ssl', 'none'];
+
+/**
+ * Narrows a stored smtp_secure value to a supported security type. Anything
+ * unrecognised falls back to TLS, which is what port 587 (the default) uses.
+ */
+const toSmtpSecurity = (value: string | undefined): SmtpSecurityType =>
+  SMTP_SECURITY_TYPES.includes(value as SmtpSecurityType) ? (value as SmtpSecurityType) : 'tls';
 
 export class EmailService {
   private static instance: EmailService;
@@ -34,13 +43,13 @@ export class EmailService {
         // Convert snake_case to camelCase and validate required fields
         if (settings && typeof settings === 'object' &&
             'smtp_host' in settings && 'smtp_port' in settings) {
-          const rawSettings = settings as any;
+          const rawSettings = settings as StoredEmailSettings;
           return {
             smtpHost: rawSettings.smtp_host || '',
             smtpPort: Number(rawSettings.smtp_port) || 587,
             smtpUsername: rawSettings.smtp_username || rawSettings.smtp_user || '',
             smtpPassword: rawSettings.smtp_password || '',
-            smtpSecure: rawSettings.smtp_secure || 'STARTTLS',
+            smtpSecure: toSmtpSecurity(rawSettings.smtp_secure),
             fromEmail: rawSettings.from_email || '',
             fromName: rawSettings.from_name || '',
             replyToEmail: rawSettings.reply_to_email || rawSettings.from_email || '',
@@ -101,11 +110,12 @@ export class EmailService {
   }
 
   // Send email (simulated for browser environment)
+  // Message arguments are accepted for the real transport but unused by the simulation
   async sendEmail(
-    to: string,
-    subject: string,
-    htmlContent: string,
-    textContent?: string
+    _to: string,
+    _subject: string,
+    _htmlContent: string,
+    _textContent?: string
   ): Promise<{ success: boolean; message: string }> {
     try {
       const settings = await this.getStoredEmailSettings();

@@ -2,7 +2,7 @@ import { useState, useEffect, forwardRef, useImperativeHandle } from 'react';
 import { Globe, CreditCard, Shield, AlertTriangle, CheckCircle, Eye, EyeOff, Mail } from 'lucide-react';
 import { themeClasses } from '@/utils/themeUtils.util';
 import { toast } from 'sonner';
-import { ProjectSettings } from '@/types';
+import { type ProjectSettings } from '@/types';
 import { useFormNavigation } from '@/hooks/useFormNavigation';
 
 export interface ProjectSettingsRef {
@@ -46,7 +46,7 @@ export const ProjectSettingsTab = forwardRef<ProjectSettingsRef>((props, ref) =>
   const isDirty = originalSettings ? JSON.stringify(settings) !== JSON.stringify(originalSettings) : false;
   
   // Navigation guard to prevent losing unsaved changes
-  const { confirmNavigation, NavigationGuard } = useFormNavigation({
+  const { NavigationGuard } = useFormNavigation({
     isDirty,
     isEnabled: true,
     entityType: 'template' as const // Use template as closest match for settings
@@ -429,7 +429,7 @@ export const ProjectSettingsTab = forwardRef<ProjectSettingsRef>((props, ref) =>
                     // Save settings first, then test
                     await saveSettings();
                     toast.success('Settings saved. Please use the Email Settings tab to test the connection.');
-                  } catch (error) {
+                  } catch {
                     toast.error('Failed to save settings');
                   }
                 }}

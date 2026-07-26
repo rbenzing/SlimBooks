@@ -1,5 +1,6 @@
 import React from 'react';
 import { themeClasses } from '@/utils/themeUtils.util';
+import type { ClientFormData } from '@/types';
 
 interface AddressField {
   key: string;
@@ -77,7 +78,7 @@ const addressConfigs: Record<string, CountryAddressConfig> = {
 
 interface InternationalAddressFormProps {
   country: string;
-  formData: any;
+  formData: ClientFormData;
   onChange: (field: string, value: string) => void;
   errors?: Record<string, string>;
 }

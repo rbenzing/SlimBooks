@@ -5,8 +5,8 @@ import { authenticatedFetch } from '@/utils/api';
 import { exportToCSV, parseCSV, validateClientData } from '@/utils/data';
 import { toast } from 'sonner';
 import { themeClasses, getIconColorClasses, getButtonClasses } from '@/utils/themeUtils.util';
-import { ClientValidationResult } from '@/types';
-import { FieldMapping, ImportExportProps, ClientImportData, PreviewDataItem, CLIENT_FIELDS } from '@/types/shared/import.types';
+import { type ClientValidationResult } from '@/types';
+import { type FieldMapping, type ImportExportProps, type PreviewDataItem, CLIENT_FIELDS } from '@/types';
 
 // CLIENT_FIELDS now imported from shared types
 
@@ -145,7 +145,7 @@ export const ClientImportExport: React.FC<ImportExportProps> = ({ onClose, onImp
           mappedRow.name = `${firstName} ${lastName}`.trim();
         } else if (mappedRow.name && !mappedRow.first_name && !mappedRow.last_name) {
           // If we have full name but no first/last, try to split it
-          const nameParts = mappedRow.name.trim().split(' ');
+          const nameParts = String(mappedRow.name).trim().split(' ');
           if (nameParts.length >= 2) {
             mappedRow.first_name = nameParts[0];
             mappedRow.last_name = nameParts.slice(1).join(' ');

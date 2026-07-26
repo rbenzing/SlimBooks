@@ -1,11 +1,11 @@
 import React, { useState, useCallback } from 'react';
 import { Upload, Download, FileText, CheckCircle, AlertCircle, X } from 'lucide-react';
 import { exportToCSV, parseCSV, validatePaymentData } from '@/utils/data';
-import { PaymentImportData, PaymentValidationResult, FieldMapping, ImportExportProps, PreviewDataItem, PAYMENT_FIELDS } from '@/types/shared/import.types';
+import { type PaymentValidationResult, type FieldMapping, type ImportExportProps, type PreviewDataItem, PAYMENT_FIELDS } from '@/types';
 import { toast } from 'sonner';
 import { themeClasses, getIconColorClasses, getButtonClasses } from '@/utils/themeUtils.util';
-import { PaymentMethod, PaymentStatus, Payment } from '@/types';
-import { PAYMENT_METHODS, PAYMENT_STATUSES } from '@/types/constants/enums.types';
+import { type PaymentMethod, type PaymentStatus, type Payment } from '@/types';
+import { PAYMENT_METHODS, PAYMENT_STATUSES } from '@/types';
 import { authenticatedFetch } from '@/utils/api';
 
 export const PaymentImportExport: React.FC<ImportExportProps> = ({ onClose, onImportComplete }) => {
@@ -146,7 +146,7 @@ export const PaymentImportExport: React.FC<ImportExportProps> = ({ onClose, onIm
               if (!isNaN(parsedDate.getTime())) {
                 value = parsedDate.toISOString().split('T')[0]; // YYYY-MM-DD format
               }
-            } catch (e) {
+            } catch {
               // Keep original value if can't parse
             }
           }
@@ -215,7 +215,7 @@ export const PaymentImportExport: React.FC<ImportExportProps> = ({ onClose, onIm
                 if (!isNaN(parsedDate.getTime())) {
                   value = parsedDate.toISOString().split('T')[0];
                 }
-              } catch (e) {
+              } catch {
                 // Keep original value
               }
             }

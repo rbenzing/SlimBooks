@@ -5,7 +5,7 @@
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { mockFetchSuccess, mockFetchError, mockData } from '../apiMock';
-import type { Invoice, Client, Payment } from '@/types';
+import type { Invoice, Client } from '@/types';
 
 // Mock API
 vi.mock('@/utils/api', () => ({
@@ -17,13 +17,12 @@ vi.mock('@/utils/api', () => ({
 
 describe('Invoice Lifecycle Integration Tests', () => {
   let testClient: Client;
-  let testInvoice: Invoice;
+
 
   beforeEach(() => {
     vi.clearAllMocks();
 
     testClient = mockData.client(1);
-    testInvoice = mockData.invoice(1, testClient.id);
   });
 
   describe('Complete Invoice Flow', () => {

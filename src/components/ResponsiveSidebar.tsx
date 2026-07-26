@@ -45,10 +45,10 @@ interface ResponsiveSidebarProps {
 }
 
 export const ResponsiveSidebar: React.FC<ResponsiveSidebarProps> = ({ onNavigationAttempt }) => {
-  const { logout, user } = useAuth();
+  const { logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const { settings: companySettings, isLoading: companySettingsLoading } = useCompanySettings();
+  const { settings: companySettings } = useCompanySettings();
   
   // Responsive state
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -101,20 +101,6 @@ export const ResponsiveSidebar: React.FC<ResponsiveSidebarProps> = ({ onNavigati
                location.pathname.includes('/recurring-invoices');
       }
       return location.pathname + location.hash === path;
-    }
-    return location.pathname.startsWith(path);
-  };
-
-  const isParentActive = (path: string) => {
-    if (path === '/') {
-      return location.pathname === '/';
-    }
-    if (path === '/invoices' || path === '/invoices#invoices') {
-      return location.pathname.startsWith('/invoices') ||
-             location.pathname.includes('/recurring-invoices') ||
-             (location.pathname === '/invoices' && location.hash === '#invoices') ||
-             (location.pathname === '/invoices' && location.hash === '#templates') ||
-             (location.pathname === '/invoices' && !location.hash);
     }
     return location.pathname.startsWith(path);
   };

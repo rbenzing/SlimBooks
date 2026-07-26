@@ -1,7 +1,7 @@
 // Client-related types and interfaces
 // Consolidated from both frontend and backend definitions
 
-import { BaseEntity } from '../shared/common.types'
+import { type BaseEntity } from '../shared/common.types'
 
 export interface Client extends BaseEntity {
   name: string;
@@ -13,9 +13,7 @@ export interface Client extends BaseEntity {
   address?: string;
   city?: string;
   state?: string;
-  zip?: string;
-  zipCode?: string; // Legacy field alias for frontend compatibility
-  zip_code?: string; // Legacy field alias
+  zipCode?: string;
   country?: string;
   tax_id?: string;
   notes?: string;

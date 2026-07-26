@@ -1,11 +1,11 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { ArrowLeft, Download, Save, Calendar } from 'lucide-react';
 import { authenticatedFetch } from '@/utils/api';
 import { themeClasses, getButtonClasses } from '@/utils/themeUtils.util';
 import { formatDateRangeSync } from '@/utils/formatting';
 import { FormattedCurrency } from '@/components/ui/FormattedCurrency';
-import { ClientReportData, ClientReportProps, ReportDateRange } from '@/types';
+import { type ClientReportData, type ClientReportProps, type ReportDateRange } from '@/types';
 
 export const ClientReport: React.FC<ClientReportProps> = ({ onBack, onSave }) => {
   const [reportData, setReportData] = useState<ClientReportData | null>(null);
@@ -16,11 +16,7 @@ export const ClientReport: React.FC<ClientReportProps> = ({ onBack, onSave }) =>
     preset: 'this-month'
   });
 
-  useEffect(() => {
-    generateReportData();
-  }, [dateRange.start, dateRange.end]);
-
-  const generateReportData = async () => {
+  const generateReportData = useCallback(async () => {
     setLoading(true);
     try {
       const response = await authenticatedFetch('/api/reports/generate/client', {
@@ -41,7 +37,11 @@ export const ClientReport: React.FC<ClientReportProps> = ({ onBack, onSave }) =>
     } finally {
       setLoading(false);
     }
-  };
+  }, [dateRange.start, dateRange.end]);
+
+  useEffect(() => {
+    generateReportData();
+  }, [generateReportData]);
 
   const handleDatePresetChange = (preset: ReportDateRange['preset']) => {
     const today = new Date();

@@ -13,7 +13,7 @@ export interface DatabaseOptions {
   readonly?: boolean;
   fileMustExist?: boolean;
   timeout?: number;
-  verbose?: ((message?: any, ...additionalArgs: any[]) => void) | undefined;
+  verbose?: ((message?: unknown, ...additionalArgs: unknown[]) => void) | undefined;
 }
 
 // Query result interfaces
@@ -22,7 +22,7 @@ export interface QueryResult {
   lastInsertRowid: number;
 }
 
-export interface SelectResult<T = any> {
+export interface SelectResult<T = Record<string, unknown>> {
   data: T[];
   total?: number;
 }
@@ -40,7 +40,7 @@ export interface SortOptions {
 }
 
 export interface FilterOptions {
-  [key: string]: any;
+  [key: string]: SQLParameter | undefined;
 }
 
 export interface QueryOptions extends PaginationOptions {
@@ -49,7 +49,7 @@ export interface QueryOptions extends PaginationOptions {
 }
 
 // Transaction interface
-export interface TransactionCallback<T = any> {
+export interface TransactionCallback<T = unknown> {
   (): T;
 }
 
@@ -61,10 +61,10 @@ export interface IDatabase {
   isConnected(): boolean;
   
   // Query execution
-  executeQuery(query: string, params?: any[]): QueryResult;
-  getOne<T = any>(query: string, params?: any[]): T | null;
-  getMany<T = any>(query: string, params?: any[]): T[];
-  getWithPagination<T = any>(query: string, params?: any[], options?: QueryOptions): SelectResult<T>;
+  executeQuery(query: string, params?: unknown[]): QueryResult;
+  getOne<T = Record<string, unknown>>(query: string, params?: unknown[]): T | null;
+  getMany<T = Record<string, unknown>>(query: string, params?: unknown[]): T[];
+  getWithPagination<T = Record<string, unknown>>(query: string, params?: unknown[], options?: QueryOptions): SelectResult<T>;
   
   // Transaction support
   beginTransaction(): void;
@@ -80,7 +80,7 @@ export interface IDatabase {
   // Utility operations
   backup(path: string): void;
   vacuum(): void;
-  pragma(setting: string, value?: string | number): any;
+  pragma(setting: string, value?: string | number): unknown;
 }
 
 // Database service options
@@ -112,8 +112,18 @@ export interface IndexDefinition {
 // Seed data interface
 export interface SeedData {
   table: string;
-  data: Record<string, any>[];
+  data: Record<string, SQLParameter>[];
   truncate?: boolean;
+}
+
+// Row shape returned by `PRAGMA table_info(<table>)`
+export interface TableColumnInfo {
+  cid: number;
+  name: string;
+  type: string;
+  notnull: number;
+  dflt_value: string | null;
+  pk: number;
 }
 
 // SQL parameter types for query safety

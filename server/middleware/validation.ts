@@ -1,8 +1,8 @@
 // Validation middleware for Slimbooks
 // Handles input validation, sanitization, and validation rules
 
-import { Request, Response, NextFunction } from 'express';
-import { body, param, query, validationResult, ValidationChain } from 'express-validator';
+import { type Request, type Response, type NextFunction } from 'express';
+import { body, param, query, validationResult, type ValidationChain } from 'express-validator';
 import { validationConfig, serverConfig } from '../config/index.js';
 
 interface SQLSanitizeResult {
@@ -174,7 +174,7 @@ export const validationSets = {
     body('clientData.address').optional().trim().isLength({ max: 200 }).escape(),
     body('clientData.city').optional().trim().isLength({ max: 100 }).escape(),
     body('clientData.state').optional().trim().isLength({ max: 100 }).escape(),
-    body('clientData.zip').optional().trim().isLength({ max: 20 }).escape(),
+    body('clientData.zipCode').optional().trim().isLength({ max: 20 }).escape(),
     body('clientData.country').optional().trim().isLength({ max: 100 }).escape(),
     body('clientData.tax_id').optional().trim().isLength({ max: 50 }).escape(),
     body('clientData.notes').optional().trim().isLength({ max: 1000 }).escape(),
@@ -190,7 +190,7 @@ export const validationSets = {
     body('clientData.address').optional().trim().isLength({ max: 200 }).escape(),
     body('clientData.city').optional().trim().isLength({ max: 100 }).escape(),
     body('clientData.state').optional().trim().isLength({ max: 100 }).escape(),
-    body('clientData.zip').optional().trim().isLength({ max: 20 }).escape(),
+    body('clientData.zipCode').optional().trim().isLength({ max: 20 }).escape(),
     body('clientData.country').optional().trim().isLength({ max: 100 }).escape(),
     body('clientData.tax_id').optional().trim().isLength({ max: 50 }).escape(),
     body('clientData.notes').optional().trim().isLength({ max: 1000 }).escape(),

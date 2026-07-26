@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { 
   Plus, 
   Search, 
@@ -28,12 +28,12 @@ import {
   getButtonClasses, 
   getStatusColor 
 } from '@/utils/themeUtils.util';
-import { filterByDateRange, getDefaultDateRange, getDateRangeForPeriod } from '@/utils/data';
+import { filterByDateRange, getDateRangeForPeriod, type DateRangePeriod } from '@/utils/data';
 import { authenticatedFetch } from '@/utils/api';
 import { formatDateSync } from '@/components/ui/FormattedDate';
 import { FormattedCurrency } from '@/components/ui/FormattedCurrency';
-import { Payment } from '@/types';
-import { TimePeriod, DateRange } from '@/types';
+import { type Payment } from '@/types';
+import { type DateRange } from '@/types';
 
 export const PaymentManagement: React.FC = () => {
   const [uiState, setUiState] = useState({
@@ -48,7 +48,7 @@ export const PaymentManagement: React.FC = () => {
     searchTerm: '',
     methodFilter: 'all',
     statusFilter: 'all',
-    dateFilter: 'this-month' as TimePeriod,
+    dateFilter: 'this_month' as DateRangePeriod,
     customDateRange: undefined as DateRange | undefined
   });
 
@@ -62,17 +62,13 @@ export const PaymentManagement: React.FC = () => {
 
   const [payments, setPayments] = useState<Payment[]>([]);
 
-  const updateUiState = (updates: Partial<typeof uiState>) =>
-    setUiState(prev => ({ ...prev, ...updates }));
+  const updateUiState = useCallback((updates: Partial<typeof uiState>) =>
+    setUiState(prev => ({ ...prev, ...updates })), []);
 
-  const updateFilters = (updates: Partial<typeof filters>) =>
-    setFilters(prev => ({ ...prev, ...updates }));
+  const updateFilters = useCallback((updates: Partial<typeof filters>) =>
+    setFilters(prev => ({ ...prev, ...updates })), []);
 
-  useEffect(() => {
-    loadPayments();
-  }, []);
-
-  const loadPayments = async () => {
+  const loadPayments = useCallback(async () => {
     try {
       updateUiState({ loading: true });
       const response = await authenticatedFetch('/api/payments');
@@ -84,13 +80,17 @@ export const PaymentManagement: React.FC = () => {
       } else {
         throw new Error(data.message || 'Failed to load payments');
       }
-    } catch (error) {
+    } catch {
       toast.error('Failed to load payments');
       setPayments([]);
     } finally {
       updateUiState({ loading: false });
     }
-  };
+  }, [updateUiState]);
+
+  useEffect(() => {
+    loadPayments();
+  }, [loadPayments]);
 
   const filteredPayments = payments.filter(payment => {
     if (!payment) return false;
@@ -133,7 +133,7 @@ export const PaymentManagement: React.FC = () => {
   const pendingCount = dateFilteredPayments.filter(p => p.status === 'pending').length;
   const failedCount = dateFilteredPayments.filter(p => p.status === 'failed').length;
 
-  const handleDateFilterChange = (period: TimePeriod, customRange?: DateRange) => {
+  const handleDateFilterChange = (period: DateRangePeriod, customRange?: DateRange) => {
     updateFilters({ dateFilter: period, customDateRange: customRange });
   };
 
@@ -175,7 +175,7 @@ export const PaymentManagement: React.FC = () => {
       } else {
         throw new Error(data.message || 'Failed to save payment');
       }
-    } catch (error) {
+    } catch {
       toast.error('Failed to save payment');
     }
   };
@@ -194,7 +194,7 @@ export const PaymentManagement: React.FC = () => {
       } else {
         throw new Error(data.message || 'Failed to delete payment');
       }
-    } catch (error) {
+    } catch {
       toast.error('Failed to delete payment');
     }
   };
@@ -217,7 +217,7 @@ export const PaymentManagement: React.FC = () => {
       } else {
         throw new Error(data.message || 'Failed to delete payments');
       }
-    } catch (error) {
+    } catch {
       toast.error('Failed to delete payments');
     }
   };
@@ -237,7 +237,7 @@ export const PaymentManagement: React.FC = () => {
       await Promise.all(updatePromises);
       toast.success(`${paymentIds.length} payments updated to "${status}"`);
       await loadPayments();
-    } catch (error) {
+    } catch {
       toast.error('Failed to update payment status');
     }
   };
@@ -257,7 +257,7 @@ export const PaymentManagement: React.FC = () => {
       await Promise.all(updatePromises);
       toast.success(`${paymentIds.length} payments updated to "${method}"`);
       await loadPayments();
-    } catch (error) {
+    } catch {
       toast.error('Failed to update payment method');
     }
   };
@@ -540,7 +540,7 @@ export const PaymentManagement: React.FC = () => {
               <CreditCard className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
               <h3 className="text-lg font-medium text-foreground mb-2">No payments found</h3>
               <p className="text-muted-foreground mb-4">
-                {filters.searchTerm || filters.methodFilter !== 'all' || filters.statusFilter !== 'all' || filters.dateFilter !== 'this-month'
+                {filters.searchTerm || filters.methodFilter !== 'all' || filters.statusFilter !== 'all' || filters.dateFilter !== 'this_month'
                   ? 'Try adjusting your search or filters'
                   : 'Add your first payment to get started'
                 }

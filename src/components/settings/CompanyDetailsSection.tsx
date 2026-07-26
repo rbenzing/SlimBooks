@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { themeClasses } from '@/utils/themeUtils.util';
-import { CompanySettings } from '@/types';
+import { type CompanySettings } from '@/types';
 
 interface CompanyDetailsSectionProps {
   settings: CompanySettings;

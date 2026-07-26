@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { sqliteService } from '@/services/sqlite.svc';
-import { ProjectSettings } from '@/types';
+import { type ProjectSettings } from '@/types';
 
 export const useProjectSettings = () => {
   const [settings, setSettings] = useState<ProjectSettings | null>(null);
@@ -18,7 +18,7 @@ export const useProjectSettings = () => {
         
         // Type-safe conversion from database result to ProjectSettings
         if (projectSettings && typeof projectSettings === 'object') {
-          const typedSettings = projectSettings as Record<string, any>;
+          const typedSettings = projectSettings as Partial<ProjectSettings>;
           const convertedSettings: ProjectSettings = {
             google_oauth: {
               enabled: Boolean(typedSettings.google_oauth?.enabled),
@@ -93,7 +93,7 @@ export const useProjectSettings = () => {
       
       // Type-safe conversion from database result to ProjectSettings
       if (projectSettings && typeof projectSettings === 'object') {
-        const typedSettings = projectSettings as Record<string, any>;
+        const typedSettings = projectSettings as Partial<ProjectSettings>;
         const convertedSettings: ProjectSettings = {
           google_oauth: {
             enabled: Boolean(typedSettings.google_oauth?.enabled),

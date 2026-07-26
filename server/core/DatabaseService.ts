@@ -216,20 +216,6 @@ export class DatabaseService {
   }
 
   /**
-   * Get the next ID for a table (legacy method for compatibility)
-   */
-  public getNextId(table: string): number {
-    return this.getNextSequence(table);
-  }
-
-  /**
-   * Update a record by ID (legacy method for compatibility)
-   */
-  public updateById(table: string, id: number, data: Record<string, unknown>): boolean {
-    return this.updateRecord(table, id, data);
-  }
-
-  /**
    * Delete a record by ID (hard delete by default)
    * Use softDelete() method explicitly if soft delete is needed
    */
@@ -271,5 +257,5 @@ export class DatabaseService {
   }
 }
 
-// Export singleton instance for backward compatibility
+// Shared instance used by every service.
 export const databaseService = new DatabaseService();

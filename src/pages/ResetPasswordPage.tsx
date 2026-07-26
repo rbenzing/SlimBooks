@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams, Link, useNavigate } from 'react-router-dom';
-import { Lock, Eye, EyeOff, CheckCircle, AlertCircle, ArrowLeft, Check, X } from 'lucide-react';
+import { Lock, Eye, EyeOff, CheckCircle, AlertCircle, ArrowLeft } from 'lucide-react';
 import { AuthUtils } from '@/utils/api';
 import { DEFAULT_PASSWORD_REQUIREMENTS } from '@/types';
 
@@ -136,14 +136,6 @@ export const ResetPasswordPage: React.FC = () => {
       case 'strong': return 'text-green-500';
       default: return 'text-gray-500';
     }
-  };
-
-  const getPasswordRequirementIcon = (met: boolean) => {
-    return met ? (
-      <Check className="h-3 w-3 text-green-500" />
-    ) : (
-      <X className="h-3 w-3 text-red-500" />
-    );
   };
 
   if (tokenValid === false) {

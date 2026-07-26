@@ -156,6 +156,35 @@ export const formatDateRange = async (
   return `${start} - ${end}`;
 };
 
+/**
+ * Narrows a date to the `yyyy-MM-dd` value an `<input type="date">` accepts.
+ * The API stores dates as full ISO-8601 timestamps, which the control rejects
+ * silently and renders as blank. Returns '' when there is nothing to show, so
+ * an absent date never becomes a fabricated one.
+ */
+export const toDateInputValue = (date: Date | string | null | undefined): string => {
+  if (!date) {
+    return '';
+  }
+
+  if (typeof date === 'string') {
+    // Take the calendar portion verbatim so the day never shifts by timezone.
+    const isoDate = /^(\d{4}-\d{2}-\d{2})/.exec(date);
+    if (isoDate) {
+      return isoDate[1];
+    }
+  }
+
+  const dateObj = typeof date === 'string' ? new Date(date) : date;
+  if (isNaN(dateObj.getTime())) {
+    return '';
+  }
+
+  const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+  const day = String(dateObj.getDate()).padStart(2, '0');
+  return `${dateObj.getFullYear()}-${month}-${day}`;
+};
+
 export const formatDateSync = (date: Date | string | null | undefined): string => {
   if (!date) {
     return 'Invalid Date';

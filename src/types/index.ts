@@ -29,6 +29,10 @@ export * from './domain/reports.types';
 export {
   PaymentStatus,
   PaymentMethod,
+  PAYMENT_METHODS,
+  PAYMENT_STATUSES,
+  ExpenseStatus,
+  EXPENSE_STATUSES,
   InvoiceStatus,
   UserRole,
   AppTheme,
@@ -58,6 +62,7 @@ export * from './shared/common.types';
 export * from './components/settings.types';
 export * from './components/invoice.types';
 export * from './components/client.types';
+export * from './components/expense.types';
 export * from './components/ui.types';
 export * from './components/layout.types';
 export * from './components/report.types';

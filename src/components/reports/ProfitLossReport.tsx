@@ -1,12 +1,12 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { ArrowLeft, Download, TrendingUp, TrendingDown, Save, Calendar } from 'lucide-react';
 import { authenticatedFetch } from '@/utils/api';
 import { themeClasses, getButtonClasses } from '@/utils/themeUtils.util';
 import { formatDateRangeSync } from '@/utils/formatting';
 import { FormattedCurrency, useCurrencyFormatter } from '@/components/ui/FormattedCurrency';
 import { pdfService } from '@/services/pdf.svc';
-import { ProfitLossReportProps, ProfitLossReportData, ReportDateRange, AccountingMethod, BreakdownPeriod } from '@/types';
+import { type ProfitLossReportProps, type ProfitLossReportData, type ReportDateRange, type AccountingMethod, type BreakdownPeriod } from '@/types';
 
 export const ProfitLossReport: React.FC<ProfitLossReportProps> = ({ onBack, onSave }) => {
   const [reportData, setReportData] = useState<ProfitLossReportData | null>(null);
@@ -26,11 +26,7 @@ export const ProfitLossReport: React.FC<ProfitLossReportProps> = ({ onBack, onSa
 
   const { formatAmountSync } = useCurrencyFormatter();
 
-  useEffect(() => {
-    generateReportData();
-  }, [dateRange.start, dateRange.end, accountingMethod, breakdownPeriod]);
-
-  const generateReportData = async () => {
+  const generateReportData = useCallback(async () => {
     setLoading(true);
     try {
       const response = await authenticatedFetch('/api/reports/generate/profit-loss', {
@@ -54,7 +50,11 @@ export const ProfitLossReport: React.FC<ProfitLossReportProps> = ({ onBack, onSa
     } finally {
       setLoading(false);
     }
-  };
+  }, [dateRange.start, dateRange.end, dateRange.preset, accountingMethod, breakdownPeriod]);
+
+  useEffect(() => {
+    generateReportData();
+  }, [generateReportData]);
 
   const handleDatePresetChange = (preset: ReportDateRange['preset']) => {
     const today = new Date();
@@ -330,7 +330,7 @@ export const ProfitLossReport: React.FC<ProfitLossReportProps> = ({ onBack, onSa
                   <thead>
                     <tr className="border-b-2 border-blue-600">
                       <th className="text-left py-3 px-2 min-w-[200px]"></th>
-                      {reportData.hasBreakdown && reportData.periodColumns?.map((period: any, index: number) => (
+                      {reportData.hasBreakdown && reportData.periodColumns?.map((period, index) => (
                         <th key={index} className="text-center py-3 px-2 font-medium text-blue-600 dark:text-blue-400 min-w-[80px]">
                           {period.label}
                         </th>
@@ -348,7 +348,7 @@ export const ProfitLossReport: React.FC<ProfitLossReportProps> = ({ onBack, onSa
                     </tr>
                     <tr>
                       <td className="py-1 px-2 pl-4 text-gray-700 dark:text-gray-300">Sales</td>
-                      {reportData.hasBreakdown && reportData.periodColumns?.map((period: any, index: number) => (
+                      {reportData.hasBreakdown && reportData.periodColumns?.map((period, index) => (
                         <td key={index} className="py-1 px-2 text-right text-gray-900 dark:text-gray-100">
                           {formatAmountSync(period.revenue)}
                         </td>
@@ -359,7 +359,7 @@ export const ProfitLossReport: React.FC<ProfitLossReportProps> = ({ onBack, onSa
                     </tr>
                     <tr>
                       <td className="py-1 px-2 pl-8 text-gray-600 dark:text-gray-400">Invoice</td>
-                      {reportData.hasBreakdown && reportData.periodColumns?.map((period: any, index: number) => (
+                      {reportData.hasBreakdown && reportData.periodColumns?.map((period, index) => (
                         <td key={index} className="py-1 px-2 text-right text-gray-700 dark:text-gray-300">
                           {formatAmountSync(period.revenue)}
                         </td>
@@ -372,7 +372,7 @@ export const ProfitLossReport: React.FC<ProfitLossReportProps> = ({ onBack, onSa
                     {/* Cost of Goods Sold - placeholder row */}
                     <tr>
                       <td className="py-1 px-2 pl-4 text-gray-600 dark:text-gray-400">🧾 Cost of Goods Sold</td>
-                      {reportData.hasBreakdown && reportData.periodColumns?.map((period: any, index: number) => (
+                      {reportData.hasBreakdown && reportData.periodColumns?.map((period, index) => (
                         <td key={index} className="py-1 px-2 text-right text-gray-700 dark:text-gray-300">
                           {formatAmountSync(0)}
                         </td>
@@ -385,7 +385,7 @@ export const ProfitLossReport: React.FC<ProfitLossReportProps> = ({ onBack, onSa
                     {/* Gross Profit */}
                     <tr className="font-semibold">
                       <td className="py-2 px-2 font-bold text-gray-900 dark:text-gray-100">Gross Profit</td>
-                      {reportData.hasBreakdown && reportData.periodColumns?.map((period: any, index: number) => (
+                      {reportData.hasBreakdown && reportData.periodColumns?.map((period, index) => (
                         <td key={index} className={`py-2 px-2 text-right font-semibold ${
                           period.revenue >= 0 ? 'text-gray-900 dark:text-gray-100' : 'text-red-600 dark:text-red-400'
                         }`}>
@@ -402,7 +402,7 @@ export const ProfitLossReport: React.FC<ProfitLossReportProps> = ({ onBack, onSa
                     {/* Gross Margin */}
                     <tr>
                       <td className="py-1 px-2 text-green-600 dark:text-green-400">Gross Margin</td>
-                      {reportData.hasBreakdown && reportData.periodColumns?.map((period: any, index: number) => (
+                      {reportData.hasBreakdown && reportData.periodColumns?.map((period, index) => (
                         <td key={index} className="py-1 px-2 text-right text-green-600 dark:text-green-400">
                           {period.revenue > 0 ? '100.00%' : '0.00%'}
                         </td>
@@ -448,7 +448,7 @@ export const ProfitLossReport: React.FC<ProfitLossReportProps> = ({ onBack, onSa
                               {category}
                             </span>
                           </td>
-                          {reportData.hasBreakdown && reportData.periodColumns?.map((period: any, index: number) => (
+                          {reportData.hasBreakdown && reportData.periodColumns?.map((period, index) => (
                             <td key={index} className="py-1 px-2 text-right text-gray-900 dark:text-gray-100">
                               {formatAmountSync(period.expensesByCategory[category] || 0)}
                             </td>
@@ -463,7 +463,7 @@ export const ProfitLossReport: React.FC<ProfitLossReportProps> = ({ onBack, onSa
                     {/* Total Expenses */}
                     <tr className="font-semibold border-t border-gray-300 dark:border-gray-600">
                       <td className="py-2 px-2 font-bold text-gray-900 dark:text-gray-100">Total Expenses</td>
-                      {reportData.hasBreakdown && reportData.periodColumns?.map((period: any, index: number) => (
+                      {reportData.hasBreakdown && reportData.periodColumns?.map((period, index) => (
                         <td key={index} className="py-2 px-2 text-right font-semibold text-gray-900 dark:text-gray-100">
                           {formatAmountSync(period.expenses)}
                         </td>
@@ -476,7 +476,7 @@ export const ProfitLossReport: React.FC<ProfitLossReportProps> = ({ onBack, onSa
                     {/* Net Profit */}
                     <tr className="border-t-2 border-gray-400 dark:border-gray-500 font-bold">
                       <td className="py-3 px-2 font-bold text-gray-900 dark:text-gray-100">Net Profit</td>
-                      {reportData.hasBreakdown && reportData.periodColumns?.map((period: any, index: number) => (
+                      {reportData.hasBreakdown && reportData.periodColumns?.map((period, index) => (
                         <td key={index} className={`py-3 px-2 text-right font-bold ${
                           period.netIncome >= 0 
                             ? 'text-green-700 dark:text-green-400' 

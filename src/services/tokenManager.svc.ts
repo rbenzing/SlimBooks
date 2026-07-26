@@ -1,5 +1,15 @@
 // Activity-aware token expiry monitoring service with smart session management
 import { log, warn } from '@/utils/logger.util';
+import {
+  getRefreshToken,
+  getToken,
+  getTokenPayload,
+  getTokenPersistence,
+  isAuthenticated,
+  setRefreshToken,
+  setToken
+} from '@/utils/api/auth.util';
+
 export class TokenManagerService {
   private static instance: TokenManagerService;
   private checkInterval: NodeJS.Timeout | null = null;
@@ -77,13 +87,13 @@ export class TokenManagerService {
    * Activity-aware token expiry check
    */
   private checkTokenExpiry() {
-    const token = this.getCurrentToken();
+    const token = getToken();
     if (!token) {
       return; // No token to check
     }
 
     // Simple JWT payload decode without verification
-    const payload = this.decodeJWTPayload(token);
+    const payload = getTokenPayload(token);
     if (!payload || !payload.exp) {
       warn('Invalid token format - no expiry found');
       return;
@@ -123,29 +133,6 @@ export class TokenManagerService {
   }
 
   /**
-   * Simple JWT payload decoder - no verification, just base64 decode
-   */
-  private decodeJWTPayload(token: string): { exp?: number; userId?: number } | null {
-    try {
-      const parts = token.split('.');
-      if (parts.length !== 3) {
-        return null;
-      }
-
-      // Decode the payload (second part)
-      const payload = parts[1];
-      // Add padding if needed for base64 decode
-      const paddedPayload = payload + '='.repeat((4 - payload.length % 4) % 4);
-      const decodedPayload = atob(paddedPayload);
-      
-      return JSON.parse(decodedPayload);
-    } catch (error) {
-      warn('Failed to decode JWT payload:', error);
-      return null;
-    }
-  }
-
-  /**
    * Handle token expiration - simple redirect
    */
   private handleTokenExpiration() {
@@ -181,20 +168,13 @@ export class TokenManagerService {
   }
 
   /**
-   * Get the current access token
-   */
-  private getCurrentToken(): string | null {
-    return localStorage.getItem('auth_token') || sessionStorage.getItem('auth_token');
-  }
-
-  /**
    * Get time until token expiration in milliseconds - simple version
    */
   getTimeUntilExpiry(): number | null {
-    const token = this.getCurrentToken();
+    const token = getToken();
     if (!token) return null;
 
-    const payload = this.decodeJWTPayload(token);
+    const payload = getTokenPayload(token);
     if (!payload || !payload.exp) return null;
 
     const now = Math.floor(Date.now() / 1000);
@@ -202,17 +182,10 @@ export class TokenManagerService {
   }
 
   /**
-   * Check if token is expired - simple version
+   * Check if the stored token is missing or expired
    */
   isTokenExpired(): boolean {
-    const token = this.getCurrentToken();
-    if (!token) return true;
-
-    const payload = this.decodeJWTPayload(token);
-    if (!payload || !payload.exp) return true;
-
-    const now = Math.floor(Date.now() / 1000);
-    return payload.exp <= now;
+    return !isAuthenticated();
   }
 
   /**
@@ -220,7 +193,7 @@ export class TokenManagerService {
    */
   async refreshToken(): Promise<boolean> {
     try {
-      const refreshToken = this.getRefreshToken();
+      const refreshToken = getRefreshToken();
       if (!refreshToken) {
         warn('No refresh token available');
         return false;
@@ -241,10 +214,11 @@ export class TokenManagerService {
 
       const result = await response.json();
       if (result.success && result.data?.token) {
-        // Update the access token
-        this.setToken(result.data.token);
+        // Rotate the tokens in place, honouring the original remember-me choice
+        const persistence = getTokenPersistence();
+        setToken(result.data.token, persistence);
         if (result.data.refreshToken) {
-          this.setRefreshToken(result.data.refreshToken);
+          setRefreshToken(result.data.refreshToken, persistence);
         }
         return true;
       }
@@ -253,37 +227,6 @@ export class TokenManagerService {
     } catch (error) {
       console.error('Error refreshing token:', error);
       return false;
-    }
-  }
-
-  /**
-   * Get the current refresh token
-   */
-  private getRefreshToken(): string | null {
-    return localStorage.getItem('refresh_token') || sessionStorage.getItem('refresh_token');
-  }
-
-  /**
-   * Set the access token
-   */
-  private setToken(token: string): void {
-    // Check where the current token is stored and update accordingly
-    if (localStorage.getItem('auth_token')) {
-      localStorage.setItem('auth_token', token);
-    } else if (sessionStorage.getItem('auth_token')) {
-      sessionStorage.setItem('auth_token', token);
-    }
-  }
-
-  /**
-   * Set the refresh token
-   */
-  private setRefreshToken(refreshToken: string): void {
-    // Check where the current refresh token is stored and update accordingly
-    if (localStorage.getItem('refresh_token')) {
-      localStorage.setItem('refresh_token', refreshToken);
-    } else if (sessionStorage.getItem('refresh_token')) {
-      sessionStorage.setItem('refresh_token', refreshToken);
     }
   }
 
@@ -398,12 +341,12 @@ export class TokenManagerService {
     isUserActive?: boolean;
     timeSinceActivity?: number;
   } {
-    const token = this.getCurrentToken();
+    const token = getToken();
     if (!token) {
       return { hasToken: false };
     }
 
-    const payload = this.decodeJWTPayload(token);
+    const payload = getTokenPayload(token);
     if (!payload || !payload.exp) {
       return { hasToken: true, isExpired: true };
     }

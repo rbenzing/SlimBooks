@@ -1,6 +1,6 @@
 /**
  * Expense CRUD Integration Tests
- * Tests the vendor field (NOT merchant) schema alignment
+ * Tests that the frontend is single-named on the `vendor` column
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
@@ -20,26 +20,25 @@ describe('Expense CRUD Operations', () => {
   });
 
   describe('CREATE - Expense', () => {
-    it('should create expense with vendor field (NOT merchant)', async () => {
+    it('should create expense with the vendor field', async () => {
       const newExpense = mockData.expense(1);
       mockFetchSuccess({ id: 1 });
 
       const response = await fetch('/api/expenses', {
         method: 'POST',
-        body: JSON.stringify({
-          expenseData: {
-            date: '2026-02-16',
-            vendor: 'Office Supplies Inc', // Correct field
-            amount: 150,
-            description: 'Test expense'
-          }
-        })
+        body: JSON.stringify({ expenseData: newExpense })
       });
 
       const result = await response.json();
 
       expect(result.success).toBe(true);
       expect(result.data.id).toBe(1);
+
+      // The payload must carry `vendor` — the column the expenses table uses.
+      const [, init] = vi.mocked(fetch).mock.calls[0];
+      const { expenseData } = JSON.parse(init!.body as string);
+      expect(expenseData).toHaveProperty('vendor');
+      expect(expenseData).not.toHaveProperty('merchant');
     });
 
     it('should validate expense amount', async () => {
@@ -118,11 +117,16 @@ describe('Expense CRUD Operations', () => {
   });
 
   describe('Expense Schema Validation', () => {
-    it('should use vendor field not merchant', () => {
+    it('should use the vendor field exclusively', () => {
       const expense = mockData.expense(1);
 
       expect(expense).toHaveProperty('vendor');
-      // Frontend might have merchant for compatibility, but database uses vendor
+      expect(expense).not.toHaveProperty('merchant');
+    });
+
+    it('should not treat a vendor-less object as an Expense', () => {
+      expect(isExpense({ id: 1, amount: 100, merchant: 'Acme' })).toBe(false);
+      expect(isExpense({ id: 1, amount: 100, vendor: 'Acme' })).toBe(true);
     });
 
     it('should not have status field in database', () => {

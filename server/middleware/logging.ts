@@ -1,7 +1,7 @@
 // Logging middleware for Slimbooks
 // Handles request logging, performance monitoring, and audit trails
 
-import { Request, Response, NextFunction } from 'express';
+import { type Request, type Response, type NextFunction } from 'express';
 import { loggingConfig } from '../config/index.js';
 
 interface RequestInfo {
@@ -77,9 +77,9 @@ export const requestLogger = (req: Request, res: Response, next: NextFunction): 
   };
   
   // Override res.send to capture response details
-  res.send = function(data: any): Response {
+  res.send = function(data: unknown): Response {
     const duration = Date.now() - start;
-    const responseSize = Buffer.isBuffer(data) ? data.length : Buffer.byteLength(data || '', 'utf8');
+    const responseSize = Buffer.isBuffer(data) ? data.length : Buffer.byteLength((data as string) || '', 'utf8');
     
     // Log request completion
     logRequest({
@@ -159,7 +159,7 @@ const formatBytes = (bytes: number): string => {
  * Logs security-related events
  */
 export const securityLogger = (event: string, details: Record<string, unknown> = {}): void => {
-  const logEntry: SecurityLogEntry = {
+  const _logEntry: SecurityLogEntry = {
     timestamp: new Date().toISOString(),
     event,
     details,
@@ -181,7 +181,7 @@ export const dbLogger = (operation: string, table: string, details: Record<strin
     return;
   }
   
-  const logEntry: DBLogEntry = {
+  const _logEntry: DBLogEntry = {
     timestamp: new Date().toISOString(),
     operation,
     table,
@@ -204,7 +204,7 @@ export const performanceMonitor = () => {
   };
   
   // Log metrics every 5 minutes
-  const intervalId = setInterval(() => {
+  setInterval(() => {
     if (metrics.requests > 0) {
       const avgDuration = metrics.totalDuration / metrics.requests;
       console.log(`📈 Performance metrics (5min): ${metrics.requests} requests, ` +
@@ -243,7 +243,7 @@ export const performanceMonitor = () => {
  * Logs user actions for audit trails
  */
 export const userActivityLogger = (action: string, userId: number, details: Record<string, unknown> = {}): void => {
-  const logEntry: UserActivityLogEntry = {
+  const _logEntry: UserActivityLogEntry = {
     timestamp: new Date().toISOString(),
     action,
     userId,
@@ -265,7 +265,7 @@ export const endpointTracker = () => {
   const endpointStats = new Map<string, number>();
   
   // Log endpoint usage every hour
-  const intervalId = setInterval(() => {
+  setInterval(() => {
     if (endpointStats.size > 0) {
       console.log('📊 Endpoint usage (1hr):');
       const sorted = Array.from(endpointStats.entries())
@@ -281,7 +281,7 @@ export const endpointTracker = () => {
   }, 60 * 60 * 1000);
   
   return (req: Request, res: Response, next: NextFunction): void => {
-    const endpoint = `${req.method} ${(req as any).route?.path || req.path}`;
+    const endpoint = `${req.method} ${req.route?.path || req.path}`;
     endpointStats.set(endpoint, (endpointStats.get(endpoint) || 0) + 1);
     next();
   };

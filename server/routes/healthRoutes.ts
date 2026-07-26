@@ -1,7 +1,7 @@
 // Health check routes for Slimbooks API
 // Provides system health and status information
 
-import { Router, Request, Response } from 'express';
+import { Router, type Request, type Response } from 'express';
 import { serverConfig } from '../config/index.js';
 
 const router: Router = Router();

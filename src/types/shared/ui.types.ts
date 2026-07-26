@@ -1,6 +1,6 @@
 // UI-specific types and interfaces
 
-import { ReactNode } from 'react';
+import { type ReactNode } from 'react';
 
 // Modal and Dialog types
 export interface ModalProps {
@@ -82,15 +82,8 @@ export interface TabsProps {
 }
 
 // Data display component types
-export interface StatCardProps {
-  title: string;
-  value: string | number;
-  change?: number;
-  trend?: 'up' | 'down' | 'flat';
-  color?: 'blue' | 'green' | 'red' | 'yellow' | 'purple' | 'orange';
-  icon?: ReactNode;
-  loading?: boolean;
-}
+// StatCardProps lives in `@/types/components/ui.types` — component props belong
+// under `components/`, and declaring it here too made the barrel ambiguous.
 
 // Chart component types
 export interface ChartDataPoint {
@@ -168,11 +161,7 @@ export interface LoadingState {
   retry?: () => void;
 }
 
-export interface ErrorBoundaryState {
-  hasError: boolean;
-  error?: Error;
-  errorInfo?: React.ErrorInfo;
-}
+// ErrorBoundaryState lives in `@/types/components/error.types`.
 
 // Theme types
 export interface ThemeColors {

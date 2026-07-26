@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { Upload, X, Loader2 } from 'lucide-react';
-import { CompanySettings } from '@/types';
+import { type CompanySettings } from '@/types';
 import { toast } from 'sonner';
 import { getToken } from '@/utils/api';
 

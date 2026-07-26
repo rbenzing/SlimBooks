@@ -151,21 +151,16 @@ export const getNextNumber = async (
   return generateNumber(settings, settings.startNumber, currentYear);
 };
 
-// Legacy invoice-specific functions for backward compatibility
-// Re-export constants for backward compatibility
-export { DEFAULT_INVOICE_NUMBER_SETTINGS };
-
-// Get current invoice number settings from SQLite (legacy function)
+// Get current invoice number settings from SQLite
 export const getInvoiceNumberSettings = async (): Promise<InvoiceNumberSettings> => {
   try {
-    // Try to access sqliteService if it's already available globally
-    if (typeof window !== 'undefined' && (window as unknown as { sqliteService?: { isReady(): boolean; getSetting(key: string): Promise<unknown> } }).sqliteService?.isReady()) {
-      const sqliteService = (window as unknown as { sqliteService: { getSetting(key: string): Promise<InvoiceNumberSettings | null> } }).sqliteService;
-      const settings = await sqliteService.getSetting('invoice_number_settings');
-      if (settings) {
-        return {
-          prefix: settings.prefix || DEFAULT_INVOICE_NUMBER_SETTINGS.prefix
-        };
+    if (sqliteService.isReady()) {
+      const settings = (await sqliteService.getSetting(
+        'invoice_number_settings'
+      )) as InvoiceNumberSettings | null;
+
+      if (settings?.prefix) {
+        return { prefix: settings.prefix };
       }
     }
   } catch (error) {
@@ -174,7 +169,7 @@ export const getInvoiceNumberSettings = async (): Promise<InvoiceNumberSettings>
   return DEFAULT_INVOICE_NUMBER_SETTINGS;
 };
 
-// Save invoice number settings to SQLite (legacy function)
+// Save invoice number settings to SQLite
 export const saveInvoiceNumberSettings = async (settings: InvoiceNumberSettings): Promise<void> => {
   try {
     await sqliteService.setSetting('invoice_number_settings', settings, 'invoice');

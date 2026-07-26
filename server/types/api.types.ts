@@ -3,17 +3,18 @@
 
 // Import types from the server types index
 import { 
-  User, 
-  UserPublic, 
-  Client, 
-  Invoice, 
-  Template, 
-  Expense, 
-  Payment, 
-  LineItem,
-  InvoiceStatus, 
-  PaymentMethod, 
-  PaymentStatus 
+  type User, 
+  type UserPublic, 
+  type Client, 
+  type Invoice, 
+  type Template, 
+  type Expense, 
+  type Payment, 
+  type LineItem,
+  type InvoiceWithClient,
+  type InvoiceStatus,
+  type PaymentMethod, 
+  type PaymentStatus 
 } from './index.js';
 
 // Authentication API types
@@ -264,7 +265,7 @@ export interface SearchResponse<T> {
 }
 
 // Bulk operations types
-export interface BulkOperationRequest<T = any> {
+export interface BulkOperationRequest<T = unknown> {
   operation: 'create' | 'update' | 'delete';
   items: T[];
 }
@@ -289,7 +290,7 @@ export interface ExportRequest {
   type: 'clients' | 'invoices' | 'expenses' | 'payments';
   date_from?: string;
   date_to?: string;
-  filters?: Record<string, any>;
+  filters?: Record<string, unknown>;
 }
 
 export interface ImportRequest {
@@ -442,6 +443,113 @@ export interface ExpenseRequest {
   is_billable: boolean | undefined;
   client_id: number | undefined;
   project?: string;
+}
+
+/**
+ * Generated Profit & Loss report payload
+ */
+export interface ProfitLossReportData {
+  revenue: {
+    total: number;
+    paid: number;
+    pending: number;
+    invoices: number;
+    otherIncome: number;
+  };
+  /** `total` plus one entry per expense category */
+  expenses: Record<string, number> & { total: number };
+  profit: {
+    net: number;
+    gross: number;
+    margin: number;
+  };
+  netIncome: number;
+  accountingMethod: 'cash' | 'accrual';
+  invoices: InvoiceWithClient[];
+  periodColumns: string[];
+  hasBreakdown: boolean;
+  breakdownPeriod: 'monthly' | 'quarterly';
+}
+
+/**
+ * Generated expense report payload
+ */
+export interface ExpenseReportData {
+  expenses: Expense[];
+  expensesByCategory: Record<string, number>;
+  totalAmount: number;
+  totalCount: number;
+}
+
+/**
+ * Generated invoice report payload
+ */
+export interface InvoiceReportData {
+  invoices: InvoiceWithClient[];
+  invoicesByStatus: Record<string, number>;
+  invoicesByClient: Record<string, number>;
+  totalAmount: number;
+  paidAmount: number;
+  pendingAmount: number;
+  overdueAmount: number;
+  totalCount: number;
+}
+
+/**
+ * Per-client revenue rollup used by the client report
+ */
+export interface ClientReportEntry extends Client {
+  totalInvoices: number;
+  totalRevenue: number;
+  paidRevenue: number;
+  pendingRevenue: number;
+  overdueRevenue: number;
+}
+
+/**
+ * Generated client report payload
+ */
+export interface ClientReportData {
+  clients: ClientReportEntry[];
+  totalClients: number;
+  totalRevenue: number;
+  totalPaidRevenue: number;
+  totalPendingRevenue: number;
+  totalOverdueRevenue: number;
+}
+
+/**
+ * Client data request interface
+ */
+export interface ClientRequest {
+  name: string;
+  first_name?: string;
+  last_name?: string;
+  email?: string;
+  phone?: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  zipCode?: string;
+  country?: string;
+  company?: string;
+  tax_id?: string;
+  notes?: string;
+}
+
+/**
+ * Bulk import request bodies
+ */
+export interface BulkImportClientsRequest {
+  clients?: ClientRequest[];
+}
+
+export interface BulkImportExpensesRequest {
+  expenses?: ExpenseRequest[];
+}
+
+export interface BulkImportPaymentsRequest {
+  payments?: PaymentRequest[];
 }
 
 // Express Request extensions

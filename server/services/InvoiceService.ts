@@ -4,8 +4,8 @@
 import jwt from 'jsonwebtoken';
 import { databaseService } from '../core/DatabaseService.js';
 import { authConfig } from '../config/index.js';
-import { ServiceOptions, InvoiceWithClient, InvoiceStatus } from '../types/index.js';
-import { PublicInvoiceDisplay, PublicInvoiceTokenPayload } from '../types/invoice.types.js';
+import { type ServiceOptions, type InvoiceWithClient, type InvoiceStatus } from '../types/index.js';
+import { type PublicInvoiceDisplay, type PublicInvoiceTokenPayload } from '../types/invoice.types.js';
 import { invoiceNumberService } from './InvoiceNumberService.js';
 
 /**
@@ -90,7 +90,7 @@ export class InvoiceService {
     return databaseService.getOne<InvoiceWithClient>(`
       SELECT i.*, c.name as client_name, c.email as client_email, c.company as client_company,
              c.address as client_address, c.city as client_city, c.state as client_state,
-             c.zip as client_zip, c.country as client_country, c.phone as client_phone
+             c.zipCode as client_zip, c.country as client_country, c.phone as client_phone
       FROM invoices i
       LEFT JOIN clients c ON i.client_id = c.id
       WHERE i.id = ?
@@ -146,7 +146,7 @@ export class InvoiceService {
         invoiceTemplate: invoiceTemplate?.value || 'modern-blue'
       };
 
-    } catch (error) {
+    } catch {
       throw new Error('Invalid or expired invoice link');
     }
   }
@@ -257,7 +257,7 @@ export class InvoiceService {
     }
 
     // Get next invoice ID
-    const nextId = databaseService.getNextId('invoices');
+    const nextId = databaseService.getNextSequence('invoices');
     
     // Prepare invoice data
     const now = new Date().toISOString();
@@ -403,7 +403,7 @@ export class InvoiceService {
       'email_status', 'email_sent_at', 'email_error', 'last_email_attempt'
     ];
     
-    const updateData: Record<string, any> = {};
+    const updateData: Record<string, unknown> = {};
     allowedFields.forEach(field => {
       if (invoiceData[field as keyof typeof invoiceData] !== undefined) {
         updateData[field] = invoiceData[field as keyof typeof invoiceData];
@@ -414,7 +414,7 @@ export class InvoiceService {
       throw new Error('No valid fields to update');
     }
 
-    const success = databaseService.updateById('invoices', id, updateData);
+    const success = databaseService.updateRecord('invoices', id, updateData);
     return success ? 1 : 0;
   }
 

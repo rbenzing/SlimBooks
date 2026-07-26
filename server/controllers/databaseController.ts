@@ -1,8 +1,7 @@
 // Database controller - handles database backup and restore operations
-import { Request, Response } from 'express';
-import { createReadStream, createWriteStream, existsSync, unlinkSync, statSync } from 'fs';
+import { type Request, type Response } from 'express';
+import { createReadStream, existsSync, unlinkSync, statSync } from 'fs';
 import { copyFile } from 'fs/promises';
-import path from 'path';
 import multer from 'multer';
 import { getDatabasePath } from '../config/database.js';
 import { closeDatabase, initializeDatabase } from '../database/index.js';

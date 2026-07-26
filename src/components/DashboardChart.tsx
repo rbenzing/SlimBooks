@@ -2,7 +2,7 @@
 import React from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { themeClasses } from '@/utils/themeUtils.util';
-import { Invoice, TimePeriod } from '@/types';
+import { type Invoice, type TimePeriod } from '@/types';
 
 interface DashboardChartProps {
   invoices: Invoice[];
@@ -14,8 +14,6 @@ const DashboardChart: React.FC<DashboardChartProps> = ({ invoices, title = "Reve
 
   // Generate chart data based on selected time period
   const generateChartData = () => {
-    const currentDate = new Date();
-
     switch (selectedPeriod) {
       case 'last-week':
         return generateWeeklyData();

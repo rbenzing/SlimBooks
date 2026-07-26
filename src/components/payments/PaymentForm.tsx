@@ -3,8 +3,8 @@ import { ArrowLeft, Search, X } from 'lucide-react';
 import { useFormNavigation } from '@/hooks/useFormNavigation';
 import { themeClasses, getButtonClasses } from '@/utils/themeUtils.util';
 import { authenticatedFetch } from '@/utils/api';
-import { Payment, PaymentFormProps } from '@/types';
-import { Invoice } from '@/types';
+import { type Payment, type PaymentFormProps } from '@/types';
+import { type Invoice } from '@/types';
 
 export const PaymentForm: React.FC<PaymentFormProps> = ({ 
   payment, 
@@ -28,7 +28,7 @@ export const PaymentForm: React.FC<PaymentFormProps> = ({
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [showInvoiceSearch, setShowInvoiceSearch] = useState(false);
   const [invoiceSearchTerm, setInvoiceSearchTerm] = useState('');
-  const [originalFormData, setOriginalFormData] = useState<any>(null);
+  const [originalFormData, setOriginalFormData] = useState<typeof formData | null>(null);
   const [loadingInvoices, setLoadingInvoices] = useState(false);
 
   // Track if form has been modified

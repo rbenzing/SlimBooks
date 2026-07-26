@@ -2,7 +2,7 @@
 // Handles all client-related business logic and database operations
 
 import { databaseService } from '../core/DatabaseService.js';
-import { Client, ServiceOptions } from '../types/index.js';
+import { type Client, type ServiceOptions } from '../types/index.js';
 
 /**
  * Client Service
@@ -78,7 +78,7 @@ export class ClientService {
     }
 
     // Get next client ID
-    const nextId = databaseService.getNextId('clients');
+    const nextId = databaseService.getNextSequence('clients');
     
     // Prepare client data
     const now = new Date().toISOString();
@@ -105,7 +105,7 @@ export class ClientService {
     databaseService.executeQuery(`
       INSERT INTO clients (
         id, name, first_name, last_name, email, phone, company, address, city, state,
-        zip, country, stripe_customer_id, created_at, updated_at
+        zipCode, country, stripe_customer_id, created_at, updated_at
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `, [
       clientRecord.id, clientRecord.name, clientRecord.first_name, clientRecord.last_name,
@@ -168,10 +168,10 @@ export class ClientService {
     // Filter allowed fields
     const allowedFields = [
       'name', 'first_name', 'last_name', 'email', 'phone', 'company', 'address', 'city', 'state',
-      'zip', 'country', 'stripe_customer_id'
+      'zipCode', 'country', 'stripe_customer_id'
     ];
     
-    const updateData: Record<string, any> = {};
+    const updateData: Record<string, unknown> = {};
     allowedFields.forEach(field => {
       if (clientData[field as keyof typeof clientData] !== undefined) {
         const value = clientData[field as keyof typeof clientData];
@@ -184,7 +184,7 @@ export class ClientService {
       throw new Error('No valid fields to update');
     }
 
-    const success = databaseService.updateById('clients', id, updateData);
+    const success = databaseService.updateRecord('clients', id, updateData);
     return success ? 1 : 0;
   }
 
@@ -265,7 +265,7 @@ export class ClientService {
   /**
    * Archive/Unarchive client
    */
-  async toggleClientStatus(id: number, isActive: boolean): Promise<number> {
+  async toggleClientStatus(_id: number, _isActive: boolean): Promise<number> {
     // This function is kept for API compatibility but doesn't do anything
     // since we removed is_active column. Returns success.
     return 1;

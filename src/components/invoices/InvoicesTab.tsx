@@ -8,24 +8,24 @@ import { PaginationControls } from '../ui/PaginationControls';
 import { DateRangeFilter } from '../ui/DateRangeFilter';
 import { usePagination } from '@/hooks/usePagination';
 import { getStatusColor } from '@/utils/themeUtils.util';
-import { filterByDateRange, getDateRangeForPeriod } from '@/utils/data';
+import { filterByDateRange, getDateRangeForPeriod, type DateRangePeriod } from '@/utils/data';
 import { formatDateSync } from '@/components/ui/FormattedDate';
 import { FormattedCurrency } from '@/components/ui/FormattedCurrency';
 import { createPaymentForInvoice } from '@/utils/payment.util';
 import { toast } from 'sonner';
-import { TimePeriod, DateRange, Invoice, InvoiceFormData } from '@/types';
+import { type DateRange, type Invoice, type InvoiceFormData } from '@/types';
 
 export const InvoicesTab = () => {
   const navigate = useNavigate();
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [isFormOpen, setIsFormOpen] = useState(false);
-  const [editingInvoice, setEditingInvoice] = useState<any>(null);
-  const [viewingInvoice, setViewingInvoice] = useState<any>(null);
+  const [editingInvoice, setEditingInvoice] = useState<Invoice | null>(null);
+  const [viewingInvoice, setViewingInvoice] = useState<Invoice | null>(null);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [clientFilter, setClientFilter] = useState('all');
-  const [dateFilter, setDateFilter] = useState<TimePeriod>('this-month');
+  const [dateFilter, setDateFilter] = useState<DateRangePeriod>('this_month');
   const [customDateRange, setCustomDateRange] = useState<DateRange | undefined>(undefined);
   const [viewMode, setViewMode] = useState<'panel' | 'table'>('panel');
 
@@ -87,7 +87,7 @@ export const InvoicesTab = () => {
     .filter(invoice => invoice.status === 'sent')
     .reduce((sum, invoice) => sum + invoice.amount, 0);
 
-  const handleDateFilterChange = (period: TimePeriod, customRange?: DateRange) => {
+  const handleDateFilterChange = (period: DateRangePeriod, customRange?: DateRange) => {
     setDateFilter(period);
     setCustomDateRange(customRange);
   };
@@ -444,12 +444,12 @@ export const InvoicesTab = () => {
           <DollarSign className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
           <h3 className="text-lg font-medium text-foreground mb-2">No invoices found</h3>
           <p className="text-muted-foreground mb-4">
-            {searchTerm || statusFilter !== 'all' || clientFilter !== 'all' || dateFilter !== 'this-month'
+            {searchTerm || statusFilter !== 'all' || clientFilter !== 'all' || dateFilter !== 'this_month'
               ? 'Try adjusting your search or filters'
               : 'Create your first invoice to get started'
             }
           </p>
-          {!searchTerm && statusFilter === 'all' && clientFilter === 'all' && dateFilter === 'this-month' && (
+          {!searchTerm && statusFilter === 'all' && clientFilter === 'all' && dateFilter === 'this_month' && (
             <button
               onClick={handleCreateNew}
               className="inline-flex items-center px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90"
@@ -461,7 +461,7 @@ export const InvoicesTab = () => {
         </div>
       )}
 
-      {/* Keep existing InvoiceForm for backward compatibility */}
+      {/* Quick-create modal; the full editor lives at /invoices/edit/:id */}
       <InvoiceForm
         isOpen={isFormOpen}
         onClose={() => {

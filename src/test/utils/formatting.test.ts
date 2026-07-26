@@ -3,13 +3,12 @@
  * Tests currency, date, and text formatting functions
  */
 
-import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import {
   formatCurrencySync,
   formatDateSync,
   formatClientAddressSingleLine
 } from '@/utils/formatting';
-import type { Client } from '@/types';
 
 describe('Currency Formatting', () => {
   describe('formatCurrencySync', () => {

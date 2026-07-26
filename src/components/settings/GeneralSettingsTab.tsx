@@ -1,11 +1,10 @@
 
-import React, { useState, useEffect, forwardRef, useImperativeHandle } from 'react';
+import React, { useState, useEffect, useCallback, forwardRef, useImperativeHandle } from 'react';
 import { toast } from 'sonner';
 import { Calendar, Clock, FileText, DollarSign, List } from 'lucide-react';
 import { themeClasses } from '@/utils/themeUtils.util';
 import {
   getDateTimeSettings,
-  saveDateTimeSettings,
   DATE_FORMAT_OPTIONS,
   TIME_FORMAT_OPTIONS,
   getDateFormatPreview,
@@ -13,13 +12,11 @@ import {
 } from '@/utils/formatting';
 import {
   getInvoiceNumberSettings,
-  saveInvoiceNumberSettings,
   getInvoiceNumberPreview,
   getSuggestedPrefixes
 } from '@/utils/business/numbering.util';
 import {
   getCurrencySettings,
-  saveCurrencySettings,
   CURRENCY_OPTIONS,
   SYMBOL_POSITION_OPTIONS,
   DECIMAL_PLACES_OPTIONS,
@@ -27,18 +24,17 @@ import {
   DECIMAL_SEPARATOR_OPTIONS,
   getCurrencyFormatPreview
 } from '@/utils/formatting';
+import { getPaginationSettingsAsync } from '@/utils/pagination.util';
 import {
-  getPaginationSettingsAsync,
-  savePaginationSettings,
   DEFAULT_ITEMS_PER_PAGE_OPTIONS,
   MAX_ITEMS_PER_PAGE_OPTIONS,
   AVAILABLE_PAGE_SIZES_OPTIONS,
   MAX_PAGE_NUMBERS_OPTIONS
-} from '@/utils/pagination.util';
+} from '@/types';
 import { validatePaginationSettings } from '@/utils/settingsValidation';
 import { getToken } from '@/utils/api';
 import type { DateTimeSettings, InvoiceNumberSettings, PaginationSettings, CurrencySettings } from '@/types';
-import type { SettingsTabRef } from '../Settings';
+import type { SettingsTabRef } from '@/types';
 
 export const GeneralSettingsTab = forwardRef<SettingsTabRef>((props, ref) => {
   const [dateTimeSettings, setDateTimeSettings] = useState<DateTimeSettings>({ dateFormat: 'MM/DD/YYYY', timeFormat: '12-hour' });
@@ -121,7 +117,7 @@ export const GeneralSettingsTab = forwardRef<SettingsTabRef>((props, ref) => {
   }, []);
 
   // Manual save function for Save button
-  const saveSettings = async () => {
+  const saveSettings = useCallback(async () => {
     if (!isLoaded) return;
 
     try {
@@ -158,19 +154,10 @@ export const GeneralSettingsTab = forwardRef<SettingsTabRef>((props, ref) => {
       toast.error(`Failed to save general settings: ${error.message}`);
       throw error;
     }
-  };
+  }, [isLoaded, dateTimeSettings, invoiceSettings, currencySettings, paginationSettings, timeZone]);
 
   // Expose saveSettings method to parent component
-  useImperativeHandle(ref, () => ({
-    saveSettings: async () => {
-      try {
-        await saveSettings();
-      } catch (error) {
-        console.error('Error saving general settings:', error);
-        throw error;
-      }
-    }
-  }), [dateTimeSettings, invoiceSettings, currencySettings, paginationSettings, timeZone]);
+  useImperativeHandle(ref, () => ({ saveSettings }), [saveSettings]);
 
 
   const handleDateFormatChange = (format: string) => {

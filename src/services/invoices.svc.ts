@@ -7,12 +7,12 @@ import { sqliteService } from './sqlite.svc';
 import { formatClientAddressSingleLine } from '@/utils/formatting';
 import { authenticatedFetch, getToken } from '@/utils/api';
 import {
-  InvoiceEmailData,
-  CompanySettings,
-  EmailStatus,
-  EmailStatusUpdate,
-  ScheduledInvoice,
-  Invoice
+  type InvoiceEmailData,
+  type CompanySettings,
+  type EmailStatus,
+  type EmailStatusUpdate,
+  type ScheduledInvoice,
+  type Invoice
 } from '@/types';
 
 export class InvoiceService {
@@ -589,7 +589,6 @@ ${company.email ? company.email + '\n' : ''}${company.phone ? company.phone + '\
   async getTodaysScheduledInvoices(): Promise<ScheduledInvoice[]> {
     try {
       const today = new Date();
-      const todayStr = today.toISOString().split('T')[0]; // YYYY-MM-DD format
 
       // Get all invoices and filter for scheduled ones
       const response = await authenticatedFetch('/api/invoices');
@@ -624,7 +623,6 @@ ${company.email ? company.email + '\n' : ''}${company.phone ? company.phone + '\
   async getOverdueInvoices(): Promise<ScheduledInvoice[]> {
     try {
       const today = new Date();
-      const todayStr = today.toISOString().split('T')[0];
 
       // Get all invoices and filter for overdue ones
       const response = await authenticatedFetch('/api/invoices');

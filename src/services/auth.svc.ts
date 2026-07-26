@@ -7,10 +7,10 @@
 import { AuthUtils } from '@/utils/api';
 import { envConfig } from '@/lib/env-config';
 import { 
-  User, 
-  LoginCredentials, 
-  RegisterData, 
-  AuthResponse, 
+  type User, 
+  type LoginCredentials, 
+  type RegisterData, 
+  type AuthResponse, 
   DEFAULT_SECURITY_SETTINGS 
 } from '@/types';
 

@@ -1,7 +1,8 @@
 // Expense routes for Slimbooks API
 // Handles all expense-related endpoints
 
-import { Router } from 'express';
+import { Router, type Request, type Response } from 'express';
+import { type BulkImportExpensesRequest, type ExpenseRequest } from '../types/api.types.js';
 import {
   getAllExpenses,
   getExpenseById,
@@ -66,15 +67,16 @@ router.delete('/:id',
 // Bulk import expenses
 router.post('/bulk-import',
   requireAuth,
-  async (req: any, res: any) => {
+  async (req: Request, res: Response) => {
     try {
-      const { expenses } = req.body;
-      
+      const { expenses } = req.body as BulkImportExpensesRequest;
+
       if (!expenses || !Array.isArray(expenses)) {
-        return res.status(400).json({
+        res.status(400).json({
           success: false,
           error: 'Expenses array is required'
         });
+        return;
       }
 
       let successCount = 0;
@@ -85,7 +87,7 @@ router.post('/bulk-import',
       const { expenseService } = await import('../services/ExpenseService.js');
 
       for (let i = 0; i < expenses.length; i++) {
-        const expenseData = expenses[i];
+        const expenseData = expenses[i] as ExpenseRequest;
         try {
           // Use the expense service directly instead of the controller
           await expenseService.createExpense(expenseData);

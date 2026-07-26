@@ -1,17 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { Calendar, X } from 'lucide-react';
-import { TimePeriod, DateRange } from '@/types';
+import { type DateRange } from '@/types';
 import {
   getDateRangeForPeriod,
-  formatDateRangeLabel,
-  dateRangeFilterOptions
+  dateRangeFilterOptions,
+  type DateRangePeriod
 } from '@/utils/data';
+import { formatDateRangeSync } from '@/utils/formatting';
 import { cn } from '@/utils/themeUtils.util';
 
 interface DateRangeFilterProps {
-  value: TimePeriod;
+  value: DateRangePeriod;
   customRange?: DateRange;
-  onChange: (period: TimePeriod, customRange?: DateRange) => void;
+  onChange: (period: DateRangePeriod, customRange?: DateRange) => void;
   className?: string;
   disabled?: boolean;
 }
@@ -38,12 +39,12 @@ export const DateRangeFilter: React.FC<DateRangeFilterProps> = ({
     }
   }, [value, customRange]);
 
-  const handlePeriodChange = (period: TimePeriod) => {
+  const handlePeriodChange = (period: DateRangePeriod) => {
     if (period === 'custom') {
       setIsCustomMode(true);
       // Set default custom range to this month if no custom range exists
       if (!customRange) {
-        const thisMonth = getDateRangeForPeriod('this-month');
+        const thisMonth = getDateRangeForPeriod('this_month');
         setCustomStartDate(thisMonth.start.toISOString().split('T')[0]);
         setCustomEndDate(thisMonth.end.toISOString().split('T')[0]);
         onChange(period, thisMonth);
@@ -83,16 +84,7 @@ export const DateRangeFilter: React.FC<DateRangeFilterProps> = ({
     setIsCustomMode(false);
     setCustomStartDate('');
     setCustomEndDate('');
-    onChange('this-month'); // Default back to this month
-  };
-
-  const getCurrentRangeLabel = (): string => {
-    if (value === 'custom' && customRange) {
-      return getDateRangeLabel(customRange);
-    }
-    
-    const option = dateRangeFilterOptions.find(opt => opt.value === value);
-    return option ? option.label : 'This Month';
+    onChange('this_month'); // Default back to this month
   };
 
   return (
@@ -103,7 +95,7 @@ export const DateRangeFilter: React.FC<DateRangeFilterProps> = ({
           <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <select
             value={value}
-            onChange={(e) => handlePeriodChange(e.target.value as TimePeriod)}
+            onChange={(e) => handlePeriodChange(e.target.value as DateRangePeriod)}
             disabled={disabled}
             className={cn(
               "pl-10 pr-4 py-2 bg-background border border-input rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent",
@@ -170,7 +162,7 @@ export const DateRangeFilter: React.FC<DateRangeFilterProps> = ({
       {/* Custom Range Display */}
       {isCustomMode && customRange && (
         <div className="text-sm text-muted-foreground">
-          Selected: {getDateRangeLabel(customRange)}
+          Selected: {formatDateRangeSync(customRange.start, customRange.end)}
         </div>
       )}
     </div>

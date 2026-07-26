@@ -44,7 +44,7 @@ export const formatDateSync = (date: Date | string): string => {
       month: '2-digit',
       day: '2-digit'
     });
-  } catch (error) {
+  } catch {
     return 'Invalid Date';
   }
 };

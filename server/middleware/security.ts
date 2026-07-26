@@ -1,16 +1,11 @@
 // Security middleware for Slimbooks server
 // Implements rate limiting, input validation, and security headers
 
-import rateLimit, { RateLimitRequestHandler } from 'express-rate-limit';
-import helmet, { HelmetOptions } from 'helmet';
-import { Request, Response, NextFunction } from 'express';
-import { body, param, query, validationResult, ValidationChain } from 'express-validator';
+import rateLimit, { type RateLimitRequestHandler } from 'express-rate-limit';
+import helmet, { type HelmetOptions } from 'helmet';
+import { type Request, type Response, type NextFunction } from 'express';
+import { body, param, validationResult } from 'express-validator';
 import { serverConfig } from '../config/index.js';
-
-interface RateLimitConfig {
-  windowMs?: number;
-  max?: number;
-}
 
 interface RateLimitResponse {
   error: string;
@@ -81,7 +76,7 @@ export const createLoginRateLimit = (
 };
 
 // Security headers configuration
-export const createSecurityHeaders = (corsOrigin = 'http://localhost:8080') => {
+export const createSecurityHeaders = (_corsOrigin = 'http://localhost:8080') => {
   const helmetOptions: HelmetOptions = {
     contentSecurityPolicy: {
       directives: {
@@ -244,7 +239,7 @@ export const requestLogger = (req: Request, res: Response, next: NextFunction): 
   const start = Date.now();
   const originalSend = res.send.bind(res);
   
-  res.send = function(data: any): Response {
+  res.send = function(data: unknown): Response {
     const duration = Date.now() - start;
     console.log(`${new Date().toISOString()} ${req.method} ${req.path} ${res.statusCode} ${duration}ms`);
     return originalSend(data);
@@ -254,7 +249,7 @@ export const requestLogger = (req: Request, res: Response, next: NextFunction): 
 };
 
 // Error handling middleware
-export const errorHandler = (err: Error, req: Request, res: Response, next: NextFunction): void => {
+export const errorHandler = (err: Error, req: Request, res: Response, _next: NextFunction): void => {
   console.error('Error:', err);
   
   // Don't leak error details in production

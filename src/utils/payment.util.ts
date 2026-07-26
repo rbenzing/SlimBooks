@@ -1,8 +1,8 @@
 // Utility functions for payment-related operations
 import { toast } from 'sonner';
 import { authenticatedFetch } from './api';
-import { Invoice } from '@/types';
-import { PaymentFormData } from '@/types';
+import { type Invoice } from '@/types';
+import { type PaymentFormData } from '@/types';
 
 /**
  * Create a payment record for an invoice and mark the invoice as paid

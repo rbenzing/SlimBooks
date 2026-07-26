@@ -2,8 +2,8 @@
 import { useState, useEffect, forwardRef, useImperativeHandle } from 'react';
 import { Plus, Edit2, Trash2 } from 'lucide-react';
 import { themeClasses } from '@/utils/themeUtils.util';
-import { TaxRate, validateTaxRateArray } from '@/types';
-import type { SettingsTabRef } from '../Settings';
+import { type TaxRate, validateTaxRateArray } from '@/types';
+import type { SettingsTabRef } from '@/types';
 
 export const TaxSettings = forwardRef<SettingsTabRef>((props, ref) => {
   const [taxRates, setTaxRates] = useState<TaxRate[]>([]);

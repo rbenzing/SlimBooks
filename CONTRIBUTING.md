@@ -235,6 +235,19 @@ npm run test:watch
 npm run test:coverage
 ```
 
+### Quality Gates
+
+All four must pass before a PR is merged:
+
+```bash
+npm run typecheck   # TypeScript across frontend, vite config, and server
+npm run lint        # ESLint — 0 errors AND 0 warnings — plus typecheck
+npm test            # Vitest suite
+npm run build       # Production build
+```
+
+The codebase currently sits at zero lint warnings; please don't let new ones accumulate.
+
 ### Writing Tests
 
 - Write unit tests for utilities and hooks

@@ -466,7 +466,19 @@ export interface ProfitLossReportData {
   netIncome: number;
   accountingMethod: 'cash' | 'accrual';
   invoices: InvoiceWithClient[];
-  periodColumns: string[];
+  /**
+   * One entry per calendar period the range covers, rendered as the breakdown
+   * columns. Must mirror `ProfitLossReportData['periodColumns']` in
+   * `src/types/domain/reports.types.ts`.
+   */
+  periodColumns: Array<{
+    label: string;
+    revenue: number;
+    expenses: number;
+    expensesByCategory: Record<string, number>;
+    netIncome: number;
+  }>;
+  /** False when the range covers a single period, where columns would restate the total. */
   hasBreakdown: boolean;
   breakdownPeriod: 'monthly' | 'quarterly';
 }

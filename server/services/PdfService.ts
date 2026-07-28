@@ -7,10 +7,26 @@ import { settingsService } from './SettingsService.js';
 import { type InvoiceWithClient } from '../types/index.js';
 
 /**
- * Shape returned by the settings service when a settings row is stored as a
- * JSON object that still wraps its payload in a `value` string.
+ * `settingsService.getSettingByKey()` already JSON-parses the stored value, so
+ * these helpers receive the payload itself — not a `{ value: string }` row.
+ * Treating it as a row (and parsing a second time) made every lookup here fall
+ * through to its default and silently ignore the user's saved settings.
  */
-type StoredSettingRow = { value?: string } | null;
+type StoredSetting = unknown;
+
+/** Reads the page format from a `pdf_format` setting stored as an object or a bare string. */
+const readPdfFormat = (setting: StoredSetting): string | null => {
+  if (typeof setting === 'string') {
+    return setting.trim() || null;
+  }
+
+  if (setting && typeof setting === 'object' && 'format' in setting) {
+    const format = (setting as { format?: unknown }).format;
+    return typeof format === 'string' && format.trim() ? format : null;
+  }
+
+  return null;
+};
 
 /**
  * PDF Service
@@ -298,10 +314,7 @@ export class PdfService {
   }> {
     try {
       // Get appearance settings for PDF format preference
-      const pdfFormatSettings = await settingsService.getSettingByKey('pdf_format') as StoredSettingRow;
-
-      // Get company settings for branding
-      const companySettings = await settingsService.getSettingByKey('company_settings') as StoredSettingRow;
+      const pdfFormatSettings = await settingsService.getSettingByKey('pdf_format');
 
       // Default PDF options
       const options: {
@@ -320,30 +333,17 @@ export class PdfService {
       };
 
       // Apply format preference if set
-      if (pdfFormatSettings?.value) {
-        try {
-          const formatSetting = JSON.parse(pdfFormatSettings.value) as { format?: PaperFormat };
-          if (formatSetting.format) {
-            options.format = formatSetting.format;
-          }
-        } catch {
-          // Use default if parsing fails
-          console.warn('Failed to parse PDF format settings, using defaults');
-        }
+      const storedFormat = readPdfFormat(pdfFormatSettings);
+      if (storedFormat) {
+        options.format = storedFormat as PaperFormat;
       }
 
-      // Apply company-specific settings if needed
-      if (companySettings?.value) {
-        try {
-          const company = JSON.parse(companySettings.value) as { pdfOptions?: Record<string, unknown> };
-          // Could add company-specific PDF options here
-          // e.g., letterhead margins, custom page size, etc.
-          if (company.pdfOptions) {
-            Object.assign(options, company.pdfOptions);
-          }
-        } catch {
-          // Use defaults if parsing fails
-          console.warn('Failed to parse company settings for PDF, using defaults');
+      // Company-specific PDF overrides (letterhead margins, custom page size, ...)
+      const companySettings = await settingsService.getSettingByKey('company_settings');
+      if (companySettings && typeof companySettings === 'object' && 'pdfOptions' in companySettings) {
+        const pdfOverrides = (companySettings as { pdfOptions?: Record<string, unknown> }).pdfOptions;
+        if (pdfOverrides && typeof pdfOverrides === 'object') {
+          Object.assign(options, pdfOverrides);
         }
       }
 
@@ -370,14 +370,9 @@ export class PdfService {
   async getPDFFormat(): Promise<string> {
     try {
       // Get appearance settings for PDF format preference
-      const formatSetting = await settingsService.getSettingByKey('pdf_format') as StoredSettingRow;
+      const formatSetting = await settingsService.getSettingByKey('pdf_format');
 
-      if (formatSetting?.value) {
-        const parsed = JSON.parse(formatSetting.value) as { format?: string };
-        return parsed.format || 'A4';
-      }
-      
-      return 'A4';
+      return readPdfFormat(formatSetting) ?? 'A4';
     } catch (error) {
       console.error('Error getting PDF format setting:', error);
       return 'A4';
@@ -402,12 +397,12 @@ export class PdfService {
    */
   async getCompanySettingsForPDF(): Promise<Record<string, unknown> | null> {
     try {
-      const companySettings = await settingsService.getSettingByKey('company_settings') as StoredSettingRow;
+      const companySettings = await settingsService.getSettingByKey('company_settings');
 
-      if (companySettings?.value) {
-        return JSON.parse(companySettings.value) as Record<string, unknown>;
+      if (companySettings && typeof companySettings === 'object') {
+        return companySettings as Record<string, unknown>;
       }
-      
+
       return null;
     } catch (error) {
       console.error('Error getting company settings for PDF:', error);

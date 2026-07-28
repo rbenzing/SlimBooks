@@ -168,6 +168,8 @@ CREATE TABLE IF NOT EXISTS payments (
     reference TEXT CHECK (reference IS NULL OR length(reference) <= 100),
     description TEXT CHECK (description IS NULL OR length(description) <= 500),
     status TEXT NOT NULL DEFAULT 'received' CHECK (status IN ('received', 'pending', 'failed', 'refunded')),
+    currency TEXT DEFAULT 'USD',
+    stripe_payment_id TEXT,
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     updated_at TEXT NOT NULL DEFAULT (datetime('now')),
     deleted_at TEXT,

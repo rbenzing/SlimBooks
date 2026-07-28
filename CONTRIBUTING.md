@@ -256,6 +256,15 @@ The codebase currently sits at zero lint warnings; please don't let new ones acc
 - Follow AAA pattern (Arrange, Act, Assert)
 - Mock external dependencies
 
+Tests are picked up from two places:
+
+- `src/test/**/*.test.{ts,tsx}` — frontend units, hooks and components
+- `server/**/*.test.ts` — backend units, colocated with the code they cover
+
+Backend logic worth testing should be extracted into a module free of database
+and config imports (see `server/utils/reportPeriods.util.ts`), so the test can
+load it without standing up a database.
+
 ### Test Structure
 
 ```typescript

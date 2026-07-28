@@ -264,29 +264,11 @@ export const errorHandler = (err: Error, req: Request, res: Response, _next: Nex
   });
 };
 
-// Authentication middleware
-export const requireAuth = (req: Request, res: Response, next: NextFunction): void => {
-  const token = req.headers.authorization?.replace('Bearer ', '');
-  
-  if (!token) {
-    res.status(401).json({
-      success: false,
-      error: 'Authentication required'
-    });
-    return;
-  }
-  
-  // TODO: Implement JWT verification here
-  // For now, just pass through
-  next();
-};
-
-// Admin role middleware
-export const requireAdmin = (req: Request, res: Response, next: NextFunction): void => {
-  // TODO: Implement admin role check
-  // For now, just pass through
-  next();
-};
+// Authentication and role middleware live in ./auth.ts, which actually verifies
+// the JWT, loads the user, and checks lockout and email verification. This file
+// previously exported same-named stubs that accepted any non-empty token and let
+// every caller through; they were unreferenced, but importing one by mistake
+// would have silently disabled authentication on whatever route used it.
 
 // CORS configuration
 export const createCorsOptions = (

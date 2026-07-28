@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { ArrowLeft, Download, Save, Calendar } from 'lucide-react';
 import { authenticatedFetch } from '@/utils/api';
 import { themeClasses, getButtonClasses } from '@/utils/themeUtils.util';
@@ -17,6 +17,21 @@ export const ExpenseReport: React.FC<ExpenseReportProps> = ({ onBack, onSave }) 
     preset: 'this-month'
   });
 
+
+  /**
+   * Grouped client-side from the expenses the API returns. Expenses have no
+   * `status` column, so the report breaks down by vendor — the field that
+   * actually exists — rather than by a status that is always undefined.
+   */
+  const expensesByVendor = useMemo<Record<string, number>>(() => {
+    if (!reportData?.expenses) return {};
+
+    return reportData.expenses.reduce<Record<string, number>>((acc, expense) => {
+      const vendor = expense.vendor?.trim() || 'Unspecified';
+      acc[vendor] = (acc[vendor] || 0) + (Number(expense.amount) || 0);
+      return acc;
+    }, {});
+  }, [reportData]);
 
   const generateReportData = useCallback(async () => {
     setLoading(true);
@@ -258,18 +273,18 @@ export const ExpenseReport: React.FC<ExpenseReportProps> = ({ onBack, onSave }) 
                 </div>
               </div>
 
-              {/* Status Breakdown */}
+              {/* Vendor Breakdown */}
               <div className={themeClasses.card}>
                 <div className={themeClasses.cardHeader}>
-                  <h3 className={themeClasses.cardTitle}>Expenses by Status</h3>
+                  <h3 className={themeClasses.cardTitle}>Expenses by Vendor</h3>
                 </div>
                 <div className={themeClasses.cardContent}>
                   <div className="space-y-4">
-                    {Object.entries(reportData.expensesByStatus).map(([status, amount]) => {
+                    {Object.entries(expensesByVendor).map(([vendor, amount]) => {
                       const percentage = reportData.totalAmount > 0 ? ((amount as number) / reportData.totalAmount * 100) : 0;
                       return (
-                        <div key={status} className="flex justify-between items-center py-2">
-                          <span className={`${themeClasses.bodyText} font-medium capitalize flex-1`}>{status}</span>
+                        <div key={vendor} className="flex justify-between items-center py-2">
+                          <span className={`${themeClasses.bodyText} font-medium flex-1`}>{vendor}</span>
                           <div className="flex items-center space-x-4 min-w-0">
                             <span className={`font-semibold ${themeClasses.bodyText}`}>
                               <FormattedCurrency amount={amount as number} />

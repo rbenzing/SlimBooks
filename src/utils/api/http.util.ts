@@ -1,4 +1,5 @@
-import { getToken } from './auth.util';
+import { clearAuthTokens, getToken } from './auth.util';
+import { isAuthEndpoint, refreshAccessToken } from './refresh.util';
 import { type ApiResponse } from '@/types';
 
 class ApiError extends Error {
@@ -19,46 +20,57 @@ const getBaseUrl = (): string => {
   return process.env.REACT_APP_API_URL || 'http://localhost:3002';
 };
 
+/** Reads the server's error message out of a failed response body. */
+const errorMessageFor = async (response: Response): Promise<string> => {
+  try {
+    const errorData = await response.json();
+    return errorData.message || errorData.error || `HTTP ${response.status}: ${response.statusText}`;
+  } catch {
+    return `HTTP ${response.status}: ${response.statusText}`;
+  }
+};
+
 export const authenticatedFetch = async (
   url: string,
   options: RequestInit = {}
 ): Promise<Response> => {
-  const token = getToken();
   const baseUrl = getBaseUrl();
   const fullUrl = url.startsWith('http') ? url : `${baseUrl}${url}`;
 
-  const headers: HeadersInit = {
-    'Content-Type': 'application/json',
-    ...options.headers,
-  };
+  const send = (): Promise<Response> => {
+    const token = getToken();
 
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
-  }
+    const headers: HeadersInit = {
+      'Content-Type': 'application/json',
+      ...options.headers,
+    };
 
-  const config: RequestInit = {
-    ...options,
-    headers,
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    return fetch(fullUrl, { ...options, headers });
   };
 
   try {
-    const response = await fetch(fullUrl, config);
+    let response = await send();
+
+    // An expired access token is recoverable: swap it for a fresh one and replay
+    // the request once. Auth endpoints are excluded so a failing refresh or login
+    // cannot trigger a refresh of its own.
+    if (response.status === 401 && !isAuthEndpoint(url)) {
+      const refreshed = await refreshAccessToken();
+
+      if (refreshed) {
+        response = await send();
+      } else {
+        // Nothing left to authenticate with — don't leave a dead token behind.
+        clearAuthTokens();
+      }
+    }
 
     if (!response.ok) {
-      let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
-
-      try {
-        const errorData = await response.json();
-        if (errorData.message) {
-          errorMessage = errorData.message;
-        } else if (errorData.error) {
-          errorMessage = errorData.error;
-        }
-      } catch {
-        // Ignore JSON parsing errors, use default message
-      }
-
-      throw new ApiError(errorMessage, response.status, response);
+      throw new ApiError(await errorMessageFor(response), response.status, response);
     }
 
     return response;

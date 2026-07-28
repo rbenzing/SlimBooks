@@ -145,7 +145,9 @@ const paymentsSchema: TableSchema = {
   columns: [
     { name: 'id', type: 'INTEGER', constraints: ['PRIMARY KEY AUTOINCREMENT'] },
     { name: 'invoice_id', type: 'INTEGER' },
-    { name: 'client_id', type: 'INTEGER', constraints: ['NOT NULL'] },
+    // The client is denormalised onto the payment as `client_name`; there is no
+    // client_id column. It was declared NOT NULL while PaymentService never
+    // inserted it, which made every payment insert fail on a fresh database.
     { name: 'client_name', type: 'TEXT' },
     { name: 'amount', type: 'REAL', constraints: ['NOT NULL'] },
     { name: 'currency', type: 'TEXT', constraints: ["DEFAULT 'USD'"] },
@@ -153,17 +155,14 @@ const paymentsSchema: TableSchema = {
     { name: 'status', type: 'TEXT', constraints: ["DEFAULT 'pending'"] },
     { name: 'reference', type: 'TEXT' },
     { name: 'description', type: 'TEXT' },
-    { name: 'transaction_id', type: 'TEXT' },
     { name: 'stripe_payment_id', type: 'TEXT' },
-    { name: 'notes', type: 'TEXT' },
     { name: 'date', type: 'TEXT', constraints: ['NOT NULL'] },
     { name: 'created_at', type: 'TEXT', constraints: ['NOT NULL DEFAULT (datetime(\'now\'))'] },
     { name: 'updated_at', type: 'TEXT', constraints: ['NOT NULL DEFAULT (datetime(\'now\'))'] },
     { name: 'deleted_at', type: 'TEXT' }
   ],
   constraints: [
-    'FOREIGN KEY (invoice_id) REFERENCES invoices (id) ON DELETE SET NULL',
-    'FOREIGN KEY (client_id) REFERENCES clients (id) ON DELETE CASCADE'
+    'FOREIGN KEY (invoice_id) REFERENCES invoices (id) ON DELETE SET NULL'
   ]
 };
 
@@ -345,7 +344,6 @@ const indexes = [
 
   // payments
   'CREATE INDEX IF NOT EXISTS idx_payments_invoice_id ON payments (invoice_id)',
-  'CREATE INDEX IF NOT EXISTS idx_payments_client_id ON payments (client_id)',
   'CREATE INDEX IF NOT EXISTS idx_payments_date ON payments (date)',
   'CREATE INDEX IF NOT EXISTS idx_payments_status ON payments (status)',
   'CREATE INDEX IF NOT EXISTS idx_payments_deleted_at ON payments (deleted_at)',

@@ -131,10 +131,11 @@ export const validationRules = {
     .escape(),
   
   // Merchant validation (for expenses)
-  merchant: body('merchant')
+  // The expense payee is `vendor` everywhere; see validationSets.createExpense.
+  vendor: body('vendor')
     .trim()
     .isLength({ min: 1, max: 100 })
-    .withMessage('Merchant must be between 1 and 100 characters')
+    .withMessage('Vendor must be between 1 and 100 characters')
     .escape()
 };
 
@@ -338,6 +339,112 @@ export const validationSets = {
   resetPassword: [
     body('token').notEmpty().withMessage('Reset token is required'),
     validationRules.password
+  ] as ValidationChain[],
+
+  // Invoice design template validation (invoice_design_templates, /api/templates)
+  getTemplateById: [
+    validationRules.id
+  ] as ValidationChain[],
+
+  createTemplate: [
+    body('templateData.name')
+      .trim()
+      .isLength({ min: 2, max: 100 })
+      .withMessage('Template name must be between 2 and 100 characters')
+      .escape(),
+    body('templateData.content').notEmpty().withMessage('Template content is required'),
+    body('templateData.is_default').optional().isBoolean().withMessage('is_default must be a boolean'),
+    body('templateData.variables').optional().isString()
+  ] as ValidationChain[],
+
+  updateTemplate: [
+    validationRules.id,
+    body('templateData.name').optional().trim().isLength({ min: 2, max: 100 }).escape(),
+    body('templateData.content').optional().notEmpty().withMessage('Template content cannot be empty'),
+    body('templateData.is_default').optional().isBoolean(),
+    body('templateData.variables').optional().isString()
+  ] as ValidationChain[],
+
+  deleteTemplate: [
+    validationRules.id
+  ] as ValidationChain[],
+
+  // Recurring invoice template validation (recurring_invoice_templates,
+  // /api/recurring-templates). Mirrors RecurringInvoiceTemplateRequest.
+  getRecurringTemplateById: [
+    validationRules.id
+  ] as ValidationChain[],
+
+  getRecurringTemplatesByClientId: [
+    param('clientId').isInt({ min: 1 }).withMessage('Client ID must be a positive integer')
+  ] as ValidationChain[],
+
+  createRecurringTemplate: [
+    body('templateData.name')
+      .trim()
+      .isLength({ min: 2, max: 100 })
+      .withMessage('Template name must be between 2 and 100 characters')
+      .escape(),
+    body('templateData.client_id').isInt({ min: 1 }).withMessage('Client ID must be a positive integer'),
+    body('templateData.amount').isFloat({ gt: 0 }).withMessage('Amount must be greater than zero'),
+    body('templateData.frequency')
+      .isIn(['weekly', 'monthly', 'quarterly', 'yearly', 'custom'])
+      .withMessage('Frequency must be one of: weekly, monthly, quarterly, yearly, custom'),
+    body('templateData.payment_terms')
+      .trim()
+      .isLength({ min: 1, max: 100 })
+      .withMessage('Payment terms are required and must be less than 100 characters')
+      .escape(),
+    body('templateData.next_invoice_date')
+      .isISO8601()
+      .withMessage('Next invoice date must be in ISO 8601 format'),
+    // `is_active` is the schedule flag; recurring templates have no `status` column.
+    body('templateData.is_active').optional().isBoolean().withMessage('is_active must be a boolean'),
+    body('templateData.line_items').optional().isString(),
+    body('templateData.tax_amount').optional().isFloat({ min: 0 }).withMessage('Tax amount must be positive'),
+    body('templateData.tax_rate_id').optional({ nullable: true }).isString().isLength({ max: 50 }),
+    body('templateData.shipping_amount').optional().isFloat({ min: 0 }).withMessage('Shipping amount must be positive'),
+    body('templateData.shipping_rate_id').optional({ nullable: true }).isString().isLength({ max: 50 }),
+    body('templateData.description')
+      .optional()
+      .trim()
+      .isLength({ max: validationConfig.maxFieldLengths.description })
+      .escape(),
+    body('templateData.notes').optional().trim().isLength({ max: 1000 }).escape()
+  ] as ValidationChain[],
+
+  updateRecurringTemplate: [
+    validationRules.id,
+    body('templateData.name').optional().trim().isLength({ min: 2, max: 100 }).escape(),
+    body('templateData.client_id').optional().isInt({ min: 1 }),
+    body('templateData.amount').optional().isFloat({ gt: 0 }),
+    body('templateData.frequency').optional().isIn(['weekly', 'monthly', 'quarterly', 'yearly', 'custom']),
+    body('templateData.payment_terms').optional().trim().isLength({ min: 1, max: 100 }).escape(),
+    body('templateData.next_invoice_date').optional().isISO8601(),
+    body('templateData.is_active').optional().isBoolean(),
+    body('templateData.line_items').optional().isString(),
+    body('templateData.tax_amount').optional().isFloat({ min: 0 }),
+    body('templateData.tax_rate_id').optional({ nullable: true }).isString().isLength({ max: 50 }),
+    body('templateData.shipping_amount').optional().isFloat({ min: 0 }),
+    body('templateData.shipping_rate_id').optional({ nullable: true }).isString().isLength({ max: 50 }),
+    body('templateData.description')
+      .optional()
+      .trim()
+      .isLength({ max: validationConfig.maxFieldLengths.description })
+      .escape(),
+    body('templateData.notes').optional().trim().isLength({ max: 1000 }).escape()
+  ] as ValidationChain[],
+
+  toggleRecurringTemplate: [
+    validationRules.id
+  ] as ValidationChain[],
+
+  deleteRecurringTemplate: [
+    validationRules.id
+  ] as ValidationChain[],
+
+  processSingleTemplate: [
+    validationRules.id
   ] as ValidationChain[]
 };
 

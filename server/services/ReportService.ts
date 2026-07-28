@@ -2,6 +2,7 @@
 // Handles all report-related business logic and database operations
 
 import { databaseService } from '../core/DatabaseService.js';
+import { buildPeriodBuckets, periodKeyFor } from '../utils/reportPeriods.util.js';
 import {
   type Client,
   type Expense,
@@ -296,6 +297,44 @@ export class ReportService {
 
     const netProfit = recognizedRevenue - totalExpenses;
 
+    // Per-period columns. Bucketed on the same fields and with the same
+    // accounting method as the totals above, so the columns reconcile with them.
+    const buckets = buildPeriodBuckets(startDate, endDate, breakdownPeriod);
+
+    const periodColumns = buckets.map(bucket => {
+      const bucketInvoices = invoices.filter(
+        inv => periodKeyFor(inv.created_at, breakdownPeriod) === bucket.key
+      );
+      const bucketExpenses = expenses.filter(
+        exp => periodKeyFor(exp.date, breakdownPeriod) === bucket.key
+      );
+
+      const bucketRevenue = (
+        accountingMethod === 'cash'
+          ? bucketInvoices.filter(inv => inv.status === 'paid')
+          : bucketInvoices
+      ).reduce((sum: number, inv) => sum + toNumber(inv.amount), 0);
+
+      const bucketExpenseTotal = bucketExpenses.reduce(
+        (sum: number, exp) => sum + toNumber(exp.amount),
+        0
+      );
+
+      const bucketExpensesByCategory = bucketExpenses.reduce((acc: Record<string, number>, exp) => {
+        const category = exp.category || 'Uncategorized';
+        acc[category] = (acc[category] || 0) + toNumber(exp.amount);
+        return acc;
+      }, {});
+
+      return {
+        label: bucket.label,
+        revenue: bucketRevenue,
+        expenses: bucketExpenseTotal,
+        expensesByCategory: bucketExpensesByCategory,
+        netIncome: bucketRevenue - bucketExpenseTotal
+      };
+    });
+
     return {
       revenue: {
         total: recognizedRevenue,
@@ -316,8 +355,9 @@ export class ReportService {
       netIncome: netProfit,
       accountingMethod,
       invoices,
-      periodColumns: [],
-      hasBreakdown: false,
+      periodColumns,
+      // A single column would just restate the Total column beside it.
+      hasBreakdown: periodColumns.length > 1,
       breakdownPeriod
     };
   }

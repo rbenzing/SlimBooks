@@ -8,6 +8,7 @@ import { up as migration003 } from './003_separate_template_tables.js';
 import { up as migration004 } from './004_fix_expenses_table_schema.js';
 import { up as migration006 } from './006_align_tables_with_schema.js';
 import { up as migration007 } from './007_drop_clients_zip.js';
+import { up as migration008 } from './008_collapse_payment_columns.js';
 
 interface Migration {
   id: string;
@@ -48,6 +49,11 @@ const migrations: Migration[] = [
     id: '007',
     name: 'drop_clients_zip',
     up: migration007
+  },
+  {
+    id: '008',
+    name: 'collapse_payment_columns',
+    up: migration008
   }
 ];
 

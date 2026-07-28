@@ -282,6 +282,19 @@ export class SQLiteDatabase implements IDatabase {
   }
 
   /**
+   * Read a numeric pragma as a scalar.
+   * `pragma()` returns better-sqlite3's row form (`[{ page_count: 73 }]`), which
+   * yields NaN in arithmetic — `diskUsage` was computed that way and was always
+   * NaN. `{ simple: true }` returns the value itself.
+   */
+  private numericPragma(setting: string): number {
+    this.ensureConnected();
+
+    const value = this.db!.pragma(setting, { simple: true });
+    return typeof value === 'number' ? value : Number(value) || 0;
+  }
+
+  /**
    * Get database health information
    */
   getHealth() {
@@ -295,7 +308,8 @@ export class SQLiteDatabase implements IDatabase {
       uptime,
       totalQueries: this.queryCount,
       avgQueryTime,
-      diskUsage: (this.pragma('page_count') as number) * (this.pragma('page_size') as number)
+      /** Bytes on disk: page count × page size. */
+      diskUsage: this.numericPragma('page_count') * this.numericPragma('page_size')
     };
   }
 

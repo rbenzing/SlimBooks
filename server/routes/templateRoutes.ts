@@ -1,5 +1,8 @@
 // Template routes for Slimbooks API
-// Handles all template-related endpoints
+// Invoice DESIGN templates (invoice_design_templates). Recurring billing
+// templates live in recurringInvoiceTemplateRoutes.ts behind
+// /api/recurring-templates — the two tables share an id space, so calling the
+// wrong one silently reads or writes an unrelated row.
 
 import { Router } from 'express';
 import {
@@ -10,7 +13,9 @@ import {
   deleteTemplate
 } from '../controllers/templateController.js';
 import {
-  requireAuth
+  requireAuth,
+  validateRequest,
+  validationSets
 } from '../middleware/index.js';
 
 const router: Router = Router();
@@ -22,26 +27,30 @@ router.use(requireAuth);
 router.get('/', getAllTemplates);
 
 // Get template by ID
-router.get('/:id', 
-  // TODO: Add validation for template ID
+router.get('/:id',
+  validationSets.getTemplateById,
+  validateRequest,
   getTemplateById
 );
 
 // Create new template
-router.post('/', 
-  // TODO: Add validation for template creation
+router.post('/',
+  validationSets.createTemplate,
+  validateRequest,
   createTemplate
 );
 
 // Update template
-router.put('/:id', 
-  // TODO: Add validation for template update
+router.put('/:id',
+  validationSets.updateTemplate,
+  validateRequest,
   updateTemplate
 );
 
 // Delete template
-router.delete('/:id', 
-  // TODO: Add validation for template deletion
+router.delete('/:id',
+  validationSets.deleteTemplate,
+  validateRequest,
   deleteTemplate
 );
 

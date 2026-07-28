@@ -17,7 +17,9 @@ import {
   getProcessingStats
 } from '../controllers/recurringInvoiceTemplateController.js';
 import {
-  requireAuth
+  requireAuth,
+  validateRequest,
+  validationSets
 } from '../middleware/index.js';
 
 const router: Router = Router();
@@ -41,41 +43,51 @@ router.get('/stats', getProcessingStats);
 router.post('/process', processRecurringTemplates);
 
 // Process a single recurring template
-router.post('/:id/process', processSingleTemplate);
+router.post('/:id/process',
+  validationSets.processSingleTemplate,
+  validateRequest,
+  processSingleTemplate
+);
 
 // Get recurring templates by client ID
 router.get('/client/:clientId', 
-  // TODO: Add validation for client ID
+  validationSets.getRecurringTemplatesByClientId,
+  validateRequest,
   getRecurringTemplatesByClientId
 );
 
 // Get recurring template by ID
 router.get('/:id', 
-  // TODO: Add validation for template ID
+  validationSets.getRecurringTemplateById,
+  validateRequest,
   getRecurringTemplateById
 );
 
 // Create new recurring template
 router.post('/', 
-  // TODO: Add validation for recurring template creation
+  validationSets.createRecurringTemplate,
+  validateRequest,
   createRecurringTemplate
 );
 
 // Update recurring template
 router.put('/:id', 
-  // TODO: Add validation for recurring template update
+  validationSets.updateRecurringTemplate,
+  validateRequest,
   updateRecurringTemplate
 );
 
 // Toggle recurring template active/inactive
 router.patch('/:id/toggle', 
-  // TODO: Add validation for toggle action
+  validationSets.toggleRecurringTemplate,
+  validateRequest,
   toggleRecurringTemplate
 );
 
 // Delete recurring template
 router.delete('/:id', 
-  // TODO: Add validation for recurring template deletion
+  validationSets.deleteRecurringTemplate,
+  validateRequest,
   deleteRecurringTemplate
 );
 

@@ -27,7 +27,8 @@
 - **🧾 Professional Invoices**: Customizable templates with line items, taxes, and shipping
 - **🔄 Recurring Invoices**: Automated recurring billing with customizable schedules (weekly, monthly, quarterly, yearly)
 - **💰 Expense Tracking**: Categorized expense management with receipt uploads
-- **📈 Financial Reports**: Revenue and expense analytics with detailed monthly/quarterly columns for yearly reports
+- **📈 Financial Reports**: Profit & loss, invoice, expense and client reports. P&L supports cash or accrual
+  accounting and breaks multi-period ranges into monthly or quarterly columns that reconcile with the totals
 
 ### 🔒 Security & Privacy
 - **🛡️ Enterprise Security**: Rate limiting, input validation, and security headers

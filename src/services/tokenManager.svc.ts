@@ -4,11 +4,9 @@ import {
   getRefreshToken,
   getToken,
   getTokenPayload,
-  getTokenPersistence,
-  isAuthenticated,
-  setRefreshToken,
-  setToken
+  isAuthenticated
 } from '@/utils/api/auth.util';
+import { refreshAccessToken } from '@/utils/api/refresh.util';
 
 export class TokenManagerService {
   private static instance: TokenManagerService;
@@ -192,42 +190,20 @@ export class TokenManagerService {
    * Refresh the current token using the refresh token
    */
   async refreshToken(): Promise<boolean> {
-    try {
-      const refreshToken = getRefreshToken();
-      if (!refreshToken) {
-        warn('No refresh token available');
-        return false;
-      }
-
-      const response = await fetch('/api/auth/refresh', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${refreshToken}`
-        }
-      });
-
-      if (!response.ok) {
-        warn('Token refresh failed:', response.status);
-        return false;
-      }
-
-      const result = await response.json();
-      if (result.success && result.data?.token) {
-        // Rotate the tokens in place, honouring the original remember-me choice
-        const persistence = getTokenPersistence();
-        setToken(result.data.token, persistence);
-        if (result.data.refreshToken) {
-          setRefreshToken(result.data.refreshToken, persistence);
-        }
-        return true;
-      }
-
-      return false;
-    } catch (error) {
-      console.error('Error refreshing token:', error);
+    if (!getRefreshToken()) {
+      warn('No refresh token available');
       return false;
     }
+
+    // Shared with the fetch layer's 401 handling, so a refresh triggered by
+    // expiry monitoring and one triggered by a 401 collapse into one request.
+    const refreshed = await refreshAccessToken();
+
+    if (!refreshed) {
+      warn('Token refresh failed');
+    }
+
+    return refreshed;
   }
 
   /**

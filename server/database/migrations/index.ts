@@ -9,6 +9,7 @@ import { up as migration004 } from './004_fix_expenses_table_schema.js';
 import { up as migration006 } from './006_align_tables_with_schema.js';
 import { up as migration007 } from './007_drop_clients_zip.js';
 import { up as migration008 } from './008_collapse_payment_columns.js';
+import { up as migration009 } from './009_add_status_to_expenses.js';
 
 interface Migration {
   id: string;
@@ -54,6 +55,11 @@ const migrations: Migration[] = [
     id: '008',
     name: 'collapse_payment_columns',
     up: migration008
+  },
+  {
+    id: '009',
+    name: 'add_status_to_expenses',
+    up: migration009
   }
 ];
 

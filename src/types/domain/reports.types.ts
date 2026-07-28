@@ -37,6 +37,7 @@ export interface InvoiceReportProps extends BaseReportProps {
 export interface ExpenseReportData {
   expenses: Expense[];
   expensesByCategory: Record<string, number>;
+  expensesByStatus: Record<string, number>;
   totalAmount: number;
   totalCount: number;
 }

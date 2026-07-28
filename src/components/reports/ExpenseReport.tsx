@@ -273,6 +273,33 @@ export const ExpenseReport: React.FC<ExpenseReportProps> = ({ onBack, onSave }) 
                 </div>
               </div>
 
+              {/* Status Breakdown */}
+              <div className={themeClasses.card}>
+                <div className={themeClasses.cardHeader}>
+                  <h3 className={themeClasses.cardTitle}>Expenses by Status</h3>
+                </div>
+                <div className={themeClasses.cardContent}>
+                  <div className="space-y-4">
+                    {Object.entries(reportData.expensesByStatus ?? {}).map(([status, amount]) => {
+                      const percentage = reportData.totalAmount > 0 ? ((amount as number) / reportData.totalAmount * 100) : 0;
+                      return (
+                        <div key={status} className="flex justify-between items-center py-2">
+                          <span className={`${themeClasses.bodyText} font-medium capitalize flex-1`}>{status}</span>
+                          <div className="flex items-center space-x-4 min-w-0">
+                            <span className={`font-semibold ${themeClasses.bodyText}`}>
+                              <FormattedCurrency amount={amount as number} />
+                            </span>
+                            <span className={`${themeClasses.mutedText} text-sm min-w-[3rem] text-right`}>
+                              {percentage.toFixed(1)}%
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+
               {/* Vendor Breakdown */}
               <div className={themeClasses.card}>
                 <div className={themeClasses.cardHeader}>

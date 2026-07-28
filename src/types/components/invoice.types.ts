@@ -3,7 +3,6 @@
 import type {
   Invoice,
   InvoiceItem,
-  InvoiceFormData,
   InvoiceTemplate,
   InvoiceTemplateFormData,
   Client,
@@ -41,13 +40,6 @@ export interface PublicInvoiceData extends InvoiceWithClient {
 export interface RecurringTemplateWithClient extends InvoiceTemplate {
   client_name: string;
   client_email?: string;
-}
-
-export interface InvoiceFormProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onSave: (invoiceData: InvoiceFormData) => void;
-  invoice?: Invoice | null;
 }
 
 /**

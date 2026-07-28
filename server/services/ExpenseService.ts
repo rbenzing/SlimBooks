@@ -2,7 +2,7 @@
 // Handles all expense-related business logic and database operations
 
 import { databaseService } from '../core/DatabaseService.js';
-import { type Expense, type ServiceOptions } from '../types/index.js';
+import { type Expense, type ExpenseStatus, type ServiceOptions } from '../types/index.js';
 
 /**
  * Expense Service
@@ -106,6 +106,7 @@ export class ExpenseService {
     category?: string;
     date: string;
     vendor?: string;
+    status?: ExpenseStatus;
     notes?: string;
     receipt_url?: string;
     is_billable: boolean | undefined;
@@ -151,6 +152,7 @@ export class ExpenseService {
       category: expenseData.category || null,
       date: expenseData.date,
       vendor: expenseData.vendor || null,
+      status: expenseData.status || 'pending',
       notes: expenseData.notes || null,
       receipt_url: expenseData.receipt_url || null,
       is_billable: expenseData.is_billable ? 1 : 0,
@@ -163,15 +165,15 @@ export class ExpenseService {
     // Create expense
     databaseService.executeQuery(`
       INSERT INTO expenses (
-        id, amount, description, category, date, vendor, notes, receipt_url,
+        id, amount, description, category, date, vendor, status, notes, receipt_url,
         is_billable, client_id, project, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `, [
-      expenseRecord.id, expenseRecord.amount, expenseRecord.description, 
+      expenseRecord.id, expenseRecord.amount, expenseRecord.description,
       expenseRecord.category, expenseRecord.date, expenseRecord.vendor,
-      expenseRecord.notes, expenseRecord.receipt_url, expenseRecord.is_billable,
-      expenseRecord.client_id, expenseRecord.project, expenseRecord.created_at,
-      expenseRecord.updated_at
+      expenseRecord.status, expenseRecord.notes, expenseRecord.receipt_url,
+      expenseRecord.is_billable, expenseRecord.client_id, expenseRecord.project,
+      expenseRecord.created_at, expenseRecord.updated_at
     ]);
 
     return nextId;
@@ -186,6 +188,7 @@ export class ExpenseService {
     category: string;
     date: string;
     vendor: string;
+    status: ExpenseStatus;
     notes: string;
     receipt_url: string;
     is_billable: boolean;
@@ -224,7 +227,7 @@ export class ExpenseService {
 
     // Filter allowed fields
     const allowedFields = [
-      'amount', 'description', 'category', 'date', 'vendor', 'notes',
+      'amount', 'description', 'category', 'date', 'vendor', 'status', 'notes',
       'receipt_url', 'is_billable', 'client_id', 'project'
     ];
     

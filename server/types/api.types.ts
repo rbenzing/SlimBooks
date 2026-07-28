@@ -13,8 +13,9 @@ import {
   type LineItem,
   type InvoiceWithClient,
   type InvoiceStatus,
-  type PaymentMethod, 
-  type PaymentStatus 
+  type ExpenseStatus,
+  type PaymentMethod,
+  type PaymentStatus
 } from './index.js';
 
 // Authentication API types
@@ -438,6 +439,7 @@ export interface ExpenseRequest {
   category?: string;
   date: string;
   vendor?: string;
+  status?: ExpenseStatus;
   notes?: string;
   receipt_url?: string;
   is_billable: boolean | undefined;
@@ -489,6 +491,8 @@ export interface ProfitLossReportData {
 export interface ExpenseReportData {
   expenses: Expense[];
   expensesByCategory: Record<string, number>;
+  /** Totals grouped by approval status. */
+  expensesByStatus: Record<string, number>;
   totalAmount: number;
   totalCount: number;
 }

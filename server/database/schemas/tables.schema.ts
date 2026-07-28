@@ -179,6 +179,8 @@ const expensesSchema: TableSchema = {
     { name: 'category', type: 'TEXT' },
     { name: 'date', type: 'TEXT', constraints: ['NOT NULL'] },
     { name: 'vendor', type: 'TEXT' },
+    // Approval workflow: pending | approved | rejected | reimbursed
+    { name: 'status', type: 'TEXT', constraints: ["NOT NULL DEFAULT 'pending'"] },
     { name: 'notes', type: 'TEXT' },
     { name: 'receipt_url', type: 'TEXT' },
     { name: 'is_billable', type: 'INTEGER', constraints: ['DEFAULT 0'] },
@@ -352,6 +354,10 @@ const indexes = [
   'CREATE INDEX IF NOT EXISTS idx_expenses_client_id ON expenses (client_id)',
   'CREATE INDEX IF NOT EXISTS idx_expenses_date ON expenses (date)',
   'CREATE INDEX IF NOT EXISTS idx_expenses_category ON expenses (category)',
+  // idx_expenses_status is created by migration 009, not here: createTables()
+  // runs BEFORE runMigrations(), so on an existing database this list executes
+  // while `status` still does not exist. Indexes over newly-added columns
+  // belong to the migration that adds the column.
   'CREATE INDEX IF NOT EXISTS idx_expenses_deleted_at ON expenses (deleted_at)',
 
   // recurring

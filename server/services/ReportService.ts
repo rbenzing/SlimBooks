@@ -386,11 +386,18 @@ export class ReportService {
       return acc;
     }, {});
 
+    const expensesByStatus = expenses.reduce((acc: Record<string, number>, exp) => {
+      const status = exp.status || 'pending';
+      acc[status] = (acc[status] || 0) + toNumber(exp.amount);
+      return acc;
+    }, {});
+
     const totalAmount = expenses.reduce((sum: number, exp) => sum + toNumber(exp.amount), 0);
 
     return {
       expenses,
       expensesByCategory,
+      expensesByStatus,
       totalAmount,
       totalCount: expenses.length
     };

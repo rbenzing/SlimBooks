@@ -256,7 +256,7 @@ export const validationSets = {
       .isLength({ max: validationConfig.maxFieldLengths.description })
       .withMessage(`Description must be less than ${validationConfig.maxFieldLengths.description} characters`)
       .escape(),
-    body('expenseData.status').optional().isIn(['pending', 'approved', 'rejected'])
+    body('expenseData.status').optional().isIn(['pending', 'approved', 'rejected', 'reimbursed']).withMessage('Status must be one of: pending, approved, rejected, reimbursed')
   ] as ValidationChain[],
   
   updateExpense: [
@@ -266,7 +266,7 @@ export const validationSets = {
     body('expenseData.category').optional().trim().isLength({ min: 1, max: 50 }).escape(),
     body('expenseData.amount').optional().isFloat({ min: 0 }),
     body('expenseData.description').optional().trim().isLength({ max: validationConfig.maxFieldLengths.description }).escape(),
-    body('expenseData.status').optional().isIn(['pending', 'approved', 'rejected'])
+    body('expenseData.status').optional().isIn(['pending', 'approved', 'rejected', 'reimbursed']).withMessage('Status must be one of: pending, approved, rejected, reimbursed')
   ] as ValidationChain[],
   
   // Payment validation sets

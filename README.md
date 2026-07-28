@@ -8,6 +8,7 @@
 [![SQLite](https://img.shields.io/badge/SQLite-003B57?style=for-the-badge&logo=sqlite&logoColor=white)](https://www.sqlite.org/)
 [![Docker](https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white)](https://www.docker.com/)
 [![License: AGPL v3+](https://img.shields.io/badge/License-AGPL%20v3%2B-blue.svg?style=for-the-badge)](./LICENSE)
+[![Buy Me A Coffee](https://img.shields.io/badge/Buy%20Me%20A%20Coffee-FFDD00?style=for-the-badge&logo=buymeacoffee&logoColor=black)](https://buymeacoffee.com/russellbenzing)
 
 **A secure, self-hosted billing and invoice management application**
 
@@ -208,9 +209,31 @@ SPDX identifier: `AGPL-3.0-or-later`
 
 ---
 
+## 👤 About the Author
+
+Slimbooks is built by **[Russell Benzing](https://github.com/rbenzing)**.
+
+It's developed with heavy use of AI coding assistants — architecture, implementation, tests and
+this documentation. That's a deliberate choice, and worth stating plainly: it means the project
+moves quickly, and it means every change still gets reviewed, type-checked, linted and covered by
+the test suite before it lands. The full history is public; judge the code, not the tooling.
+
+It's released free and open source under the AGPL so that freelancers and small businesses can
+run their own billing on their own hardware, and own their data outright rather than rent access
+to it. There's no hosted tier, no telemetry, and nothing held back for a paid version.
+
+Bug reports, feature requests and pull requests are all welcome — see
+[CONTRIBUTING.md](./CONTRIBUTING.md).
+
+---
+
 ## 💬 Support & Community
 
 Found a bug? Have a feature request? Please open an [issue](https://github.com/rbenzing/SlimBooks/issues).
+
+If Slimbooks is useful to you, you can support its development:
+
+<a href="https://buymeacoffee.com/russellbenzing" target="_blank"><img src="https://img.shields.io/badge/Buy%20Me%20A%20Coffee-FFDD00?style=for-the-badge&logo=buymeacoffee&logoColor=black" alt="Buy Me A Coffee" /></a>
 
 ---
 

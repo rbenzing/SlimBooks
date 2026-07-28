@@ -143,6 +143,7 @@ CREATE TABLE IF NOT EXISTS expenses (
     category TEXT,
     date TEXT NOT NULL,
     vendor TEXT,
+    status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected', 'reimbursed')),
     notes TEXT,
     receipt_url TEXT CHECK (receipt_url IS NULL OR (receipt_url LIKE 'http%' AND length(receipt_url) <= 500)),
     is_billable INTEGER DEFAULT 0 CHECK (is_billable IN (0, 1)),

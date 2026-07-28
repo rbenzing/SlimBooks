@@ -1,8 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Plus, Edit, Trash2, Eye, DollarSign, Calendar, User, Search, LayoutGrid, Table, FileText } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { authenticatedFetch, apiPost, apiPut, apiDelete } from '@/utils/api';
-import { InvoiceForm } from './InvoiceForm';
+import { authenticatedFetch, apiDelete } from '@/utils/api';
 import { InvoiceViewModal } from './InvoiceViewModal';
 import { PaginationControls } from '../ui/PaginationControls';
 import { DateRangeFilter } from '../ui/DateRangeFilter';
@@ -13,13 +12,11 @@ import { formatDateSync } from '@/components/ui/FormattedDate';
 import { FormattedCurrency } from '@/components/ui/FormattedCurrency';
 import { createPaymentForInvoice } from '@/utils/payment.util';
 import { toast } from 'sonner';
-import { type DateRange, type Invoice, type InvoiceFormData } from '@/types';
+import { type DateRange, type Invoice } from '@/types';
 
 export const InvoicesTab = () => {
   const navigate = useNavigate();
   const [invoices, setInvoices] = useState<Invoice[]>([]);
-  const [isFormOpen, setIsFormOpen] = useState(false);
-  const [editingInvoice, setEditingInvoice] = useState<Invoice | null>(null);
   const [viewingInvoice, setViewingInvoice] = useState<Invoice | null>(null);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -92,33 +89,6 @@ export const InvoicesTab = () => {
     setCustomDateRange(customRange);
   };
 
-  const handleSave = async (invoiceData: InvoiceFormData) => {
-    try {
-      if (editingInvoice) {
-        const response = await apiPut(`/api/invoices/${editingInvoice.id}`, { invoiceData });
-        if (!response.success) {
-          throw new Error(response.error || 'Failed to update invoice');
-        }
-      } else {
-        // Generate invoice number if not provided
-        if (!invoiceData.invoice_number) {
-          const invoiceCount = invoices.length + 1;
-          invoiceData.invoice_number = `INV-${String(invoiceCount).padStart(4, '0')}`;
-        }
-        const response = await apiPost('/api/invoices', { invoiceData });
-        if (!response.success) {
-          throw new Error(response.error || 'Failed to create invoice');
-        }
-      }
-      await loadInvoices();
-      setIsFormOpen(false);
-      setEditingInvoice(null);
-    } catch (error) {
-      console.error('Error saving invoice:', error);
-      toast.error(error instanceof Error ? error.message : 'Failed to save invoice');
-    }
-  };
-
   const handleDelete = async (id: number) => {
     if (confirm('Are you sure you want to delete this invoice?')) {
       try {
@@ -146,7 +116,9 @@ export const InvoicesTab = () => {
   };
 
   const handleCreateNew = () => {
-    window.location.href = '/invoices/create';
+    // Route through the router; window.location.href forces a full reload,
+    // discarding app state and re-downloading the bundle.
+    navigate('/invoices/create');
   };
 
   const handleMarkAsPaid = async (invoice: Invoice) => {
@@ -460,17 +432,6 @@ export const InvoicesTab = () => {
           )}
         </div>
       )}
-
-      {/* Quick-create modal; the full editor lives at /invoices/edit/:id */}
-      <InvoiceForm
-        isOpen={isFormOpen}
-        onClose={() => {
-          setIsFormOpen(false);
-          setEditingInvoice(null);
-        }}
-        onSave={handleSave}
-        invoice={editingInvoice}
-      />
 
       {/* Invoice View Modal */}
       <InvoiceViewModal

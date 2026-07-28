@@ -66,11 +66,29 @@ describe('ExpenseReport', () => {
     expect(screen.getAllByText('Cloud Host').length).toBeGreaterThan(0);
   });
 
-  it('does not render a status breakdown that expenses cannot have', async () => {
+  it('renders the approval-status breakdown', async () => {
+    authenticatedFetch.mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        success: true,
+        data: { ...serverPayload, expensesByStatus: { pending: 125.5, approved: 40 } }
+      })
+    } as Response);
+
     renderReport();
 
-    await screen.findByText('Expenses by Category');
-    expect(screen.queryByText('Expenses by Status')).not.toBeInTheDocument();
+    expect(await screen.findByText('Expenses by Status')).toBeInTheDocument();
+    expect(screen.getByText('pending')).toBeInTheDocument();
+    expect(screen.getByText('approved')).toBeInTheDocument();
+  });
+
+  it('survives a payload with no status breakdown', async () => {
+    // Guards the original crash: Object.entries(undefined) threw
+    // "Cannot convert undefined or null to object" and blanked the page.
+    renderReport();
+
+    expect(await screen.findByText('Expenses by Category')).toBeInTheDocument();
   });
 
   it('survives an empty result set without throwing', async () => {

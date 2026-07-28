@@ -100,6 +100,16 @@ export interface Template extends BaseEntity {
   frequency?: 'monthly' | 'yearly' | 'weekly' | 'daily' | 'once';
 }
 
+/** Expense approval workflow. Mirrors ExpenseStatus in src/types/constants/enums.types.ts. */
+export type ExpenseStatus = 'pending' | 'approved' | 'rejected' | 'reimbursed';
+
+export const EXPENSE_STATUSES: readonly ExpenseStatus[] = [
+  'pending',
+  'approved',
+  'rejected',
+  'reimbursed'
+];
+
 export interface Expense extends BaseEntity {
   description: string;
   amount: number;
@@ -107,6 +117,7 @@ export interface Expense extends BaseEntity {
   category?: string;
   date: string;
   vendor?: string;
+  status: ExpenseStatus;
   notes?: string;
   receipt_url?: string;
   is_billable?: boolean;

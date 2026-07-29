@@ -27,15 +27,16 @@
 - **👥 Client Management**: Complete client profiles with contact details and history
 - **🧾 Professional Invoices**: Customizable templates with line items, taxes, and shipping
 - **🔄 Recurring Invoices**: Automated recurring billing with customizable schedules (weekly, monthly, quarterly, yearly)
-- **💰 Expense Tracking**: Categorized expense management with receipt uploads
+- **💰 Expense Tracking**: Categorized expenses with vendor, approval status and CSV import
 - **📈 Financial Reports**: Profit & loss, invoice, expense and client reports. P&L supports cash or accrual
   accounting and breaks multi-period ranges into monthly or quarterly columns that reconcile with the totals
 
 ### 🔒 Security & Privacy
-- **🛡️ Enterprise Security**: Rate limiting, input validation, and security headers
-- **🔐 JWT Authentication**: Secure token-based authentication with 2FA support
+- **🛡️ Hardened by Default**: Rate limiting, input validation, and security headers
+- **🔐 JWT Authentication**: Access tokens with silent refresh and refresh-token rotation
+- **🔑 Password Hashing**: bcrypt, with configurable strength requirements
 - **🏠 Self-Hosted**: Complete data ownership - no third-party data sharing
-- **🔒 Encrypted Storage**: Secure SQLite database with encrypted sensitive data
+- **🚫 No Telemetry**: Nothing phones home; no analytics, no tracking
 
 ### 🚀 Deployment
 - **🐳 Docker Ready**: One-command deployment with Docker Compose
@@ -131,8 +132,8 @@ Use `./scripts/generate-secrets.sh` to create secure secrets automatically.
 ### Database
 
 - **SQLite**: Lightweight, serverless database perfect for self-hosting
-- **Automatic Backups**: Daily automated backups with rotation
-- **Data Portability**: Single file database for easy migration
+- **Versioned Schema**: Migrations run automatically on server start
+- **Data Portability**: Single file database — copy `data/slimbooks.db` to back it up
 - **No External Dependencies**: Everything runs locally
 
 ## 🔄 Recurring Invoice System
@@ -168,8 +169,8 @@ Slimbooks includes a powerful recurring invoice system for automated billing:
 - **🚫 Input Validation**: Server-side validation prevents injection attacks
 - **🔒 Security Headers**: Comprehensive protection with Helmet.js
 - **👤 Account Lockout**: Automatic lockout after failed login attempts
-- **🔑 2FA Support**: Two-factor authentication for enhanced security
-- **📝 Audit Logging**: Request/response logging for security monitoring
+- **🔄 Token Rotation**: Expired access tokens refresh silently; refresh tokens rotate in place
+- **📝 Request Logging**: Every request logged with timing, on your own box
 
 ## 📚 Documentation
 

@@ -25,10 +25,10 @@ import { usePagination } from '@/hooks/usePagination';
 import { toast } from 'sonner';
 import { 
   themeClasses, 
-  getIconColorClasses, 
   getButtonClasses, 
   getStatusColor 
 } from '@/utils/themeUtils.util';
+import { StatCard, StatCardGrid } from '@/components/ui/StatCard';
 import { filterByDateRange, getDateRangeForPeriod, type DateRangePeriod } from '@/utils/data';
 import { formatDateSync } from '@/components/ui/FormattedDate';
 import { FormattedCurrency } from '@/components/ui/FormattedCurrency';
@@ -348,18 +348,13 @@ export const ExpenseManagement: React.FC = () => {
         </div>
 
         {/* Statistics Cards */}
-        <div className={themeClasses.statsGrid}>
-          <div className={themeClasses.statCard}>
-            <div className={themeClasses.statCardContent}>
-              <div>
-                <p className={themeClasses.statLabel}>Total Expenses</p>
-                <p className={themeClasses.statValue}>
-                  <FormattedCurrency amount={totalExpenses} />
-                </p>
-              </div>
-              <DollarSign className={`${themeClasses.iconLarge} ${getIconColorClasses('blue')}`} />
-            </div>
-          </div>
+        <StatCardGrid className={themeClasses.statsGrid}>
+          <StatCard
+            label="Total Expenses"
+            value={<FormattedCurrency amount={totalExpenses} />}
+            icon={DollarSign}
+            iconColor="blue"
+          />
           <div className={themeClasses.statCard}>
             <div className={themeClasses.statCardContent}>
               <div>
@@ -387,7 +382,7 @@ export const ExpenseManagement: React.FC = () => {
               <FileText className="h-8 w-8 text-blue-600 dark:text-blue-400" />
             </div>
           </div>
-        </div>
+        </StatCardGrid>
 
         {/* Search and Filter Controls */}
         <div className="bg-card p-6 rounded-lg shadow-sm border border-border">

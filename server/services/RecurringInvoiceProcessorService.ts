@@ -3,6 +3,7 @@
 
 import { databaseService } from '../core/DatabaseService.js';
 import { recurringInvoiceTemplateService } from './RecurringInvoiceTemplateService.js';
+import { invoiceNumberService } from './InvoiceNumberService.js';
 
 /**
  * Invoice creation data interface
@@ -22,6 +23,8 @@ interface InvoiceCreationData {
   notes: string | null;
   payment_terms: string;
   shipping_amount: number;
+  tax_rate_id: string | null;
+  shipping_rate_id: string | null;
 }
 
 /**
@@ -116,8 +119,9 @@ export class RecurringInvoiceProcessorService {
     shipping_rate_id?: string | null;
     notes?: string | null;
   }): Promise<number> {
-    // Generate invoice number
-    const invoiceNumber = await this.generateInvoiceNumber();
+    // Use the same numbering service manual invoices use, so a configured
+    // prefix applies to both and the counter is not advanced twice.
+    const invoiceNumber = await invoiceNumberService.generateInvoiceNumber();
 
     // Calculate due date based on payment terms
     const issueDate: string = new Date().toISOString().split('T')[0]!;
@@ -140,16 +144,19 @@ export class RecurringInvoiceProcessorService {
       line_items: template.line_items ?? null,
       notes: template.notes ?? null,
       payment_terms: template.payment_terms!,
-      shipping_amount: template.shipping_amount
+      shipping_amount: template.shipping_amount,
+      tax_rate_id: template.tax_rate_id ?? null,
+      shipping_rate_id: template.shipping_rate_id ?? null
     };
 
     // Insert invoice into database
     const result = databaseService.executeQuery(
       `INSERT INTO invoices (
-        invoice_number, client_id, recurring_template_id, amount, tax_amount, 
-        total_amount, status, due_date, issue_date, description, line_items, 
-        notes, payment_terms, shipping_amount, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, DATETIME('now'), DATETIME('now'))`,
+        invoice_number, client_id, recurring_template_id, amount, tax_amount,
+        total_amount, status, due_date, issue_date, description, line_items,
+        notes, payment_terms, shipping_amount, tax_rate_id, shipping_rate_id,
+        created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, DATETIME('now'), DATETIME('now'))`,
       [
         invoiceData.invoice_number,
         invoiceData.client_id,
@@ -164,7 +171,9 @@ export class RecurringInvoiceProcessorService {
         invoiceData.line_items || null,
         invoiceData.notes || null,
         invoiceData.payment_terms,
-        invoiceData.shipping_amount
+        invoiceData.shipping_amount,
+        invoiceData.tax_rate_id,
+        invoiceData.shipping_rate_id
       ]
     );
 
@@ -172,48 +181,17 @@ export class RecurringInvoiceProcessorService {
   }
 
   /**
-   * Generate a unique invoice number
-   */
-  private async generateInvoiceNumber(): Promise<string> {
-    // Get current counter value
-    const counter = await databaseService.getOne<{ value: number }>(
-      'SELECT value FROM counters WHERE name = ?',
-      ['invoice_counter']
-    );
-
-    let nextNumber = 1;
-    if (counter) {
-      nextNumber = counter.value + 1;
-      // Update counter
-      databaseService.executeQuery(
-        'UPDATE counters SET value = ?, updated_at = DATETIME(\'now\') WHERE name = ?',
-        [nextNumber, 'invoice_counter']
-      );
-    } else {
-      // Create counter if it doesn't exist
-      databaseService.executeQuery(
-        'INSERT INTO counters (name, value, created_at, updated_at) VALUES (?, ?, DATETIME(\'now\'), DATETIME(\'now\'))',
-        ['invoice_counter', nextNumber]
-      );
-    }
-
-    // Format as INV-YYYYMM-XXXX
-    const date = new Date();
-    const yearMonth = `${date.getFullYear()}${String(date.getMonth() + 1).padStart(2, '0')}`;
-    const paddedNumber = String(nextNumber).padStart(4, '0');
-    
-    return `INV-${yearMonth}-${paddedNumber}`;
-  }
-
-  /**
    * Calculate due date based on payment terms
    */
   private calculateDueDate(issueDate: string, paymentTerms: string): string {
+    // `new Date('2026-03-01')` parses as UTC midnight, so the day arithmetic
+    // must be UTC too. Adding days in local time shifts the instant by an hour
+    // across a daylight-saving change, landing on the previous day.
     const date = new Date(issueDate);
 
     // Parse payment terms (e.g., "Net 30", "Due on receipt", "30 days")
     const terms = paymentTerms.toLowerCase();
-    
+
     if (terms.includes('receipt') || terms.includes('due immediately')) {
       // Due immediately
       return issueDate;
@@ -222,16 +200,16 @@ export class RecurringInvoiceProcessorService {
     // Extract number of days from payment terms
     const daysMatch = terms.match(/(\d+)\s*(day|days)/);
     const netMatch = terms.match(/net\s*(\d+)/);
-    
+
     let daysToAdd = 30; // Default to 30 days
-    
+
     if (netMatch && netMatch[1]) {
       daysToAdd = parseInt(netMatch[1]);
     } else if (daysMatch && daysMatch[1]) {
       daysToAdd = parseInt(daysMatch[1]);
     }
 
-    date.setDate(date.getDate() + daysToAdd);
+    date.setUTCDate(date.getUTCDate() + daysToAdd);
     return date.toISOString().split('T')[0]!;
   }
 

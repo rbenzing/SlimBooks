@@ -3,6 +3,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { ArrowLeft, Download, Save, Calendar } from 'lucide-react';
 import { authenticatedFetch } from '@/utils/api';
 import { themeClasses, getButtonClasses } from '@/utils/themeUtils.util';
+import { StatCard, StatCardGrid } from '@/components/ui/StatCard';
 import { formatDateSync, formatDateRangeSync } from '@/utils/formatting';
 import { FormattedCurrency } from '@/components/ui/FormattedCurrency';
 import { type Expense } from '@/types';
@@ -225,24 +226,22 @@ export const ExpenseReport: React.FC<ExpenseReportProps> = ({ onBack, onSave }) 
         {reportData && (
           <>
             {/* Summary */}
-            <div className={themeClasses.statsGridThree}>
-              <div className={themeClasses.statCard}>
-                <h3 className={`${themeClasses.statLabel} mb-2`}>Total Expenses</h3>
-                <p className={`${themeClasses.statValue} text-red-600 dark:text-red-400`}>
-                  <FormattedCurrency amount={reportData.totalAmount} />
-                </p>
-              </div>
-              <div className={themeClasses.statCard}>
-                <h3 className={`${themeClasses.statLabel} mb-2`}>Total Transactions</h3>
-                <p className={`${themeClasses.statValue} text-blue-600 dark:text-blue-400`}>{reportData.totalCount}</p>
-              </div>
-              <div className={themeClasses.statCard}>
-                <h3 className={`${themeClasses.statLabel} mb-2`}>Average Amount</h3>
-                <p className={themeClasses.statValue}>
-                  <FormattedCurrency amount={reportData.totalCount > 0 ? reportData.totalAmount / reportData.totalCount : 0} />
-                </p>
-              </div>
-            </div>
+            <StatCardGrid className={themeClasses.statsGridThree}>
+              <StatCard
+                label="Total Expenses"
+                value={<FormattedCurrency amount={reportData.totalAmount} />}
+                valueColor="red"
+              />
+              <StatCard
+                label="Total Transactions"
+                value={reportData.totalCount}
+                valueColor="blue"
+              />
+              <StatCard
+                label="Average Amount"
+                value={<FormattedCurrency amount={reportData.totalCount > 0 ? reportData.totalAmount / reportData.totalCount : 0} />}
+              />
+            </StatCardGrid>
 
             {/* Category and Status Breakdown - Two Column Layout */}
             <div className={themeClasses.contentGrid}>

@@ -33,7 +33,7 @@ export const getDateTimeSettings = async (): Promise<DateTimeSettings> => {
       const { sqliteService } = await import('@/services/sqlite.svc');
 
       if (sqliteService.isReady()) {
-        const settings = await sqliteService.getSetting('date_time_settings');
+        const settings = await sqliteService.getSetting('date_time_settings', 'general');
         if (settings && isDateTimeSettings(settings)) {
           const result = {
             dateFormat: settings.dateFormat || DEFAULT_DATE_TIME_SETTINGS.dateFormat,
@@ -96,8 +96,40 @@ const getTimeFormatOptions = (format: string): Intl.DateTimeFormatOptions => {
   };
 };
 
+/**
+ * `yyyy-MM-dd` built from the date's own local components. `toISOString()`
+ * renders the UTC calendar day instead, which is the day either side of the
+ * local one for most of the world — the date shown would not match the date
+ * the user entered.
+ */
+const toIsoCalendarDay = (date: Date): string => {
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${date.getFullYear()}-${month}-${day}`;
+};
+
+/**
+ * Reads a stored date for display. A bare `yyyy-MM-dd` is a calendar day, not
+ * an instant, but `new Date('2026-07-31')` parses it as UTC midnight — which is
+ * the previous day everywhere west of UTC. Due dates and issue dates are stored
+ * in exactly that form, so they must be read as local days. Full timestamps
+ * stay instants.
+ */
+export const parseDisplayDate = (value: Date | string): Date => {
+  if (typeof value !== 'string') {
+    return value;
+  }
+
+  const calendarDate = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (calendarDate) {
+    return new Date(Number(calendarDate[1]), Number(calendarDate[2]) - 1, Number(calendarDate[3]));
+  }
+
+  return new Date(value);
+};
+
 export const formatDate = async (date: Date | string, customFormat?: string): Promise<string> => {
-  const dateObj = typeof date === 'string' ? new Date(date) : date;
+  const dateObj = parseDisplayDate(date);
   if (isNaN(dateObj.getTime())) {
     return 'Invalid Date';
   }
@@ -109,7 +141,7 @@ export const formatDate = async (date: Date | string, customFormat?: string): Pr
   if (format === 'DD/MM/YYYY') {
     return dateObj.toLocaleDateString('en-GB', options);
   } else if (format === 'YYYY-MM-DD') {
-    return dateObj.toISOString().split('T')[0];
+    return toIsoCalendarDay(dateObj);
   } else if (format === 'DD MMM YYYY') {
     return dateObj.toLocaleDateString('en-GB', options);
   }
@@ -118,7 +150,7 @@ export const formatDate = async (date: Date | string, customFormat?: string): Pr
 };
 
 export const formatTime = async (date: Date | string, customFormat?: string): Promise<string> => {
-  const dateObj = typeof date === 'string' ? new Date(date) : date;
+  const dateObj = parseDisplayDate(date);
   if (isNaN(dateObj.getTime())) {
     return 'Invalid Time';
   }
@@ -135,7 +167,7 @@ export const formatDateTime = async (
   customDateFormat?: string,
   customTimeFormat?: string
 ): Promise<string> => {
-  const dateObj = typeof date === 'string' ? new Date(date) : date;
+  const dateObj = parseDisplayDate(date);
   if (isNaN(dateObj.getTime())) {
     return 'Invalid Date/Time';
   }
@@ -175,7 +207,7 @@ export const toDateInputValue = (date: Date | string | null | undefined): string
     }
   }
 
-  const dateObj = typeof date === 'string' ? new Date(date) : date;
+  const dateObj = parseDisplayDate(date);
   if (isNaN(dateObj.getTime())) {
     return '';
   }
@@ -189,7 +221,7 @@ export const formatDateSync = (date: Date | string | null | undefined): string =
   if (!date) {
     return 'Invalid Date';
   }
-  const dateObj = typeof date === 'string' ? new Date(date) : date;
+  const dateObj = parseDisplayDate(date);
   if (isNaN(dateObj.getTime())) {
     return 'Invalid Date';
   }
@@ -198,8 +230,8 @@ export const formatDateSync = (date: Date | string | null | undefined): string =
 };
 
 export const formatDateRangeSync = (startDate: Date | string, endDate: Date | string): string => {
-  const startObj = typeof startDate === 'string' ? new Date(startDate) : startDate;
-  const endObj = typeof endDate === 'string' ? new Date(endDate) : endDate;
+  const startObj = parseDisplayDate(startDate);
+  const endObj = parseDisplayDate(endDate);
 
   if (isNaN(startObj.getTime()) || isNaN(endObj.getTime())) {
     return 'Invalid Date Range';
@@ -217,7 +249,7 @@ export const getDateFormatPreview = (format: string): string => {
   if (format === 'DD/MM/YYYY') {
     return sampleDate.toLocaleDateString('en-GB', options);
   } else if (format === 'YYYY-MM-DD') {
-    return sampleDate.toISOString().split('T')[0];
+    return toIsoCalendarDay(sampleDate);
   } else if (format === 'DD MMM YYYY') {
     return sampleDate.toLocaleDateString('en-GB', options);
   }

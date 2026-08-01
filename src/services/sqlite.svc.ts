@@ -194,10 +194,26 @@ class SQLiteService {
     }
   }
 
+  /**
+   * The stored name of a setting.
+   *
+   * The server namespaces a bare key with its category on write, storing
+   * `tax.tax_rates`. A read of `tax_rates` therefore finds nothing — which is
+   * why tax rates, shipping rates and the appearance preferences all saved
+   * without complaint and came back as defaults on the next visit. Both sides
+   * now build the name the same way.
+   */
+  private settingKey(key: string, category?: string): string {
+    if (key.includes('.') || !category) return key;
+    return `${category}.${key}`;
+  }
+
   // Settings operations
-  async getSetting(key: string): Promise<unknown> {
+  async getSetting(key: string, category?: string): Promise<unknown> {
+    const storedKey = this.settingKey(key, category);
+
     // Check cache first for performance
-    const cached = this.getCachedSetting(key);
+    const cached = this.getCachedSetting(storedKey);
     if (cached !== null) {
       return cached;
     }
@@ -205,10 +221,10 @@ class SQLiteService {
     // Map specific keys to new section-based routes
     const sectionMappings = {
       'company_settings': 'company',
-      'notification_settings': 'notification', 
+      'notification_settings': 'notification',
       'currency_format_settings': 'currency'
     } as const;
-    
+
     let value: unknown;
     const section = sectionMappings[key as keyof typeof sectionMappings];
     if (section) {
@@ -222,36 +238,61 @@ class SQLiteService {
       }
     } else {
       // Fall back to original route for other keys
-      const result = await this.apiCall<unknown, { value?: unknown }>(`/settings/${key}`);
+      const result = await this.apiCall<unknown, { value?: unknown }>(`/settings/${storedKey}`);
       value = result.value;
     }
 
     // Cache the result for future use
-    this.setCachedSetting(key, value);
+    this.setCachedSetting(storedKey, value);
     return value;
   }
 
   async setSetting(key: string, value: unknown, category: string = 'general'): Promise<void> {
     // Unified approach: all settings use the generic endpoint
     await this.apiCall('/settings', 'POST', { key, value, category });
-    // Clear cache for this key to ensure fresh data on next read
+
+    // Both spellings are evicted. A reader that passes the category caches
+    // under `appearance.theme` and one that does not caches under `theme`;
+    // clearing only the form this writer used would leave the other serving a
+    // stale value for the rest of the cache window.
     this.clearSettingsCache(key);
+    this.clearSettingsCache(this.settingKey(key, category));
   }
 
   // Bulk settings operations
   // Every settings read route answers with a top-level `settings` object.
+  /**
+   * Every setting in a category, keyed by its bare name.
+   *
+   * The server answers with stored names — `appearance.theme` — because that is
+   * how they are stored. Callers ask for a category and then look for `theme`,
+   * so the prefix comes off here rather than in every caller. Leaving it on is
+   * what made the Appearance tab read every one of its own settings as absent.
+   */
   async getAllSettings(category?: string): Promise<Record<string, unknown>> {
     try {
+      let settings: Record<string, unknown>;
+
       // Map categories to new section-based routes
       if (category === 'appearance' || category === 'general') {
         const result = await this.apiCall<unknown, { settings?: Record<string, unknown> }>(`/settings/${category}`);
-        return result.settings || {};
+        settings = result.settings || {};
+      } else {
+        // Fall back to original query parameter route for other categories
+        const params = category ? { category } : {};
+        const result = await this.apiCall<unknown, { settings?: Record<string, unknown> }>('/settings', 'GET', params);
+        settings = result.settings || {};
       }
 
-      // Fall back to original query parameter route for other categories
-      const params = category ? { category } : {};
-      const result = await this.apiCall<unknown, { settings?: Record<string, unknown> }>('/settings', 'GET', params);
-      return result.settings || {};
+      if (!category) return settings;
+
+      const prefix = `${category}.`;
+      return Object.fromEntries(
+        Object.entries(settings).map(([key, value]) => [
+          key.startsWith(prefix) ? key.slice(prefix.length) : key,
+          value
+        ])
+      );
     } catch (error) {
       console.error('sqliteService: Failed to load settings:', error);
       throw error;

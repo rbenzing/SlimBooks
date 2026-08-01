@@ -1,138 +1,144 @@
-
 import { useState, useEffect, useCallback, forwardRef, useImperativeHandle } from 'react';
 import { CreditCard, AlertTriangle, CheckCircle, Copy, ExternalLink, Webhook, Key, Eye, EyeOff } from 'lucide-react';
 import { themeClasses } from '@/utils/themeUtils.util';
 import { toast } from 'sonner';
-import type { SettingsTabRef, StripeSettings } from '@/types';
+import { stripeService } from '@/services/stripe.svc';
+import type { SettingsTabRef, ProjectSettings, StripeStatus, StripeAccountSummary } from '@/types';
 
+/**
+ * Stripe credentials and connection.
+ *
+ * The tab owns both the switch and the credentials, so there is one place to go
+ * rather than a switch on one tab and the fields on another.
+ *
+ * An install that sets STRIPE_SECRET_KEY and STRIPE_PUBLISHABLE_KEY in .env is
+ * treated as switched on already — it has made the decision — and the toggle
+ * can still turn it back off without editing .env.
+ *
+ * The secret key and webhook signing secret are write-only. The server does not
+ * return them, because a settings screen that displays a secret key is a
+ * settings screen that ships one to every browser that opens it. What comes
+ * back instead is whether each is configured; leaving a field blank keeps the
+ * stored value, and typing into it replaces it.
+ */
 export const StripeSettingsTab = forwardRef<SettingsTabRef>((props, ref) => {
-  const [settings, setSettings] = useState<StripeSettings>({
-    webhookSecret: '',
-    webhookEndpoint: '',
-    testMode: true,
-    publishableKey: '',
-    secretKey: '',
-    isEnabled: false,
-    accountId: '',
-    accountName: '',
-    connectedAt: ''
-  });
+  const [status, setStatus] = useState<StripeStatus | null>(null);
+  const [envConfigured, setEnvConfigured] = useState(false);
+  const [isEnabled, setIsEnabled] = useState(false);
+  const [publishableKey, setPublishableKey] = useState('');
+  const [secretKey, setSecretKey] = useState('');
+  const [webhookSecret, setWebhookSecret] = useState('');
 
+  const [isLoading, setIsLoading] = useState(true);
   const [isTestingConnection, setIsTestingConnection] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<'unknown' | 'success' | 'error'>('unknown');
+  const [connectionMessage, setConnectionMessage] = useState('');
+  const [account, setAccount] = useState<StripeAccountSummary | null>(null);
   const [showWebhookSecret, setShowWebhookSecret] = useState(false);
   const [showSecretKey, setShowSecretKey] = useState(false);
 
-  useEffect(() => {
-    loadSettings();
-  }, []);
+  // Stripe's dashboard shows the endpoint it will post to; this is the URL to
+  // register there.
+  const webhookEndpoint = `${window.location.origin}/api/webhooks/stripe`;
 
-  const loadSettings = async () => {
+  const loadStatus = useCallback(async () => {
     try {
-      // Use dynamic import to avoid circular dependencies
+      const current = await stripeService.getStatus();
+      setStatus(current);
+      setIsEnabled(current.enabled);
+      setPublishableKey(current.publishableKey);
+
+      // Whether the credentials came from .env is a project setting rather than
+      // part of the Stripe status, since it describes where they were read from.
       const { sqliteService } = await import('@/services/sqlite.svc');
-      
       if (!sqliteService.isReady()) {
         await sqliteService.initialize();
       }
-
-      const saved = await sqliteService.getSetting('stripe_settings') as StripeSettings | null;
-      if (saved) {
-        setSettings({
-          webhookSecret: saved.webhookSecret || '',
-          webhookEndpoint: saved.webhookEndpoint || `${window.location.origin}/api/webhooks/stripe`,
-          testMode: saved.testMode ?? true,
-          publishableKey: saved.publishableKey || '',
-          secretKey: saved.secretKey || '',
-          isEnabled: saved.isEnabled ?? false,
-          accountId: saved.accountId || '',
-          accountName: saved.accountName || '',
-          connectedAt: saved.connectedAt || ''
-        });
-      } else {
-        // Set default webhook endpoint
-        setSettings(prev => ({
-          ...prev,
-          webhookEndpoint: `${window.location.origin}/api/webhooks/stripe`
-        }));
-      }
+      const projectSettings = await sqliteService.getProjectSettings();
+      setEnvConfigured(projectSettings?.stripe?.env_configured ?? false);
     } catch (error) {
-      console.error('Error loading Stripe settings:', error);
+      console.error('Error loading Stripe status:', error);
+      toast.error('Failed to load Stripe status');
+    } finally {
+      setIsLoading(false);
     }
-  };
+  }, []);
 
-  const handleInputChange = (field: keyof StripeSettings, value: string | boolean) => {
-    setSettings(prev => ({
-      ...prev,
-      [field]: value
-    }));
-
-    // Reset connection status when settings change
-    if (connectionStatus !== 'unknown') {
-      setConnectionStatus('unknown');
-    }
-  };
+  useEffect(() => {
+    loadStatus();
+  }, [loadStatus]);
 
   const saveSettings = useCallback(async () => {
     try {
-      // Use dynamic import to avoid circular dependencies
       const { sqliteService } = await import('@/services/sqlite.svc');
 
       if (!sqliteService.isReady()) {
         await sqliteService.initialize();
       }
 
-      await sqliteService.setSetting('stripe_settings', settings);
+      const current = await sqliteService.getProjectSettings();
+
+      // Blank secrets are omitted rather than sent as empty strings — the
+      // server treats a blank credential as "leave it alone", and this keeps
+      // the intent visible on the way out too.
+      const settings: ProjectSettings = {
+        ...current,
+        stripe: {
+          ...current.stripe,
+          enabled: isEnabled,
+          publishable_key: publishableKey,
+          ...(secretKey && { secret_key: secretKey }),
+          ...(webhookSecret && { webhook_secret: webhookSecret })
+        }
+      };
+
+      await sqliteService.updateProjectSettings(settings);
+
+      // Clear the write-only fields: what is on screen is no longer what is
+      // pending, and leaving them filled would suggest otherwise.
+      setSecretKey('');
+      setWebhookSecret('');
+      setConnectionStatus('unknown');
+      await loadStatus();
+
       toast.success('Stripe settings saved successfully');
     } catch (error) {
       console.error('Error saving Stripe settings:', error);
       toast.error('Failed to save Stripe settings');
     }
-  }, [settings]);
+  }, [isEnabled, publishableKey, secretKey, webhookSecret, loadStatus]);
 
-  // Expose saveSettings method to parent component
   useImperativeHandle(ref, () => ({ saveSettings }), [saveSettings]);
 
+  /**
+   * Ask the server to call Stripe with the stored keys.
+   *
+   * Unsaved edits are saved first, otherwise the test would report on the
+   * previous keys and contradict what is on screen.
+   */
   const testConnection = async () => {
-    if (!settings.publishableKey || !settings.secretKey) {
-      toast.error('Please enter both publishable and secret keys');
-      return;
-    }
-
     setIsTestingConnection(true);
-    setConnectionStatus('unknown');
 
     try {
-      // Save settings first
-      await saveSettings();
+      if (secretKey || webhookSecret || publishableKey !== status?.publishableKey) {
+        await saveSettings();
+      }
 
-      // Simulate Stripe connection test (in real app, this would call Stripe API)
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      const result = await stripeService.testConnection();
 
-      // Basic validation
-      const isValidPublishableKey = settings.publishableKey.startsWith(settings.testMode ? 'pk_test_' : 'pk_live_');
-      const isValidSecretKey = settings.secretKey.startsWith(settings.testMode ? 'sk_test_' : 'sk_live_');
+      setConnectionStatus(result.success ? 'success' : 'error');
+      setConnectionMessage(result.message);
+      setAccount(result.account ?? null);
 
-      if (isValidPublishableKey && isValidSecretKey) {
-        setConnectionStatus('success');
-        const updatedSettings = {
-          ...settings,
-          accountId: 'acct_test_123',
-          accountName: 'Test Business Account',
-          connectedAt: new Date().toISOString()
-        };
-        setSettings(updatedSettings);
-        // Use dynamic import to avoid circular dependencies
-        const { sqliteService: sqliteServiceForUpdate } = await import('@/services/sqlite.svc');
-        await sqliteServiceForUpdate.setSetting('stripe_settings', updatedSettings);
-        toast.success('Stripe connection successful!');
+      if (result.success) {
+        toast.success(result.message);
       } else {
-        setConnectionStatus('error');
-        toast.error('Invalid API keys for the selected mode');
+        toast.error(result.message);
       }
     } catch (error) {
       setConnectionStatus('error');
-      toast.error('Connection test failed: ' + error);
+      setConnectionMessage((error as Error).message);
+      toast.error('Connection test failed: ' + (error as Error).message);
     } finally {
       setIsTestingConnection(false);
     }
@@ -157,15 +163,31 @@ export const StripeSettingsTab = forwardRef<SettingsTabRef>((props, ref) => {
   const getConnectionStatusText = () => {
     switch (connectionStatus) {
       case 'success':
-        return settings.accountName ? `Connected to ${settings.accountName}` : 'Connected successfully';
+        return account?.display_name ? `Connected to ${account.display_name}` : 'Connected successfully';
       case 'error':
-        return 'Connection failed';
+        return connectionMessage || 'Connection failed';
       default:
-        return 'Not tested';
+        return status?.configured ? 'Not tested' : 'Not configured';
     }
   };
 
-  const isConnected = connectionStatus === 'success' && settings.isEnabled;
+  const testMode = status?.testMode ?? true;
+  const isConnected = connectionStatus === 'success';
+  const canTest = !!status?.configured || !!secretKey;
+
+  if (isLoading) {
+    return (
+      <div className="bg-card rounded-lg shadow-sm border border-border p-6">
+        <div className="animate-pulse">
+          <div className="h-4 bg-muted rounded w-1/4 mb-4"></div>
+          <div className="space-y-3">
+            <div className="h-4 bg-muted rounded"></div>
+            <div className="h-4 bg-muted rounded w-3/4"></div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -177,24 +199,32 @@ export const StripeSettingsTab = forwardRef<SettingsTabRef>((props, ref) => {
         </div>
 
         <div className="space-y-6">
-          {/* Enable/Disable Stripe */}
           <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
             <div>
-              <h4 className="text-sm font-medium text-card-foreground">Enable Stripe Integration</h4>
-              <p className="text-sm text-muted-foreground">Connect your Stripe account to process payments and automate invoicing</p>
+              <h4 className="text-sm font-medium text-card-foreground">Enable Stripe</h4>
+              <p className="text-sm text-muted-foreground">
+                Accept card payments against invoices with a payment link
+              </p>
             </div>
             <label className="relative inline-flex items-center cursor-pointer">
               <input
                 type="checkbox"
-                checked={settings.isEnabled}
-                onChange={(e) => handleInputChange('isEnabled', e.target.checked)}
+                aria-label="Enable Stripe"
+                checked={isEnabled}
+                onChange={(e) => { setIsEnabled(e.target.checked); setConnectionStatus('unknown'); }}
                 className="sr-only peer"
               />
               <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
             </label>
           </div>
 
-          {/* Connection Status */}
+          {envConfigured && (
+            <p className="text-sm text-muted-foreground">
+              Keys were found in your .env file, so this was switched on
+              automatically. Entering keys below overrides them.
+            </p>
+          )}
+
           <div className="flex items-center justify-between p-4 bg-muted/30 rounded-lg">
             <div className="flex items-center">
               {getConnectionStatusIcon()}
@@ -205,14 +235,14 @@ export const StripeSettingsTab = forwardRef<SettingsTabRef>((props, ref) => {
             <div className="flex space-x-2">
               <button
                 onClick={testConnection}
-                disabled={isTestingConnection || !settings.isEnabled || !settings.publishableKey || !settings.secretKey}
+                disabled={isTestingConnection || !canTest}
                 className="px-3 py-1 text-sm bg-secondary text-secondary-foreground rounded hover:bg-secondary/80 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isTestingConnection ? 'Testing...' : 'Test Connection'}
               </button>
               {isConnected && (
                 <a
-                  href="https://dashboard.stripe.com"
+                  href={testMode ? 'https://dashboard.stripe.com/test' : 'https://dashboard.stripe.com'}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="px-3 py-1 text-sm bg-primary text-primary-foreground rounded hover:bg-primary/90 flex items-center"
@@ -224,31 +254,48 @@ export const StripeSettingsTab = forwardRef<SettingsTabRef>((props, ref) => {
             </div>
           </div>
 
-          {/* Test/Live Mode Toggle */}
+          {isConnected && account && !account.charges_enabled && (
+            <div className="p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
+              <div className="flex items-start">
+                <AlertTriangle className="h-5 w-5 text-yellow-600 dark:text-yellow-400 mr-3 mt-0.5" />
+                <p className="text-sm text-yellow-800 dark:text-yellow-200">
+                  The keys work, but this account cannot accept charges yet. Finish
+                  onboarding in the Stripe dashboard before sending payment links.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Mode is read from the key itself, so it cannot disagree with it. */}
           <div className="flex items-center justify-between">
             <div>
-              <h4 className="text-sm font-medium text-card-foreground">Test Mode</h4>
-              <p className="text-sm text-muted-foreground">Use test keys for development and testing</p>
+              <h4 className="text-sm font-medium text-card-foreground">Mode</h4>
+              <p className="text-sm text-muted-foreground">
+                Taken from the secret key in use — an sk_test_ key is test mode,
+                an sk_live_ key is live.
+              </p>
             </div>
-            <label className="relative inline-flex items-center cursor-pointer">
-              <input
-                type="checkbox"
-                checked={settings.testMode}
-                onChange={(e) => handleInputChange('testMode', e.target.checked)}
-                disabled={!settings.isEnabled}
-                className="sr-only peer"
-              />
-              <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
-            </label>
+            <span className={`px-3 py-1 text-sm rounded-full ${
+              testMode
+                ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-200'
+                : 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-200'
+            }`}>
+              {testMode ? 'Test mode' : 'Live mode'}
+            </span>
           </div>
         </div>
       </div>
 
+      {/* Credentials, once the integration is switched on. */}
+      {isEnabled && (<>
       {/* API Keys Configuration */}
       <div className="bg-card rounded-lg shadow-sm border border-border p-6">
         <div className="flex items-center mb-6">
           <Key className="h-5 w-5 text-primary mr-2" />
           <h3 className="text-lg font-medium text-card-foreground">API Keys</h3>
+          {status?.configured && (
+            <CheckCircle className="h-4 w-4 text-green-500 ml-2" aria-label="Configured" />
+          )}
         </div>
 
         <div className="space-y-4">
@@ -257,12 +304,12 @@ export const StripeSettingsTab = forwardRef<SettingsTabRef>((props, ref) => {
               <AlertTriangle className="h-5 w-5 text-blue-600 dark:text-blue-400 mr-3 mt-0.5" />
               <div>
                 <p className="text-sm font-medium text-blue-800 dark:text-blue-200">
-                  {settings.testMode ? 'Test Mode Keys' : 'Live Mode Keys'}
+                  {testMode ? 'Test Mode Keys' : 'Live Mode Keys'}
                 </p>
                 <p className="text-sm text-blue-700 dark:text-blue-300">
-                  {settings.testMode
-                    ? 'Use test keys for development. No real payments will be processed.'
-                    : 'Live keys will process real payments. Use with caution.'
+                  {testMode
+                    ? 'Test keys process no real money. Anything you collect here is simulated.'
+                    : 'Live keys take real payments from real cards.'
                   }
                 </p>
               </div>
@@ -270,22 +317,23 @@ export const StripeSettingsTab = forwardRef<SettingsTabRef>((props, ref) => {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-muted-foreground mb-2">
-              Publishable Key *
+            <label htmlFor="stripe-publishable-key" className="block text-sm font-medium text-muted-foreground mb-2">
+              Publishable Key
             </label>
             <div className="relative">
               <input
+                id="stripe-publishable-key"
                 type="text"
-                value={settings.publishableKey}
-                onChange={(e) => handleInputChange('publishableKey', e.target.value)}
-                placeholder={settings.testMode ? 'pk_test_...' : 'pk_live_...'}
+                value={publishableKey}
+                onChange={(e) => setPublishableKey(e.target.value)}
+                placeholder={testMode ? 'pk_test_...' : 'pk_live_...'}
                 className={themeClasses.input}
-                disabled={!settings.isEnabled}
               />
               <button
                 type="button"
-                onClick={() => copyToClipboard(settings.publishableKey, 'Publishable key')}
-                disabled={!settings.publishableKey}
+                aria-label="Copy publishable key"
+                onClick={() => copyToClipboard(publishableKey, 'Publishable key')}
+                disabled={!publishableKey}
                 className="absolute inset-y-0 right-0 pr-3 flex items-center text-muted-foreground hover:text-foreground disabled:opacity-50"
               >
                 <Copy className="h-4 w-4" />
@@ -294,37 +342,32 @@ export const StripeSettingsTab = forwardRef<SettingsTabRef>((props, ref) => {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-muted-foreground mb-2">
-              Secret Key *
+            <label htmlFor="stripe-secret-key" className="block text-sm font-medium text-muted-foreground mb-2">
+              Secret Key
             </label>
             <div className="relative">
               <input
+                id="stripe-secret-key"
                 type={showSecretKey ? 'text' : 'password'}
-                value={settings.secretKey}
-                onChange={(e) => handleInputChange('secretKey', e.target.value)}
-                placeholder={settings.testMode ? 'sk_test_...' : 'sk_live_...'}
-                className={themeClasses.input}
-                disabled={!settings.isEnabled}
+                value={secretKey}
+                onChange={(e) => setSecretKey(e.target.value)}
+                placeholder={status?.configured ? 'Stored — type a new key to replace it' : 'sk_test_...'}
+                className={`${themeClasses.input} pr-10`}
               />
-              <div className="absolute inset-y-0 right-0 flex items-center pr-3 space-x-2">
-                <button
-                  type="button"
-                  onClick={() => setShowSecretKey(!showSecretKey)}
-                  className="text-muted-foreground hover:text-foreground"
-                  disabled={!settings.isEnabled}
-                >
-                  {showSecretKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => copyToClipboard(settings.secretKey, 'Secret key')}
-                  disabled={!settings.secretKey}
-                  className="text-muted-foreground hover:text-foreground disabled:opacity-50"
-                >
-                  <Copy className="h-4 w-4" />
-                </button>
-              </div>
+              <button
+                type="button"
+                aria-label={showSecretKey ? 'Hide secret key' : 'Show secret key'}
+                onClick={() => setShowSecretKey(!showSecretKey)}
+                className="absolute inset-y-0 right-0 pr-3 flex items-center text-muted-foreground hover:text-foreground"
+              >
+                {showSecretKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
             </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              Held on the server and never sent back to this page. Leave blank to
+              keep the stored key. You can also set STRIPE_SECRET_KEY in .env —
+              a key saved here takes precedence.
+            </p>
           </div>
         </div>
       </div>
@@ -334,81 +377,87 @@ export const StripeSettingsTab = forwardRef<SettingsTabRef>((props, ref) => {
         <div className="flex items-center mb-6">
           <Webhook className="h-5 w-5 text-primary mr-2" />
           <h3 className="text-lg font-medium text-card-foreground">Webhook Configuration</h3>
+          {status?.webhookConfigured && (
+            <CheckCircle className="h-4 w-4 text-green-500 ml-2" aria-label="Webhook configured" />
+          )}
         </div>
 
         <div className="space-y-4">
+          {!status?.webhookConfigured && (
+            <div className="p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
+              <div className="flex items-start">
+                <AlertTriangle className="h-5 w-5 text-yellow-600 dark:text-yellow-400 mr-3 mt-0.5" />
+                <p className="text-sm text-yellow-800 dark:text-yellow-200">
+                  Without a signing secret, payments cannot be reconciled: clients
+                  can still pay, but invoices will not be marked paid automatically.
+                </p>
+              </div>
+            </div>
+          )}
+
           <div>
-            <label className="block text-sm font-medium text-muted-foreground mb-2">
+            <label htmlFor="stripe-webhook-endpoint" className="block text-sm font-medium text-muted-foreground mb-2">
               Webhook Endpoint URL
             </label>
             <div className="relative">
               <input
+                id="stripe-webhook-endpoint"
                 type="text"
-                value={settings.webhookEndpoint}
-                onChange={(e) => handleInputChange('webhookEndpoint', e.target.value)}
-                placeholder="https://your-app.com/api/webhooks/stripe"
+                value={webhookEndpoint}
+                readOnly
                 className={themeClasses.input}
-                disabled={!settings.isEnabled}
               />
               <button
                 type="button"
-                onClick={() => copyToClipboard(settings.webhookEndpoint, 'Webhook endpoint')}
-                disabled={!settings.webhookEndpoint}
-                className="absolute inset-y-0 right-0 pr-3 flex items-center text-muted-foreground hover:text-foreground disabled:opacity-50"
+                aria-label="Copy webhook endpoint"
+                onClick={() => copyToClipboard(webhookEndpoint, 'Webhook endpoint')}
+                className="absolute inset-y-0 right-0 pr-3 flex items-center text-muted-foreground hover:text-foreground"
               >
                 <Copy className="h-4 w-4" />
               </button>
             </div>
             <p className="text-xs text-muted-foreground mt-1">
-              Add this URL to your Stripe webhook endpoints in the dashboard
+              This is the address this server listens on. Add it to your Stripe
+              webhook endpoints — Stripe must be able to reach it, so a localhost
+              address only works behind a tunnel such as the Stripe CLI.
             </p>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-muted-foreground mb-2">
+            <label htmlFor="stripe-webhook-secret" className="block text-sm font-medium text-muted-foreground mb-2">
               Webhook Signing Secret
             </label>
             <div className="relative">
               <input
+                id="stripe-webhook-secret"
                 type={showWebhookSecret ? 'text' : 'password'}
-                value={settings.webhookSecret}
-                onChange={(e) => handleInputChange('webhookSecret', e.target.value)}
-                placeholder="whsec_..."
-                className={themeClasses.input}
-                disabled={!settings.isEnabled}
+                value={webhookSecret}
+                onChange={(e) => setWebhookSecret(e.target.value)}
+                placeholder={status?.webhookConfigured ? 'Stored — type a new secret to replace it' : 'whsec_...'}
+                className={`${themeClasses.input} pr-10`}
               />
-              <div className="absolute inset-y-0 right-0 flex items-center pr-3 space-x-2">
-                <button
-                  type="button"
-                  onClick={() => setShowWebhookSecret(!showWebhookSecret)}
-                  className="text-muted-foreground hover:text-foreground"
-                  disabled={!settings.isEnabled}
-                >
-                  {showWebhookSecret ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => copyToClipboard(settings.webhookSecret, 'Webhook secret')}
-                  disabled={!settings.webhookSecret}
-                  className="text-muted-foreground hover:text-foreground disabled:opacity-50"
-                >
-                  <Copy className="h-4 w-4" />
-                </button>
-              </div>
+              <button
+                type="button"
+                aria-label={showWebhookSecret ? 'Hide webhook secret' : 'Show webhook secret'}
+                onClick={() => setShowWebhookSecret(!showWebhookSecret)}
+                className="absolute inset-y-0 right-0 pr-3 flex items-center text-muted-foreground hover:text-foreground"
+              >
+                {showWebhookSecret ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
             </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              Held on the server. Leave blank to keep the stored secret, or set
+              STRIPE_WEBHOOK_SECRET in .env.
+            </p>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-muted-foreground mb-2">
+            <span className="block text-sm font-medium text-muted-foreground mb-2">
               Events to Listen For
-            </label>
+            </span>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
               {[
-                'invoice.payment_succeeded',
-                'invoice.payment_failed',
-                'customer.subscription.created',
-                'customer.subscription.updated',
-                'customer.subscription.deleted',
+                'checkout.session.completed',
                 'payment_intent.succeeded'
               ].map((event) => (
                 <div key={event} className="flex items-center p-2 bg-muted/30 rounded">
@@ -417,6 +466,10 @@ export const StripeSettingsTab = forwardRef<SettingsTabRef>((props, ref) => {
                 </div>
               ))}
             </div>
+            <p className="text-xs text-muted-foreground mt-2">
+              These are the events this server acts on. Anything else is
+              acknowledged and ignored, so selecting more does no harm.
+            </p>
           </div>
         </div>
       </div>
@@ -437,7 +490,7 @@ export const StripeSettingsTab = forwardRef<SettingsTabRef>((props, ref) => {
               >
                 Stripe Dashboard → API Keys
               </a>{' '}
-              and copy your publishable and secret keys.
+              and copy your publishable and secret keys. Start with the test keys.
             </p>
           </div>
           <div>
@@ -452,17 +505,21 @@ export const StripeSettingsTab = forwardRef<SettingsTabRef>((props, ref) => {
               >
                 Stripe Dashboard → Webhooks
               </a>
-              , add the endpoint URL above and select the events you want to listen for.
+              , add the endpoint URL above, select the events listed, then paste
+              the signing secret it gives you into the field above.
             </p>
           </div>
           <div>
             <h5 className="font-medium text-card-foreground mb-2">3. Test your connection</h5>
             <p>
-              Use the "Test Connection" button above to verify your API keys are working correctly.
+              Use "Test Connection" above. It calls Stripe with the stored keys,
+              so a revoked or mistyped key fails here rather than at the moment a
+              client tries to pay.
             </p>
           </div>
         </div>
       </div>
+      </>)}
     </div>
   );
 });

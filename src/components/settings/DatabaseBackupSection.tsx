@@ -57,18 +57,18 @@ export const DatabaseBackupSection = () => {
 
       try {
         // Try to get various settings to estimate count
-        const settingsToCheck = [
-          'company_settings',
-          'email_settings',
-          'stripe_settings',
-          'currency_format_settings',
-          'tax_rates',
-          'shipping_rates',
-          'project_settings'
+        // Paired with the category each is stored under: a bare key reads a
+        // name that was never written, so every one of these counted as absent.
+        const settingsToCheck: Array<[key: string, category: string]> = [
+          ['company_settings', 'company'],
+          ['email_settings', 'email'],
+          ['currency_format_settings', 'general'],
+          ['tax_rates', 'tax'],
+          ['shipping_rates', 'shipping']
         ];
 
         const settingsResults = await Promise.allSettled(
-          settingsToCheck.map(setting => sqliteService.getSetting(setting))
+          settingsToCheck.map(([key, category]) => sqliteService.getSetting(key, category))
         );
 
         settingsCount = settingsResults.filter(result =>

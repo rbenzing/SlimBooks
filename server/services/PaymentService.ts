@@ -105,6 +105,7 @@ export class PaymentService {
     reference?: string;
     description?: string;
     status?: PaymentStatus;
+    stripe_payment_id?: string;
   }): Promise<number> {
     if (!paymentData || !paymentData.date || !paymentData.client_name || !paymentData.amount || !paymentData.method) {
       throw new Error('Invalid payment data - date, client_name, amount, and method are required');
@@ -148,6 +149,10 @@ export class PaymentService {
       reference: paymentData.reference || null,
       description: paymentData.description || '',
       status: paymentData.status || 'received',
+      // Set only for payments Stripe told us about. It is what makes webhook
+      // reconciliation idempotent — Stripe retries an event until it is
+      // acknowledged, and the same charge must not book twice.
+      stripe_payment_id: paymentData.stripe_payment_id || null,
       created_at: now,
       updated_at: now
     };
@@ -155,13 +160,14 @@ export class PaymentService {
     // Create payment
     databaseService.executeQuery(`
       INSERT INTO payments (
-        id, date, client_name, invoice_id, amount, method, reference, 
-        description, status, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        id, date, client_name, invoice_id, amount, method, reference,
+        description, status, stripe_payment_id, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `, [
       paymentRecord.id, paymentRecord.date, paymentRecord.client_name,
       paymentRecord.invoice_id, paymentRecord.amount, paymentRecord.method,
       paymentRecord.reference, paymentRecord.description, paymentRecord.status,
+      paymentRecord.stripe_payment_id,
       paymentRecord.created_at, paymentRecord.updated_at
     ]);
 

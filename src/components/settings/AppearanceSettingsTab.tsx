@@ -12,6 +12,7 @@ export const AppearanceSettingsTab = forwardRef<SettingsTabRef>((props, ref) => 
   const { theme, setTheme: setGlobalTheme } = useTheme();
   const [invoiceTemplate, setInvoiceTemplate] = useState('modern-blue');
   const [pdfFormat, setPdfFormat] = useState('A4');
+  const [showStatCards, setShowStatCards] = useState(true);
   const [isLoaded, setIsLoaded] = useState(false);
   const [saveError, setSaveError] = useState<string>('');
 
@@ -33,7 +34,8 @@ export const AppearanceSettingsTab = forwardRef<SettingsTabRef>((props, ref) => 
     try {
       const settingsToSave = {
         'invoice_template': { value: invoiceTemplate, category: 'appearance' },
-        'pdf_format': { value: { format: pdfFormat }, category: 'appearance' }
+        'pdf_format': { value: { format: pdfFormat }, category: 'appearance' },
+        'show_stat_cards': { value: showStatCards, category: 'appearance' }
       };
 
       const response = await fetch('/api/settings/appearance', {
@@ -70,7 +72,7 @@ export const AppearanceSettingsTab = forwardRef<SettingsTabRef>((props, ref) => 
       toast.error(`Failed to save appearance settings: ${error.message}`);
       throw error;
     }
-  }, [isLoaded, invoiceTemplate, pdfFormat, isAdmin, user?.role]);
+  }, [isLoaded, invoiceTemplate, pdfFormat, showStatCards, isAdmin, user?.role]);
 
   // Load settings from database on component mount
   useEffect(() => {
@@ -104,6 +106,10 @@ export const AppearanceSettingsTab = forwardRef<SettingsTabRef>((props, ref) => 
           // Theme is already handled by useTheme hook
           if (settings?.invoice_template && typeof settings.invoice_template === 'string') {
             setInvoiceTemplate(settings.invoice_template);
+          }
+          // Absent means shown: the cards predate this setting.
+          if (typeof settings?.show_stat_cards === 'boolean') {
+            setShowStatCards(settings.show_stat_cards);
           }
           if (settings?.pdf_format) {
             const pdfFormatValue = typeof settings.pdf_format === 'object' && settings.pdf_format !== null && 'format' in settings.pdf_format
@@ -181,6 +187,29 @@ export const AppearanceSettingsTab = forwardRef<SettingsTabRef>((props, ref) => 
             <option value="classic-white">Classic White</option>
             <option value="professional-gray">Professional Gray</option>
           </select>
+        </div>
+
+        <div className="flex items-center justify-between">
+          <div>
+            <label htmlFor="show-stat-cards" className="block text-sm font-medium text-card-foreground">
+              Show Summary Cards
+            </label>
+            <p className="text-xs text-muted-foreground mt-1">
+              The row of totals at the top of the list and report screens
+            </p>
+          </div>
+          <label className="relative inline-flex items-center cursor-pointer">
+            <input
+              id="show-stat-cards"
+              type="checkbox"
+              aria-label="Show summary cards"
+              checked={showStatCards}
+              onChange={(e) => setShowStatCards(e.target.checked)}
+              disabled={!isAdmin}
+              className="sr-only peer disabled:opacity-50"
+            />
+            <div className={`w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600 ${!isAdmin ? 'opacity-60 cursor-not-allowed' : ''}`}></div>
+          </label>
         </div>
 
         <div>

@@ -1,14 +1,25 @@
 // UI component prop types
 
+import type { LucideIcon } from 'lucide-react';
+
+/** The colour palette shared by stat icons and stat values. */
+export type StatColor = 'blue' | 'green' | 'purple' | 'red' | 'yellow' | 'orange';
+
 export interface StatCardProps {
-  title: string;
-  value: string | number;
-  icon?: React.ReactNode;
-  trend?: {
-    value: number;
-    isPositive: boolean;
-  };
-  onClick?: () => void;
+  label: string;
+  value: React.ReactNode;
+  /** Omit for the stacked report layout; supply for the management layout. */
+  icon?: LucideIcon;
+  iconColor?: StatColor;
+  /** Colours the figure itself, as the report screens do. */
+  valueColor?: StatColor;
+  size?: 'default' | 'medium' | 'small';
+}
+
+export interface StatCardGridProps {
+  children: React.ReactNode;
+  /** Grid classes for the row; each screen keeps its own column layout. */
+  className?: string;
 }
 
 export interface FormattedDateProps {
@@ -27,11 +38,6 @@ export interface PaginationControlsProps {
   onPageChange: (page: number) => void;
   itemsPerPage?: number;
   onItemsPerPageChange?: (itemsPerPage: number) => void;
-}
-
-export interface TokenStatusProps {
-  isValid: boolean;
-  expiresAt?: string;
 }
 
 export interface DateRangeFilterProps {

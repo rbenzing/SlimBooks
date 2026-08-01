@@ -75,7 +75,7 @@ export class TemplateService {
     }
 
     const result = databaseService.executeQuery(
-      'INSERT INTO invoice_design_templates (name, content, is_default, variables, created_at, updated_at) VALUES (?, ?, ?, ?, DATETIME(\'now\'), DATETIME(\'now\')),',
+      'INSERT INTO invoice_design_templates (name, content, is_default, variables, created_at, updated_at) VALUES (?, ?, ?, ?, DATETIME(\'now\'), DATETIME(\'now\'))',
       [
         templateData.name,
         templateData.content,

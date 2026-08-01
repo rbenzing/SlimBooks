@@ -28,7 +28,9 @@ export const TaxSettings = forwardRef<SettingsTabRef>((props, ref) => {
           await sqliteService.initialize();
         }
 
-        const saved = await sqliteService.getSetting('tax_rates');
+        // Stored as `tax.tax_rates`, so the category has to be given here too
+        // or the read looks for a key that was never written.
+        const saved = await sqliteService.getSetting('tax_rates', 'tax');
         if (saved) {
           setTaxRates(validateTaxRateArray(saved));
         } else {

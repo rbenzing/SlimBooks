@@ -14,10 +14,3 @@ export interface ResponsiveLayoutProps {
   children: React.ReactNode;
   showSidebar?: boolean;
 }
-
-export interface NavigationGuardedSidebarProps {
-  isOpen: boolean;
-  onClose: () => void;
-  hasUnsavedChanges?: boolean;
-  onDiscardChanges?: () => void;
-}

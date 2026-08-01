@@ -100,6 +100,23 @@ const formatNumber = (amount: number, settings: CurrencySettings): string => {
   return result;
 };
 
+/**
+ * Places the symbol and sign around an already-formatted magnitude.
+ * The minus sign belongs outside the symbol — `-$250.00`, not `$-250.00` —
+ * which matters for credit notes and refunds.
+ */
+const withSymbol = (
+  magnitude: string,
+  symbol: string,
+  isNegative: boolean,
+  symbolPosition: CurrencySettings['symbolPosition']
+): string => {
+  const sign = isNegative ? '-' : '';
+  return symbolPosition === 'before'
+    ? `${sign}${symbol}${magnitude}`
+    : `${sign}${magnitude}${symbol}`;
+};
+
 export const formatCurrency = async (
   amount: number | undefined | null,
   customSettings?: Partial<CurrencySettings>
@@ -108,11 +125,9 @@ export const formatCurrency = async (
   const settings = customSettings ? { ...await getCurrencySettings(), ...customSettings } : await getCurrencySettings();
 
   const symbol = getCurrencySymbol(settings.currency);
-  const formattedNumber = formatNumber(safeAmount, settings);
+  const formattedNumber = formatNumber(Math.abs(safeAmount), settings);
 
-  return settings.symbolPosition === 'before'
-    ? `${symbol}${formattedNumber}`
-    : `${formattedNumber}${symbol}`;
+  return withSymbol(formattedNumber, symbol, safeAmount < 0, settings.symbolPosition);
 };
 
 export const formatCurrencySync = (
@@ -122,12 +137,12 @@ export const formatCurrencySync = (
   const safeAmount = amount || 0;
   const symbol = getCurrencySymbol(currency);
 
-  const formatted = safeAmount.toLocaleString('en-US', {
+  const formatted = Math.abs(safeAmount).toLocaleString('en-US', {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2
   });
 
-  return `${symbol}${formatted}`;
+  return withSymbol(formatted, symbol, safeAmount < 0, 'before');
 };
 
 export const getCurrencyFormatPreview = (settings: CurrencySettings): string => {
@@ -135,9 +150,7 @@ export const getCurrencyFormatPreview = (settings: CurrencySettings): string => 
   const symbol = getCurrencySymbol(settings.currency);
   const formattedNumber = formatNumber(sampleAmount, settings);
 
-  return settings.symbolPosition === 'before'
-    ? `${symbol}${formattedNumber}`
-    : `${formattedNumber}${symbol}`;
+  return withSymbol(formattedNumber, symbol, false, settings.symbolPosition);
 };
 
 export const clearCurrencyCache = (): void => {

@@ -21,6 +21,19 @@ export interface PaymentValidationResult {
   errors: string[];
 }
 
+/**
+ * The result of validating one row of an import file. Carries the row's
+ * position and the parsed record alongside the verdict, so the import screen
+ * can point at the line that failed instead of just reporting a count.
+ */
+export interface ImportRowResult<T> {
+  index: number;
+  data: T;
+  isValid: boolean;
+  errors: string[];
+  warnings?: string[];
+}
+
 // Common field mapping interface used across import/export components
 export interface FieldMapping {
   csvField: string;

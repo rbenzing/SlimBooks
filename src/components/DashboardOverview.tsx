@@ -4,6 +4,7 @@ import { DollarSign, Users, FileText, TrendingUp, Calendar, AlertCircle } from '
 import DashboardChart from './DashboardChart';
 import { authenticatedFetch } from '@/utils/api';
 import { themeClasses, getIconColorClasses, getStatusColor } from '@/utils/themeUtils.util';
+import { StatCard, StatCardGrid } from '@/components/ui/StatCard';
 import { FormattedCurrency } from '@/components/ui/FormattedCurrency';
 import { type TimePeriod, type Invoice, type Expense } from '@/types';
 
@@ -162,51 +163,35 @@ export const DashboardOverview = () => {
         </div>
 
         {/* Stats Grid */}
-        <div className={themeClasses.statsGrid}>
-          <div className={themeClasses.statCard}>
-            <div className={themeClasses.statCardContent}>
-              <div>
-                <p className={themeClasses.statLabel}>Total Revenue</p>
-                <p className={themeClasses.statValue}>
-                  <FormattedCurrency amount={stats.totalRevenue} />
-                </p>
-              </div>
-              <DollarSign className={`${themeClasses.iconLarge} ${getIconColorClasses('green')}`} />
-            </div>
-          </div>
+        <StatCardGrid className={themeClasses.statsGrid}>
+          <StatCard
+            label="Total Revenue"
+            value={<FormattedCurrency amount={stats.totalRevenue} />}
+            icon={DollarSign}
+            iconColor="green"
+          />
 
-          <div className={themeClasses.statCard}>
-            <div className={themeClasses.statCardContent}>
-              <div>
-                <p className={themeClasses.statLabel}>Total Clients</p>
-                <p className={themeClasses.statValue}>{stats.totalClients}</p>
-              </div>
-              <Users className={`${themeClasses.iconLarge} ${getIconColorClasses('blue')}`} />
-            </div>
-          </div>
+          <StatCard
+            label="Total Clients"
+            value={stats.totalClients}
+            icon={Users}
+            iconColor="blue"
+          />
 
-          <div className={themeClasses.statCard}>
-            <div className={themeClasses.statCardContent}>
-              <div>
-                <p className={themeClasses.statLabel}>Total Invoices</p>
-                <p className={themeClasses.statValue}>{stats.totalInvoices}</p>
-              </div>
-              <FileText className={`${themeClasses.iconLarge} ${getIconColorClasses('purple')}`} />
-            </div>
-          </div>
+          <StatCard
+            label="Total Invoices"
+            value={stats.totalInvoices}
+            icon={FileText}
+            iconColor="purple"
+          />
 
-          <div className={themeClasses.statCard}>
-            <div className={themeClasses.statCardContent}>
-              <div>
-                <p className={themeClasses.statLabel}>Total Expenses</p>
-                <p className={themeClasses.statValue}>
-                  <FormattedCurrency amount={stats.totalExpenses} />
-                </p>
-              </div>
-              <TrendingUp className={`${themeClasses.iconLarge} ${getIconColorClasses('red')}`} />
-            </div>
-          </div>
-        </div>
+          <StatCard
+            label="Total Expenses"
+            value={<FormattedCurrency amount={stats.totalExpenses} />}
+            icon={TrendingUp}
+            iconColor="red"
+          />
+        </StatCardGrid>
 
         {/* Invoice Status Cards - 5 Column Layout */}
         <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-6">

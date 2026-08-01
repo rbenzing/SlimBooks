@@ -3,6 +3,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { ArrowLeft, Download, TrendingUp, TrendingDown, Save, Calendar } from 'lucide-react';
 import { authenticatedFetch } from '@/utils/api';
 import { themeClasses, getButtonClasses } from '@/utils/themeUtils.util';
+import { StatCard, StatCardGrid } from '@/components/ui/StatCard';
 import { formatDateRangeSync } from '@/utils/formatting';
 import { FormattedCurrency, useCurrencyFormatter } from '@/components/ui/FormattedCurrency';
 import { pdfService } from '@/services/pdf.svc';
@@ -273,29 +274,23 @@ export const ProfitLossReport: React.FC<ProfitLossReportProps> = ({ onBack, onSa
         {reportData && (
           <>
             {/* Summary Cards */}
-            <div className={themeClasses.statsGridThree}>
-              <div className={themeClasses.statCard}>
-                <div className={themeClasses.statCardContent}>
-                  <div>
-                    <p className={themeClasses.statLabel}>Total Revenue</p>
-                    <p className={`${themeClasses.statValueMedium} text-green-600 dark:text-green-400`}>
-                      <FormattedCurrency amount={reportData.revenue.total} />
-                    </p>
-                  </div>
-                  <TrendingUp className={`${themeClasses.iconLarge} text-green-600 dark:text-green-400`} />
-                </div>
-              </div>
-              <div className={themeClasses.statCard}>
-                <div className={themeClasses.statCardContent}>
-                  <div>
-                    <p className={themeClasses.statLabel}>Total Expenses</p>
-                    <p className={`${themeClasses.statValueMedium} text-red-600 dark:text-red-400`}>
-                      <FormattedCurrency amount={reportData.expenses.total} />
-                    </p>
-                  </div>
-                  <TrendingDown className={`${themeClasses.iconLarge} text-red-600 dark:text-red-400`} />
-                </div>
-              </div>
+            <StatCardGrid className={themeClasses.statsGridThree}>
+              <StatCard
+                label="Total Revenue"
+                value={<FormattedCurrency amount={reportData.revenue.total} />}
+                icon={TrendingUp}
+                iconColor="green"
+                valueColor="green"
+                size="medium"
+              />
+              <StatCard
+                label="Total Expenses"
+                value={<FormattedCurrency amount={reportData.expenses.total} />}
+                icon={TrendingDown}
+                iconColor="red"
+                valueColor="red"
+                size="medium"
+              />
               <div className={themeClasses.statCard}>
                 <div className={themeClasses.statCardContent}>
                   <div>
@@ -311,7 +306,7 @@ export const ProfitLossReport: React.FC<ProfitLossReportProps> = ({ onBack, onSa
                   )}
                 </div>
               </div>
-            </div>
+            </StatCardGrid>
 
             {/* P&L Report - Clean Table Format */}
             <div className={themeClasses.card}>

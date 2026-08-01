@@ -38,7 +38,10 @@ describe('getInvoiceNumberSettings', () => {
     getSetting.mockResolvedValue({ prefix: 'ACME-' });
 
     await expect(getInvoiceNumberSettings()).resolves.toEqual({ prefix: 'ACME-' });
-    expect(getSetting).toHaveBeenCalledWith('invoice_number_settings');
+    // Read with the same category it is written under. Without it the read
+    // asks for `invoice_number_settings` while the write stored
+    // `invoice.invoice_number_settings`, and the saved prefix never comes back.
+    expect(getSetting).toHaveBeenCalledWith('invoice_number_settings', 'invoice');
   });
 
   it('falls back to the default prefix when nothing is stored', async () => {

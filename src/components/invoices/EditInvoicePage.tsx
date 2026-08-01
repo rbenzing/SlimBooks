@@ -255,7 +255,7 @@ export const EditInvoicePage = () => {
         const { sqliteService } = await import('@/services/sqlite.svc');
         if (!sqliteService.isReady()) return;
 
-        const savedTaxRates = (await sqliteService.getSetting('tax_rates')) as TaxRate[] | null;
+        const savedTaxRates = (await sqliteService.getSetting('tax_rates', 'tax')) as TaxRate[] | null;
         if (savedTaxRates) {
           setTaxRates(savedTaxRates);
           if (record.tax_rate_id) {
@@ -267,7 +267,7 @@ export const EditInvoicePage = () => {
           }
         }
 
-        const savedShippingRates = (await sqliteService.getSetting('shipping_rates')) as ShippingRate[] | null;
+        const savedShippingRates = (await sqliteService.getSetting('shipping_rates', 'shipping')) as ShippingRate[] | null;
         if (savedShippingRates) {
           setShippingRates(savedShippingRates);
           if (record.shipping_rate_id) {

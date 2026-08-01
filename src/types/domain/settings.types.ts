@@ -166,6 +166,31 @@ export interface EmailConfigStatus {
   canSendEmails: boolean;
 }
 
+/** How an SMTP connection is secured. */
+export type SmtpSecurity = 'ssl' | 'tls' | 'none';
+
+/**
+ * Email configuration as reported by GET /api/email/status.
+ *
+ * Says what is configured and what is missing, never the password. This is
+ * resolved on the server from the saved settings with .env as the fallback, so
+ * it is the single answer to "can this install send mail" — the browser cannot
+ * work that out for itself, and the version that tried read `process.env` in
+ * the browser, where it does not exist.
+ */
+export interface SmtpStatus {
+  isEnabled: boolean;
+  configured: boolean;
+  missingFields: string[];
+  canSendEmails: boolean;
+  host: string;
+  port: number;
+  security: SmtpSecurity;
+  user: string;
+  fromEmail: string;
+  fromName: string;
+}
+
 // Currency formatting settings
 export interface CurrencySettings {
   currency: string;

@@ -256,7 +256,8 @@ export class ClientService {
     const { limit = 100, offset = 0 } = options;
 
     return databaseService.getMany<Client>(`
-      SELECT * FROM clients 
+      SELECT * FROM clients
+      WHERE deleted_at IS NULL
       ORDER BY name ASC
       LIMIT ? OFFSET ?
     `, [limit, offset]);
@@ -282,8 +283,8 @@ export class ClientService {
     const { limit = 100, offset = 0 } = options;
 
     return databaseService.getMany<Client>(`
-      SELECT * FROM clients 
-      WHERE country = ?
+      SELECT * FROM clients
+      WHERE country = ? AND deleted_at IS NULL
       ORDER BY name ASC
       LIMIT ? OFFSET ?
     `, [country, limit, offset]);
@@ -301,23 +302,23 @@ export class ClientService {
     byCountry: Record<string, number>;
   }> {
     const total = databaseService.getOne<{count: number}>(
-      'SELECT COUNT(*) as count FROM clients'
+      'SELECT COUNT(*) as count FROM clients WHERE deleted_at IS NULL'
     )?.count || 0;
 
     const active = total; // All clients are considered active now
     const inactive = 0;
 
     const withEmail = databaseService.getOne<{count: number}>(
-      'SELECT COUNT(*) as count FROM clients WHERE email IS NOT NULL'
+      'SELECT COUNT(*) as count FROM clients WHERE email IS NOT NULL AND deleted_at IS NULL'
     )?.count || 0;
 
     const withPhone = databaseService.getOne<{count: number}>(
-      'SELECT COUNT(*) as count FROM clients WHERE phone IS NOT NULL'
+      'SELECT COUNT(*) as count FROM clients WHERE phone IS NOT NULL AND deleted_at IS NULL'
     )?.count || 0;
 
     // Get country distribution
     const countryData = databaseService.getMany<{country: string; count: number}>(
-      'SELECT country, COUNT(*) as count FROM clients WHERE country IS NOT NULL GROUP BY country ORDER BY count DESC'
+      'SELECT country, COUNT(*) as count FROM clients WHERE country IS NOT NULL AND deleted_at IS NULL GROUP BY country ORDER BY count DESC'
     );
 
     const byCountry: Record<string, number> = {};
@@ -343,13 +344,18 @@ export class ClientService {
   async getClientsWithRecentActivity(days: number = 30, options: ServiceOptions = {}): Promise<Client[]> {
     const { limit = 50, offset = 0 } = options;
 
+    // Bind the window rather than splicing it into the SQL: the statement text
+    // stays constant (so it caches) and no caller can reach the query string.
+    const windowDays = Number.isFinite(days) ? Math.abs(Math.trunc(days)) : 30;
+
     return databaseService.getMany<Client>(`
       SELECT DISTINCT c.* FROM clients c
       INNER JOIN invoices i ON c.id = i.client_id
-      WHERE i.created_at > datetime('now', '-${days} days')
+      WHERE i.created_at > datetime('now', ?)
+        AND c.deleted_at IS NULL
       ORDER BY c.name ASC
       LIMIT ? OFFSET ?
-    `, [limit, offset]);
+    `, [`-${windowDays} days`, limit, offset]);
   }
 
   /**

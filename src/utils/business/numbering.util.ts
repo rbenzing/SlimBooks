@@ -40,7 +40,7 @@ export const getNumberingSettings = async (type: 'invoice' | 'expense' | 'paymen
     const { sqliteService } = await import('@/services/sqlite.svc');
 
     if (sqliteService.isReady()) {
-      const settings = await sqliteService.getSetting(`${type}_numbering_settings`) as NumberingSettings;
+      const settings = await sqliteService.getSetting(`${type}_numbering_settings`, 'general') as NumberingSettings;
       if (settings) {
         const defaults = type === 'invoice' ? DEFAULT_INVOICE_SETTINGS :
                         type === 'expense' ? DEFAULT_EXPENSE_SETTINGS :
@@ -156,7 +156,7 @@ export const getInvoiceNumberSettings = async (): Promise<InvoiceNumberSettings>
   try {
     if (sqliteService.isReady()) {
       const settings = (await sqliteService.getSetting(
-        'invoice_number_settings'
+        'invoice_number_settings', 'invoice'
       )) as InvoiceNumberSettings | null;
 
       if (settings?.prefix) {

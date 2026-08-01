@@ -14,7 +14,9 @@ export interface Counter {
  */
 export class CounterService {
   // Valid counter names
-  private readonly validCounters = ['clients', 'invoices', 'expenses', 'templates', 'reports'];
+  // Must match the counters seeded by `initializeCounters`; one the seed writes
+  // but this list omits is unreachable through the counter endpoints.
+  private readonly validCounters = ['clients', 'invoices', 'expenses', 'templates', 'reports', 'payments'];
 
   /**
    * Get next ID for a counter and increment it
@@ -31,18 +33,28 @@ export class CounterService {
 
     // Get current counter value
     const counterResult = databaseService.getOne<{value: number}>(
-      'SELECT value FROM counters WHERE name = ?', 
+      'SELECT value FROM counters WHERE name = ?',
       [counterName]
     );
-    
-    const nextId = (counterResult?.value || 0) + 1;
-    
+
+    if (!counterResult) {
+      // An UPDATE against a missing row changes nothing, so every caller would
+      // keep receiving 1. Create the counter at the value being issued.
+      databaseService.executeQuery(
+        'INSERT INTO counters (name, value) VALUES (?, ?)',
+        [counterName, 1]
+      );
+      return 1;
+    }
+
+    const nextId = counterResult.value + 1;
+
     // Update counter in database
     databaseService.executeQuery(
-      'UPDATE counters SET value = ? WHERE name = ?', 
+      'UPDATE counters SET value = ? WHERE name = ?',
       [nextId, counterName]
     );
-    
+
     return nextId;
   }
 

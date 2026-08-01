@@ -18,14 +18,28 @@ export const GoogleOAuthSchema = z.object({
   enabled: z.boolean(),
   client_id: z.string(),
   client_secret: z.string().optional(),
-  configured: z.boolean()
+  configured: z.boolean(),
+  env_configured: z.boolean().optional()
 });
 
+/**
+ * Stripe project settings.
+ *
+ * `secret_key` and `webhook_secret` are write-only: the server never sends them
+ * back, so they are absent when reading and present only when an admin has just
+ * typed a new one. `configured` and `webhook_configured` are what the UI reads
+ * instead — the server derives them, and a blank credential on save leaves the
+ * stored one alone.
+ */
 export const StripeSchema = z.object({
   enabled: z.boolean(),
   publishable_key: z.string(),
   secret_key: z.string().optional(),
-  configured: z.boolean()
+  webhook_secret: z.string().optional(),
+  test_mode: z.boolean().optional(),
+  configured: z.boolean(),
+  webhook_configured: z.boolean().optional(),
+  env_configured: z.boolean().optional()
 });
 
 export const EmailServiceSchema = z.object({

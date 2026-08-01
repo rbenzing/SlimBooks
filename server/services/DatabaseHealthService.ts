@@ -56,10 +56,13 @@ export class DatabaseHealthService {
     users: number;
   }> {
     try {
+      // There is no `templates` table: templates live in two tables, and
+      // counting the non-existent one reported zero on every install.
       const stats = {
         clients: this.getTableCount('clients'),
         invoices: this.getTableCount('invoices'),
-        templates: this.getTableCount('templates'),
+        templates: this.getTableCount('invoice_design_templates')
+          + this.getTableCount('recurring_invoice_templates'),
         expenses: this.getTableCount('expenses'),
         payments: this.getTableCount('payments'),
         users: this.getTableCount('users')

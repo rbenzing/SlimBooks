@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { toast } from 'sonner';
 import { getToken as getAuthToken } from '@/utils/api';
 import { debug, warn } from '@/utils/logger.util';
+import type { SmtpSecurity } from '@/types';
 
 // Global cache to prevent multiple API calls for the same settings across all component instances
 const globalSettingsCache = new Map<string, {
@@ -41,6 +42,13 @@ export interface UseSettingsOptions<T> {
   defaultSettings: T;
   apiEndpoint?: string;
   saveEndpoint?: string; // Optional separate endpoint for saving
+  /**
+   * HTTP method for the save. Defaults to POST, which is what the generic
+   * `/api/settings/` endpoint takes; the appearance endpoint is a PUT, and
+   * posting to it fell through to the SPA catch-all, so the save "succeeded"
+   * against an HTML page and nothing was ever stored.
+   */
+  saveMethod?: 'POST' | 'PUT';
   category?: string;
   transformLoad?: (data: unknown) => T;
   transformSave?: (data: T) => Record<string, unknown>;
@@ -64,6 +72,7 @@ export function useSettings<T extends Record<string, unknown>>({
   defaultSettings,
   apiEndpoint,
   saveEndpoint,
+  saveMethod = 'POST',
   category = 'general',
   transformLoad,
   transformSave,
@@ -238,13 +247,25 @@ export function useSettings<T extends Record<string, unknown>>({
         const endpoint = saveEndpoint || apiEndpoint;
         try {
           const response = await fetch(endpoint, {
-            method: 'POST',
+            method: saveMethod,
             headers: {
               'Content-Type': 'application/json',
               'Authorization': `Bearer ${getAuthToken()}`
             },
             body: JSON.stringify(dataToSave)
           });
+
+          // A request that lands on no route falls through to the SPA
+          // catch-all, which answers 200 with index.html. Without this check a
+          // save to a wrong method or path reads as a success — which is
+          // exactly how the Appearance tab appeared to save for so long.
+          //
+          // Keyed on HTML specifically rather than on "not JSON", so a response
+          // that simply does not declare a content type is still accepted.
+          const contentType = response.headers?.get('content-type') || '';
+          if (response.ok && contentType.includes('text/html')) {
+            throw new Error(`Settings endpoint ${endpoint} answered with a page, not a result`);
+          }
 
           if (!response.ok) {
             let errorMessage = `HTTP error! status: ${response.status}`;
@@ -288,7 +309,7 @@ export function useSettings<T extends Record<string, unknown>>({
     } finally {
       setIsSaving(false);
     }
-  }, [settingsKey, category, apiEndpoint, saveEndpoint, transformSave, isLoaded, onSaveSuccess, onSaveError]);
+  }, [settingsKey, category, apiEndpoint, saveEndpoint, saveMethod, transformSave, isLoaded, onSaveSuccess, onSaveError]);
 
   // Custom setSettings that updates both state and ref
   const setSettings = useCallback((newSettings: T | ((prev: T) => T)) => {
@@ -430,14 +451,26 @@ const defaultGeneralSettings = {
   }
 } as const;
 
-// Specialized hook for general settings
+/**
+ * General settings.
+ *
+ * Reads its own row rather than `/api/settings/general`, which answers with
+ * every setting in the general category keyed as `general.<name>` — the form
+ * then found none of the fields it was looking for and silently showed
+ * defaults over whatever was stored.
+ */
 export function useGeneralSettings() {
   return useSettings({
     settingsKey: 'general_settings',
-    apiEndpoint: '/api/settings/general', // GET only
+    apiEndpoint: '/api/settings/general.general_settings', // GET one row
     saveEndpoint: '/api/settings/', // Use generic save endpoint
     category: 'general',
     defaultSettings: defaultGeneralSettings,
+    transformLoad: (data: unknown) => {
+      if (!data || typeof data !== 'object') return defaultGeneralSettings;
+      const saved = data as Partial<typeof defaultGeneralSettings>;
+      return { ...defaultGeneralSettings, ...saved };
+    },
     transformSave: (data) => ({
       key: 'general_settings',
       value: data,
@@ -452,25 +485,71 @@ export function useGeneralSettings() {
   });
 }
 
-// Default email settings
-const defaultEmailSettings = {
+/**
+ * Email settings, as stored.
+ *
+ * Not `as const`: the tab assigns a chosen port and provider, and literal types
+ * would reject every value but the default.
+ *
+ * `smtp_security` replaces the older `smtp_secure` boolean, which could not
+ * tell SSL-on-connect (port 465) from STARTTLS (port 587) — a distinction the
+ * transport needs and gets wrong in a way that looks like a bad password.
+ */
+export interface EmailSettingsForm extends Record<string, unknown> {
+  /** Which known provider was picked, or 'custom'. Empty until chosen. */
+  provider: string;
+  smtp_host: string;
+  smtp_port: number;
+  smtp_user: string;
+  smtp_password: string;
+  smtp_security: SmtpSecurity;
+  from_email: string;
+  from_name: string;
+  isEnabled: boolean;
+}
+
+const defaultEmailSettings: EmailSettingsForm = {
+  provider: '',
   smtp_host: '',
   smtp_port: 587,
   smtp_user: '',
   smtp_password: '',
-  smtp_secure: true,
+  smtp_security: 'tls',
   from_email: '',
   from_name: '',
   isEnabled: false
-} as const;
+};
 
-// Specialized hook for email settings
+/**
+ * Email settings.
+ *
+ * Reads the one row it owns. It used to read `/api/settings/`, which answers
+ * with EVERY setting keyed by its namespaced name — so `settings` became that
+ * whole map, every field on the form read as undefined, and the "Enable Email
+ * Sending" toggle was permanently off no matter what had been saved. That is
+ * what made Test Connection unclickable.
+ */
 export function useEmailSettings() {
   return useSettings({
     settingsKey: 'email_settings',
-    apiEndpoint: '/api/settings/', // Generic endpoint for both read and write
+    apiEndpoint: '/api/settings/email.email_settings', // GET one row
+    saveEndpoint: '/api/settings/', // Generic save
     category: 'email',
     defaultSettings: defaultEmailSettings,
+    transformLoad: (data: unknown): EmailSettingsForm => {
+      if (!data || typeof data !== 'object') return defaultEmailSettings;
+
+      const saved = data as Partial<EmailSettingsForm> & { smtp_secure?: boolean };
+      const merged: EmailSettingsForm = { ...defaultEmailSettings, ...saved };
+
+      // Configurations saved before the security choice existed carry a
+      // boolean. True meant "secure", which on the default port 587 is STARTTLS.
+      if (!saved.smtp_security && typeof saved.smtp_secure === 'boolean') {
+        merged.smtp_security = saved.smtp_secure ? 'tls' : 'none';
+      }
+
+      return merged;
+    },
     transformSave: (data) => ({
       key: 'email_settings',
       value: data,
@@ -538,25 +617,62 @@ export function useNotificationSettings() {
   });
 }
 
-// Default appearance settings
+/**
+ * Default appearance settings.
+ *
+ * The key names match what the Appearance tab writes and what the server's
+ * allow-list accepts. They previously did not: this hook used
+ * `invoice_template_preference` and `pdf_format_preference` while the tab wrote
+ * `invoice_template` and `pdf_format`, so each side stored and read a different
+ * setting and neither ever saw the other's.
+ */
 const defaultAppearanceSettings = {
   theme: 'system',
-  invoice_template_preference: 'modern-blue',
-  pdf_format_preference: 'A4'
+  invoice_template: 'modern-blue',
+  pdf_format: 'A4',
+  show_stat_cards: true
 } as const;
 
-// Specialized hook for appearance settings
+/**
+ * Appearance settings.
+ *
+ * These are stored one key per field rather than as a single blob, so the read
+ * arrives as `{ 'appearance.theme': 'dark', ... }` and the prefix has to come
+ * off before the form can find anything.
+ *
+ * The save is a PUT. It was going out as a POST, which matches no route and so
+ * fell through to the SPA catch-all — a 200 carrying index.html, which read as
+ * a successful save. Nothing on this tab had ever been stored.
+ */
 export function useAppearanceSettings() {
   return useSettings({
     settingsKey: 'appearance_settings',
     apiEndpoint: '/api/settings/appearance',
+    saveMethod: 'PUT',
     category: 'appearance',
     defaultSettings: defaultAppearanceSettings,
+    transformLoad: (data: unknown) => {
+      if (!data || typeof data !== 'object') return defaultAppearanceSettings;
+
+      const stored = data as Record<string, unknown>;
+      const read = <K extends keyof typeof defaultAppearanceSettings>(field: K) => {
+        const value = stored[`appearance.${field}`] ?? stored[field];
+        return value === undefined ? defaultAppearanceSettings[field] : value;
+      };
+
+      return {
+        theme: read('theme'),
+        invoice_template: read('invoice_template'),
+        pdf_format: read('pdf_format'),
+        show_stat_cards: read('show_stat_cards')
+      } as typeof defaultAppearanceSettings;
+    },
     transformSave: (data) => ({
       settings: {
         theme: { value: data.theme, category: 'appearance' },
-        invoice_template_preference: { value: data.invoice_template_preference, category: 'appearance' },
-        pdf_format_preference: { value: data.pdf_format_preference, category: 'appearance' }
+        invoice_template: { value: data.invoice_template, category: 'appearance' },
+        pdf_format: { value: data.pdf_format, category: 'appearance' },
+        show_stat_cards: { value: data.show_stat_cards, category: 'appearance' }
       }
     }),
     onSaveSuccess: () => {

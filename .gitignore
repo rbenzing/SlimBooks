@@ -38,5 +38,6 @@ package-lock.json
 CLAUDE.md
 certs/*
 .gitignore
-
+/coverage
 public/uploads/*
+default.php

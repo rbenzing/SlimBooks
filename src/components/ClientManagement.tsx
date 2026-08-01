@@ -8,7 +8,8 @@ import { authenticatedFetch } from '@/utils/api';
 import { usePagination } from '@/hooks/usePagination';
 import { toast } from 'sonner';
 import { formatDateSync } from '@/components/ui/FormattedDate';
-import { themeClasses, getButtonClasses, getIconColorClasses } from '@/utils/themeUtils.util';
+import { themeClasses, getButtonClasses } from '@/utils/themeUtils.util';
+import { StatCard, StatCardGrid } from '@/components/ui/StatCard';
 import { type Client, type ClientFormData } from '@/types';
 
 export const ClientManagement: React.FC = () => {
@@ -288,44 +289,33 @@ export const ClientManagement: React.FC = () => {
         </div>
 
         {/* Statistics Cards */}
-        <div className={themeClasses.statsGrid}>
-          <div className={themeClasses.statCard}>
-            <div className={themeClasses.statCardContent}>
-              <div>
-                <p className={themeClasses.statLabel}>Total Clients</p>
-                <p className={themeClasses.statValue}>{clients.length}</p>
-              </div>
-              <Users className={`${themeClasses.iconLarge} ${getIconColorClasses('blue')}`} />
-            </div>
-          </div>
-          <div className={themeClasses.statCard}>
-            <div className={themeClasses.statCardContent}>
-              <div>
-                <p className={themeClasses.statLabel}>Active This Month</p>
-                <p className={`${themeClasses.statValueMedium} ${getIconColorClasses('green')}`}>{Math.floor(clients.length * 0.7)}</p>
-              </div>
-              <Building className={`${themeClasses.iconLarge} ${getIconColorClasses('green')}`} />
-            </div>
-          </div>
-          <div className={themeClasses.statCard}>
-            <div className={themeClasses.statCardContent}>
-              <div>
-                <p className={themeClasses.statLabel}>New This Month</p>
-                <p className={`${themeClasses.statValueMedium} ${getIconColorClasses('purple')}`}>{Math.floor(clients.length * 0.2)}</p>
-              </div>
-              <Mail className={`${themeClasses.iconLarge} ${getIconColorClasses('purple')}`} />
-            </div>
-          </div>
-          <div className={themeClasses.statCard}>
-            <div className={themeClasses.statCardContent}>
-              <div>
-                <p className={themeClasses.statLabel}>Response Rate</p>
-                <p className={`${themeClasses.statValueMedium} ${getIconColorClasses('orange')}`}>94%</p>
-              </div>
-              <Phone className={`${themeClasses.iconLarge} ${getIconColorClasses('orange')}`} />
-            </div>
-          </div>
-        </div>
+        <StatCardGrid className={themeClasses.statsGrid}>
+          <StatCard label="Total Clients" value={clients.length} icon={Users} iconColor="blue" />
+          <StatCard
+            label="Active This Month"
+            value={Math.floor(clients.length * 0.7)}
+            icon={Building}
+            iconColor="green"
+            valueColor="green"
+            size="medium"
+          />
+          <StatCard
+            label="New This Month"
+            value={Math.floor(clients.length * 0.2)}
+            icon={Mail}
+            iconColor="purple"
+            valueColor="purple"
+            size="medium"
+          />
+          <StatCard
+            label="Response Rate"
+            value="94%"
+            icon={Phone}
+            iconColor="orange"
+            valueColor="orange"
+            size="medium"
+          />
+        </StatCardGrid>
 
         {/* Search and View Toggle */}
         <div className={themeClasses.searchContainer}>

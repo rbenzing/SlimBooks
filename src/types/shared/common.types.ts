@@ -124,14 +124,24 @@ export interface ProjectSettings {
   google_oauth: {
     enabled: boolean;
     client_id: string;
-    client_secret?: string; // Optional for client-side use
+    // Write-only: the server never returns it.
+    client_secret?: string;
     configured: boolean;
+    /** True when the credentials came from .env rather than the settings screen. */
+    env_configured?: boolean;
   };
   stripe: {
     enabled: boolean;
     publishable_key: string;
-    secret_key?: string; // Optional for client-side use
+    // Write-only: the server never returns these. Present only when an admin
+    // has just typed a new value; `configured` is what the UI reads.
+    secret_key?: string;
+    webhook_secret?: string;
+    test_mode?: boolean;
     configured: boolean;
+    webhook_configured?: boolean;
+    /** True when the credentials came from .env rather than the settings screen. */
+    env_configured?: boolean;
   };
   email: {
     enabled: boolean;

@@ -91,7 +91,7 @@ export const GeneralSettingsTab = forwardRef<SettingsTabRef>((props, ref) => {
           console.warn('Bulk settings API failed, falling back to individual calls:', bulkError);
 
           // Fallback to individual calls if bulk API fails
-          const savedTimeZone = await sqliteService.getSetting('default_timezone');
+          const savedTimeZone = await sqliteService.getSetting('default_timezone', 'general');
           const savedInvoiceSettings = await getInvoiceNumberSettings();
           const savedDateTimeSettings = await getDateTimeSettings();
           const savedCurrencySettings = await getCurrencySettings();

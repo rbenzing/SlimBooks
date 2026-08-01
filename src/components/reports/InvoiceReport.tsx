@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { ArrowLeft, Download, Save, Calendar } from 'lucide-react';
 import { getStatusColor, themeClasses, getButtonClasses } from '@/utils/themeUtils.util';
+import { StatCard, StatCardGrid } from '@/components/ui/StatCard';
 import { authenticatedFetch } from '@/utils/api';
 import { formatDateSync, formatDateRangeSync } from '@/utils/formatting';
 import { FormattedCurrency } from '@/components/ui/FormattedCurrency';
@@ -209,36 +210,32 @@ export const InvoiceReport: React.FC<InvoiceReportProps> = ({ onBack, onSave }) 
         {reportData && (
           <>
             {/* Summary */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
-              <div className={themeClasses.statCard}>
-                <h3 className={`${themeClasses.statLabel} mb-2`}>Total Invoices</h3>
-                <p className={`${themeClasses.statValue} text-blue-600 dark:text-blue-400`}>{reportData.totalCount}</p>
-              </div>
-              <div className={themeClasses.statCard}>
-                <h3 className={`${themeClasses.statLabel} mb-2`}>Total Amount</h3>
-                <p className={themeClasses.statValue}>
-                  <FormattedCurrency amount={reportData.totalAmount} />
-                </p>
-              </div>
-              <div className={themeClasses.statCard}>
-                <h3 className={`${themeClasses.statLabel} mb-2`}>Paid Amount</h3>
-                <p className={`${themeClasses.statValue} text-green-600 dark:text-green-400`}>
-                  <FormattedCurrency amount={reportData.paidAmount} />
-                </p>
-              </div>
-              <div className={themeClasses.statCard}>
-                <h3 className={`${themeClasses.statLabel} mb-2`}>Pending Amount</h3>
-                <p className={`${themeClasses.statValue} text-yellow-600 dark:text-yellow-400`}>
-                  <FormattedCurrency amount={reportData.pendingAmount} />
-                </p>
-              </div>
-              <div className={themeClasses.statCard}>
-                <h3 className={`${themeClasses.statLabel} mb-2`}>Overdue Amount</h3>
-                <p className={`${themeClasses.statValue} text-red-600 dark:text-red-400`}>
-                  <FormattedCurrency amount={reportData.overdueAmount || 0} />
-                </p>
-              </div>
-            </div>
+            <StatCardGrid className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
+              <StatCard
+                label="Total Invoices"
+                value={reportData.totalCount}
+                valueColor="blue"
+              />
+              <StatCard
+                label="Total Amount"
+                value={<FormattedCurrency amount={reportData.totalAmount} />}
+              />
+              <StatCard
+                label="Paid Amount"
+                value={<FormattedCurrency amount={reportData.paidAmount} />}
+                valueColor="green"
+              />
+              <StatCard
+                label="Pending Amount"
+                value={<FormattedCurrency amount={reportData.pendingAmount} />}
+                valueColor="yellow"
+              />
+              <StatCard
+                label="Overdue Amount"
+                value={<FormattedCurrency amount={reportData.overdueAmount || 0} />}
+                valueColor="red"
+              />
+            </StatCardGrid>
 
             {/* Status Breakdown and Client Breakdown - Two Column Layout */}
             <div className={themeClasses.contentGrid}>

@@ -9,11 +9,11 @@ import { EmailSettings } from './settings/EmailSettings';
 import { StripeSettingsTab } from './settings/StripeSettingsTab';
 import { NotificationSettingsTab } from './settings/NotificationSettingsTab';
 import { AppearanceSettingsTab } from './settings/AppearanceSettingsTab';
-import { ProjectSettingsTab, type ProjectSettingsRef } from './settings/ProjectSettingsTab';
+import { GoogleSettingsTab } from './settings/GoogleSettingsTab';
+import { SecuritySettingsTab, type SecuritySettingsRef } from './settings/SecuritySettingsTab';
 import { DatabaseBackupSection } from './settings/DatabaseBackupSection';
 import { themeClasses, getButtonClasses } from '@/utils/themeUtils.util';
 import { toast } from 'sonner';
-import { useProjectSettings } from '@/hooks/useProjectSettings';
 import { cn } from '@/utils/themeUtils.util';
 import type { SettingsTabRef } from '@/types';
 
@@ -23,7 +23,16 @@ interface SettingsTab {
   enabled?: boolean;
 }
 
-const baseTabs: SettingsTab[] = [
+/**
+ * Every tab, always present.
+ *
+ * The integration tabs used to appear only once their integration was switched
+ * on — from a different tab — which meant the place you configure Stripe was
+ * hidden until you had already found the switch somewhere else. Each
+ * integration now owns its own switch, so its tab has to be reachable to be
+ * turned on at all.
+ */
+const settingsTabs: SettingsTab[] = [
   { id: 'company', name: 'Company' },
   { id: 'general', name: 'General' },
   { id: 'tax', name: 'Tax Rates' },
@@ -31,7 +40,9 @@ const baseTabs: SettingsTab[] = [
   { id: 'email', name: 'Email Settings' },
   { id: 'notifications', name: 'Notifications' },
   { id: 'appearance', name: 'Appearance' },
-  { id: 'project', name: 'Project Settings' },
+  { id: 'google', name: 'Google OAuth' },
+  { id: 'stripe', name: 'Stripe' },
+  { id: 'security', name: 'Security' },
   { id: 'backup', name: 'Backup & Restore' }
 ];
 
@@ -41,8 +52,7 @@ export const ResponsiveSettings = () => {
   const [isMobileTabsOpen, setIsMobileTabsOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
-  const projectSettingsRef = useRef<ProjectSettingsRef>(null);
-  const { settings: projectSettings } = useProjectSettings();
+  const securitySettingsRef = useRef<SecuritySettingsRef>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   // Refs for all settings tabs
@@ -52,27 +62,25 @@ export const ResponsiveSettings = () => {
   const shippingSettingsRef = useRef<SettingsTabRef>(null);
   const emailSettingsRef = useRef<SettingsTabRef>(null);
   const stripeSettingsRef = useRef<SettingsTabRef>(null);
+  const googleSettingsRef = useRef<SettingsTabRef>(null);
   const notificationSettingsRef = useRef<SettingsTabRef>(null);
   const appearanceSettingsRef = useRef<SettingsTabRef>(null);
 
-  // Add conditional tabs
-  const availableTabs = useMemo<SettingsTab[]>(() => [
-    ...baseTabs,
-    ...(projectSettings?.stripe?.enabled ? [{ id: 'stripe', name: 'Stripe Integration' }] : [])
-  ], [projectSettings?.stripe?.enabled]);
+  const availableTabs = useMemo<SettingsTab[]>(() => settingsTabs, []);
 
   useEffect(() => {
     const hash = location.hash.replace('#', '');
     const tabIds = availableTabs.map(tab => tab.id);
-    
+
     if (hash && tabIds.includes(hash)) {
       setActiveTab(hash);
-    } else if (hash === 'stripe' && !projectSettings?.stripe?.enabled) {
-      setActiveTab('project');
+    } else if (hash === 'project') {
+      // The old combined Project Settings link. Security is what replaced it.
+      setActiveTab('security');
     } else {
       setActiveTab('company');
     }
-  }, [location.hash, projectSettings?.stripe?.enabled, availableTabs]);
+  }, [location.hash, availableTabs]);
 
   const handleTabChange = (tabId: string) => {
     setActiveTab(tabId);
@@ -84,7 +92,7 @@ export const ResponsiveSettings = () => {
     setIsLoading(true);
     try {
       // Get the appropriate settings ref based on active tab
-      let settingsRef: SettingsTabRef | ProjectSettingsRef | null = null;
+      let settingsRef: SettingsTabRef | SecuritySettingsRef | null = null;
 
       switch (activeTab) {
         case 'company':
@@ -111,8 +119,11 @@ export const ResponsiveSettings = () => {
         case 'appearance':
           settingsRef = appearanceSettingsRef.current;
           break;
-        case 'project':
-          settingsRef = projectSettingsRef.current;
+        case 'google':
+          settingsRef = googleSettingsRef.current;
+          break;
+        case 'security':
+          settingsRef = securitySettingsRef.current;
           break;
         default:
           // For backup and other tabs that don't have save functionality
@@ -145,10 +156,11 @@ export const ResponsiveSettings = () => {
       case 'tax': return <TaxSettings ref={taxSettingsRef} />;
       case 'shipping': return <ShippingSettings ref={shippingSettingsRef} />;
       case 'email': return <EmailSettings ref={emailSettingsRef} />;
-      case 'stripe': return projectSettings?.stripe?.enabled ? <StripeSettingsTab ref={stripeSettingsRef} /> : null;
+      case 'stripe': return <StripeSettingsTab ref={stripeSettingsRef} />;
       case 'notifications': return <NotificationSettingsTab ref={notificationSettingsRef} />;
       case 'appearance': return <AppearanceSettingsTab ref={appearanceSettingsRef} />;
-      case 'project': return <ProjectSettingsTab ref={projectSettingsRef} />;
+      case 'google': return <GoogleSettingsTab ref={googleSettingsRef} />;
+      case 'security': return <SecuritySettingsTab ref={securitySettingsRef} />;
       case 'backup': return <DatabaseBackupSection />;
       default: return <CompanySettings ref={companySettingsRef} />;
     }

@@ -1,19 +1,50 @@
-// Email service for browser environment (simulation for development)
+// Email client service
+//
+// SMTP is handled entirely by the server, which is the only place the mail
+// password is read. This file is a thin client over /api/email and holds no
+// credentials.
+//
+// The previous version simulated everything: testConnection() checked that the
+// host contained a dot and the username an "@", then reported success, and
+// sendEmail() waited a second and returned "sent (simulated)". Invoices
+// reported as delivered were never delivered.
 
-import { type EmailSettings, type EmailTemplate, type SmtpSecurityType, type StoredEmailSettings } from '@/types';
+import { authenticatedFetch } from '@/utils/api';
+import { type EmailTemplate, type SmtpStatus } from '@/types';
 
-const SMTP_SECURITY_TYPES: readonly SmtpSecurityType[] = ['tls', 'ssl', 'none'];
+/** Shape every endpoint in this API answers with. */
+interface ApiEnvelope<T> {
+  success: boolean;
+  data?: T;
+  error?: string;
+  message?: string;
+}
+
+export interface EmailOperationResult {
+  success: boolean;
+  message: string;
+}
 
 /**
- * Narrows a stored smtp_secure value to a supported security type. Anything
- * unrecognised falls back to TLS, which is what port 587 (the default) uses.
+ * Calls an endpoint and unwraps the envelope.
+ *
+ * A refused SMTP connection comes back as a 200 whose body says
+ * `success: false` — that is an answer, not a transport failure. Only a genuine
+ * request failure is turned into a rejected result.
  */
-const toSmtpSecurity = (value: string | undefined): SmtpSecurityType =>
-  SMTP_SECURITY_TYPES.includes(value as SmtpSecurityType) ? (value as SmtpSecurityType) : 'tls';
+const request = async <T>(path: string, init?: RequestInit): Promise<T> => {
+  const response = await authenticatedFetch(`/api/email${path}`, init);
+  const payload = await response.json() as ApiEnvelope<T>;
+
+  if (!response.ok || !payload.success || payload.data === undefined) {
+    throw new Error(payload.error || payload.message || 'Email request failed');
+  }
+
+  return payload.data;
+};
 
 export class EmailService {
   private static instance: EmailService;
-  private emailSettings: EmailSettings | null = null;
 
   static getInstance(): EmailService {
     if (!EmailService.instance) {
@@ -22,129 +53,53 @@ export class EmailService {
     return EmailService.instance;
   }
 
-  // Configure email settings
-  configure(settings: EmailSettings): void {
-    this.emailSettings = settings;
-  }
-
-  // Get current email settings
-  getSettings(): EmailSettings | null {
-    return this.emailSettings;
+  /**
+   * Whether email is switched on, whether it is fully configured, and which
+   * fields are still missing. Carries no password.
+   */
+  async getStatus(): Promise<SmtpStatus> {
+    return request<SmtpStatus>('/status');
   }
 
   /**
-   * Gets email settings from storage
+   * Open a real SMTP connection and authenticate, without sending anything.
    */
-  private async getStoredEmailSettings(): Promise<EmailSettings | null> {
+  async testConnection(): Promise<EmailOperationResult> {
     try {
-      const { sqliteService } = await import('./sqlite.svc');
-      if (sqliteService.isReady()) {
-        const settings = await sqliteService.getSetting('email_settings');
-        // Convert snake_case to camelCase and validate required fields
-        if (settings && typeof settings === 'object' &&
-            'smtp_host' in settings && 'smtp_port' in settings) {
-          const rawSettings = settings as StoredEmailSettings;
-          return {
-            smtpHost: rawSettings.smtp_host || '',
-            smtpPort: Number(rawSettings.smtp_port) || 587,
-            smtpUsername: rawSettings.smtp_username || rawSettings.smtp_user || '',
-            smtpPassword: rawSettings.smtp_password || '',
-            smtpSecure: toSmtpSecurity(rawSettings.smtp_secure),
-            fromEmail: rawSettings.from_email || '',
-            fromName: rawSettings.from_name || '',
-            replyToEmail: rawSettings.reply_to_email || rawSettings.from_email || '',
-            isEnabled: Boolean(rawSettings.is_enabled || rawSettings.isEnabled)
-          };
-        }
-      }
+      return await request<EmailOperationResult>('/test-connection', { method: 'POST' });
     } catch (error) {
-      console.error('Error loading email settings:', error);
+      return { success: false, message: (error as Error).message };
     }
-    return null;
   }
 
   /**
-   * Tests SMTP connection with current settings
+   * Send the canned test message to the configured sender address.
    */
-  async testConnection(): Promise<{ success: boolean; message: string }> {
+  async sendTestEmail(): Promise<EmailOperationResult> {
     try {
-      const settings = await this.getStoredEmailSettings();
-
-      if (!settings || !settings.isEnabled) {
-        return {
-          success: false,
-          message: 'Email is not enabled or configured'
-        };
-      }
-
-      if (!settings.smtpHost || !settings.smtpUsername || !settings.smtpPassword) {
-        return {
-          success: false,
-          message: 'Missing required SMTP configuration'
-        };
-      }
-
-      // Simulate success/failure based on basic validation
-      const isValidConfig = settings.smtpHost.includes('.') &&
-                           settings.smtpPort > 0 &&
-                           settings.smtpUsername.includes('@');
-
-      if (isValidConfig) {
-        return {
-          success: true,
-          message: 'SMTP connection successful'
-        };
-      } else {
-        return {
-          success: false,
-          message: 'Invalid SMTP configuration'
-        };
-      }
+      return await request<EmailOperationResult>('/test', { method: 'POST' });
     } catch (error) {
-      console.error('Error testing SMTP connection:', error);
-      return {
-        success: false,
-        message: 'Connection test failed: ' + error
-      };
+      return { success: false, message: (error as Error).message };
     }
   }
 
-  // Send email (simulated for browser environment)
-  // Message arguments are accepted for the real transport but unused by the simulation
+  /**
+   * Send an email. The sender address comes from settings, not from here.
+   */
   async sendEmail(
-    _to: string,
-    _subject: string,
-    _htmlContent: string,
-    _textContent?: string
-  ): Promise<{ success: boolean; message: string }> {
+    to: string,
+    subject: string,
+    htmlContent: string,
+    textContent?: string
+  ): Promise<EmailOperationResult> {
     try {
-      const settings = await this.getStoredEmailSettings();
-
-      if (!settings || !settings.isEnabled) {
-        return {
-          success: false,
-          message: 'Email sending is not enabled'
-        };
-      }
-
-      // In a real application, this would make an API call to a backend service
-      // For now, we'll simulate the email sending
-
-      // Simulate network delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
-
-      // For development, we'll always return success
-      // In production, this would integrate with your email service
-      return {
-        success: true,
-        message: 'Email sent successfully (simulated)'
-      };
+      return await request<EmailOperationResult>('/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ to, subject, html: htmlContent, text: textContent })
+      });
     } catch (error) {
-      console.error('Email sending error:', error);
-      return {
-        success: false,
-        message: 'Failed to send email'
-      };
+      return { success: false, message: (error as Error).message };
     }
   }
 
@@ -306,20 +261,6 @@ export class EmailService {
     });
   }
 
-  // Test email configuration
-  async testEmailConfiguration(): Promise<{ success: boolean; message: string }> {
-    if (!this.emailSettings) {
-      return {
-        success: false,
-        message: 'Email settings not configured'
-      };
-    }
-
-    return await this.sendEmail(
-      this.emailSettings.fromEmail,
-      'Slimbooks Email Test',
-      '<h2>Email Configuration Test</h2><p>If you receive this email, your email configuration is working correctly!</p>',
-      'Email Configuration Test\n\nIf you receive this email, your email configuration is working correctly!'
-    );
-  }
 }
+
+export const emailService = EmailService.getInstance();

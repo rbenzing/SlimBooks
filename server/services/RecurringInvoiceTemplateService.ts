@@ -361,20 +361,23 @@ export class RecurringInvoiceTemplateService {
    * Calculate next invoice date based on frequency
    */
   calculateNextInvoiceDate(currentDate: string, frequency: string): string {
+    // `new Date('2026-12-01')` parses as UTC midnight, so the arithmetic must
+    // read and write UTC components too. Mixing the two shifts the schedule by
+    // a day west of UTC — '2026-12-01' monthly landed on 2026-12-31.
     const date = new Date(currentDate);
-    
+
     switch (frequency) {
       case 'weekly':
-        date.setDate(date.getDate() + 7);
+        date.setUTCDate(date.getUTCDate() + 7);
         break;
       case 'monthly':
-        date.setMonth(date.getMonth() + 1);
+        date.setUTCMonth(date.getUTCMonth() + 1);
         break;
       case 'quarterly':
-        date.setMonth(date.getMonth() + 3);
+        date.setUTCMonth(date.getUTCMonth() + 3);
         break;
       case 'yearly':
-        date.setFullYear(date.getFullYear() + 1);
+        date.setUTCFullYear(date.getUTCFullYear() + 1);
         break;
       default:
         // For custom frequency, don't auto-calculate

@@ -2,7 +2,7 @@
 // Provides system health and status information
 
 import { Router, type Request, type Response } from 'express';
-import { serverConfig } from '../config/index.js';
+import { serverConfig, appConfig } from '../config/index.js';
 
 const router: Router = Router();
 
@@ -46,7 +46,7 @@ router.get('/detailed', async (req: Request, res: Response) => {
       status: healthData.status,
       timestamp: new Date().toISOString(),
       environment: serverConfig.nodeEnv,
-      version: '1.0.0',
+      version: appConfig.version,
       database: healthData.database,
       system: {
         uptime: Math.floor(uptime),

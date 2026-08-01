@@ -3,6 +3,7 @@
 
 import bcrypt from 'bcryptjs';
 import type { IDatabase, SeedData } from '../../types/database.types.js';
+import { appConfig } from '../../config/index.js';
 
 /**
  * Initialize application counters
@@ -75,7 +76,7 @@ export const initializeSettings = (db: IDatabase): void => {
         },
         {
           key: 'app_version',
-          value: '1.0.0',
+          value: appConfig.version,
           type: 'string',
           description: 'Application version',
           is_public: 1

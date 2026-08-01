@@ -4,12 +4,48 @@
 import dotenv from 'dotenv';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
+import { existsSync, readFileSync } from 'fs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 // Load environment variables from project root
 dotenv.config({ path: join(__dirname, '..', '..', '.env') });
+
+/**
+ * The application version, read from package.json.
+ *
+ * One source of truth: the version was previously written out by hand in three
+ * places — here, the health endpoint and the seed data — while package.json
+ * said something different again, so "which version is running" had four
+ * possible answers.
+ *
+ * Resolved by walking up rather than by a fixed relative path, because this
+ * module sits at `server/config` in development and `server/dist/config` once
+ * compiled, and a fixed path cannot be right in both.
+ */
+const readPackageVersion = (): string => {
+  try {
+    let directory = __dirname;
+
+    for (let level = 0; level < 5; level += 1) {
+      const candidate = join(directory, 'package.json');
+
+      if (existsSync(candidate)) {
+        const parsed = JSON.parse(readFileSync(candidate, 'utf8')) as { version?: string };
+        if (parsed.version) return parsed.version;
+      }
+
+      directory = dirname(directory);
+    }
+  } catch (error) {
+    console.warn('Could not read version from package.json:', (error as Error).message);
+  }
+
+  return '0.0.0';
+};
+
+export const APP_VERSION = readPackageVersion();
 
 /**
  * Server configuration interface
@@ -317,7 +353,7 @@ export const googleConfig: GoogleConfig = {
  */
 export const appConfig: AppConfig = {
   name: 'Slimbooks',
-  version: '1.0.0',
+  version: APP_VERSION,
   description: 'Simple invoicing and expense tracking application',
   
   // Default admin user credentials

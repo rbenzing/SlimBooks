@@ -61,6 +61,7 @@ export interface Invoice extends BaseEntity {
   amount: number;
   tax_amount: number;
   total_amount: number;
+  currency?: string;
   status: InvoiceStatus;
   due_date: string;
   issue_date: string;
@@ -70,6 +71,9 @@ export interface Invoice extends BaseEntity {
   payment_terms?: string;
   stripe_invoice_id?: string;
   stripe_payment_intent_id?: string;
+  stripe_payment_link_id?: string;
+  stripe_payment_link_url?: string;
+  stripe_checkout_session_id?: string;
   type: string;
   client_name?: string;
   client_email?: string;
@@ -168,12 +172,20 @@ export interface ProjectSettings {
     client_id: string;
     client_secret?: string;
     configured: boolean;
+    /** True when the credentials came from .env rather than the settings screen. */
+    env_configured?: boolean;
   };
   stripe: {
     enabled: boolean;
     publishable_key: string;
     secret_key?: string;
+    webhook_secret?: string;
+    test_mode?: boolean;
     configured: boolean;
+    /** True once a webhook signing secret is stored, without disclosing it. */
+    webhook_configured?: boolean;
+    /** True when the credentials came from .env rather than the settings screen. */
+    env_configured?: boolean;
   };
   email: {
     enabled: boolean;

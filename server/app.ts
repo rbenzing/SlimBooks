@@ -29,6 +29,7 @@ import {
 
 // Import routes
 import routes from './routes/index.js';
+import webhookRoutes from './routes/webhookRoutes.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -55,6 +56,18 @@ export const createApp = async () => {
   // Logging and monitoring middleware
   app.use(requestLogger);
   app.use(performanceMonitor());
+
+  // Webhooks, before any body parser.
+  //
+  // Stripe signs the exact bytes of the request. express.json() would consume
+  // the stream and leave only a parsed object, and no re-serialisation of that
+  // object reproduces the signed bytes — so signature verification would fail
+  // on every genuine delivery. This router reads the body as a raw Buffer and
+  // must stay ahead of the parsers below.
+  //
+  // It sits after the rate limiter on purpose: the endpoint is public, and
+  // Stripe backs off and retries on a 429.
+  app.use('/api/webhooks', webhookRoutes);
 
   // Body parsing middleware with size limits
   app.use(express.json({ limit: '10mb' }));

@@ -3,6 +3,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { ArrowLeft, Download, Save, Calendar } from 'lucide-react';
 import { authenticatedFetch } from '@/utils/api';
 import { themeClasses, getButtonClasses } from '@/utils/themeUtils.util';
+import { StatCard, StatCardGrid } from '@/components/ui/StatCard';
 import { formatDateRangeSync } from '@/utils/formatting';
 import { FormattedCurrency } from '@/components/ui/FormattedCurrency';
 import { type ClientReportData, type ClientReportProps, type ReportDateRange } from '@/types';
@@ -206,36 +207,32 @@ export const ClientReport: React.FC<ClientReportProps> = ({ onBack, onSave }) =>
       {reportData && (
         <>
           {/* Summary */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
-            <div className={themeClasses.statCard}>
-              <h3 className={`${themeClasses.statLabel} mb-2`}>Active Clients</h3>
-              <p className={`${themeClasses.statValue} text-blue-600 dark:text-blue-400`}>{reportData.totalClients}</p>
-            </div>
-            <div className={themeClasses.statCard}>
-              <h3 className={`${themeClasses.statLabel} mb-2`}>Total Revenue</h3>
-              <p className={themeClasses.statValue}>
-                <FormattedCurrency amount={reportData.totalRevenue} />
-              </p>
-            </div>
-            <div className={themeClasses.statCard}>
-              <h3 className={`${themeClasses.statLabel} mb-2`}>Paid Revenue</h3>
-              <p className={`${themeClasses.statValue} text-green-600 dark:text-green-400`}>
-                <FormattedCurrency amount={reportData.totalPaidRevenue} />
-              </p>
-            </div>
-            <div className={themeClasses.statCard}>
-              <h3 className={`${themeClasses.statLabel} mb-2`}>Pending Revenue</h3>
-              <p className={`${themeClasses.statValue} text-yellow-600 dark:text-yellow-400`}>
-                <FormattedCurrency amount={reportData.totalPendingRevenue} />
-              </p>
-            </div>
-            <div className={themeClasses.statCard}>
-              <h3 className={`${themeClasses.statLabel} mb-2`}>Overdue Revenue</h3>
-              <p className={`${themeClasses.statValue} text-red-600 dark:text-red-400`}>
-                <FormattedCurrency amount={reportData.totalOverdueRevenue || 0} />
-              </p>
-            </div>
-          </div>
+          <StatCardGrid className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
+            <StatCard
+              label="Active Clients"
+              value={reportData.totalClients}
+              valueColor="blue"
+            />
+            <StatCard
+              label="Total Revenue"
+              value={<FormattedCurrency amount={reportData.totalRevenue} />}
+            />
+            <StatCard
+              label="Paid Revenue"
+              value={<FormattedCurrency amount={reportData.totalPaidRevenue} />}
+              valueColor="green"
+            />
+            <StatCard
+              label="Pending Revenue"
+              value={<FormattedCurrency amount={reportData.totalPendingRevenue} />}
+              valueColor="yellow"
+            />
+            <StatCard
+              label="Overdue Revenue"
+              value={<FormattedCurrency amount={reportData.totalOverdueRevenue || 0} />}
+              valueColor="red"
+            />
+          </StatCardGrid>
 
           {/* Client Details */}
           <div className={themeClasses.card}>

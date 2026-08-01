@@ -15,9 +15,14 @@ const { testConnection, getEmailSettings } = vi.hoisted(() => ({
 }));
 
 vi.mock('@/services/email.svc', () => ({
+  emailService: { testConnection, sendTestEmail: vi.fn(), sendEmail: vi.fn() },
   EmailService: {
     getInstance: () => ({ testConnection, sendEmail: vi.fn() })
   }
+}));
+
+vi.mock('@/contexts/AuthContext', () => ({
+  useAuth: () => ({ user: { email: 'admin@example.com', name: 'Admin' } })
 }));
 
 vi.mock('@/hooks/useSettings.hook', () => ({
@@ -28,7 +33,6 @@ vi.mock('sonner', () => ({
   toast: { success: vi.fn(), error: vi.fn() }
 }));
 
-import { toast } from 'sonner';
 import { EmailSettings } from '@/components/settings/EmailSettings';
 import { DateRangeFilter } from '@/components/ui/DateRangeFilter';
 
@@ -46,20 +50,37 @@ describe('EmailSettings', () => {
     });
   });
 
-  it('reports missing required fields through the toast module', async () => {
-    // `toast` was referenced but never imported, so this handler threw
-    // ReferenceError instead of surfacing the validation message.
+  it('cannot attempt a connection before the required fields are filled in', async () => {
+    // The guard used to be a click handler that toasted — and referenced a
+    // `toast` it never imported, so it threw ReferenceError instead of showing
+    // the message. It is now the button's own disabled state, which cannot
+    // throw at all.
     render(<EmailSettings />);
 
-    fireEvent.click(screen.getByRole('button', { name: /test connection/i }));
+    const button = screen.getByRole('button', { name: /test connection/i }) as HTMLButtonElement;
+    expect(button.disabled).toBe(true);
 
-    await waitFor(() =>
-      expect(toast.error).toHaveBeenCalledWith(
-        'Please fill in required fields before testing'
-      )
-    );
-    // The guard short-circuits before any connection attempt is made.
-    expect(testConnection).not.toHaveBeenCalled();
+    fireEvent.click(button);
+
+    await waitFor(() => expect(testConnection).not.toHaveBeenCalled());
+  });
+
+  it('allows a connection test once the required fields are present', async () => {
+    getEmailSettings.mockReturnValue({
+      settings: {
+        provider: 'gmail', isEnabled: true, smtp_host: 'smtp.gmail.com', smtp_port: 587,
+        smtp_security: 'tls', smtp_user: 'a@b.co', smtp_password: 'pw',
+        from_email: 'a@b.co', from_name: 'Slimbooks'
+      },
+      setSettings: vi.fn(),
+      saveSettings: vi.fn().mockResolvedValue(undefined),
+      isLoading: false, isSaving: false, isLoaded: true, error: null
+    });
+
+    render(<EmailSettings />);
+
+    expect((screen.getByRole('button', { name: /test connection/i }) as HTMLButtonElement).disabled)
+      .toBe(false);
   });
 });
 

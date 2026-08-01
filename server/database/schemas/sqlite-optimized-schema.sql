@@ -110,6 +110,9 @@ CREATE TABLE IF NOT EXISTS invoices (
     payment_terms TEXT CHECK (payment_terms IS NULL OR length(payment_terms) <= 100),
     stripe_invoice_id TEXT CHECK (stripe_invoice_id IS NULL OR length(stripe_invoice_id) <= 50),
     stripe_payment_intent_id TEXT CHECK (stripe_payment_intent_id IS NULL OR length(stripe_payment_intent_id) <= 50),
+    stripe_payment_link_id TEXT,
+    stripe_payment_link_url TEXT,
+    stripe_checkout_session_id TEXT,
     type TEXT NOT NULL DEFAULT 'one-time' CHECK (type IN ('one-time', 'recurring', 'subscription')),
     client_name TEXT CHECK (client_name IS NULL OR length(client_name) <= 100),
     client_email TEXT CHECK (client_email IS NULL OR length(client_email) <= 255),
@@ -270,6 +273,8 @@ CREATE INDEX IF NOT EXISTS idx_invoices_status ON invoices(status);
 CREATE INDEX IF NOT EXISTS idx_invoices_due_date ON invoices(due_date);
 CREATE INDEX IF NOT EXISTS idx_invoices_issue_date ON invoices(issue_date);
 CREATE INDEX IF NOT EXISTS idx_invoices_stripe_id ON invoices(stripe_invoice_id);
+CREATE INDEX IF NOT EXISTS idx_invoices_stripe_checkout_session ON invoices(stripe_checkout_session_id);
+CREATE INDEX IF NOT EXISTS idx_payments_stripe_payment_id ON payments(stripe_payment_id);
 CREATE INDEX IF NOT EXISTS idx_invoices_client_status ON invoices(client_id, status);
 CREATE INDEX IF NOT EXISTS idx_invoices_date_range ON invoices(issue_date, due_date);
 CREATE INDEX IF NOT EXISTS idx_invoices_deleted_at ON invoices(deleted_at);

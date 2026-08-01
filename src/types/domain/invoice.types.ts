@@ -30,6 +30,9 @@ export interface Invoice {
   payment_terms?: string;
   stripe_invoice_id?: string;
   stripe_payment_intent_id?: string;
+  stripe_payment_link_id?: string;
+  stripe_payment_link_url?: string;
+  stripe_checkout_session_id?: string;
   type: InvoiceType;
   client_name?: string;
   client_email?: string;

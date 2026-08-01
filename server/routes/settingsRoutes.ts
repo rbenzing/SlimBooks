@@ -279,8 +279,15 @@ router.put('/appearance', requireAuth, async (req: Request, res: Response): Prom
       return;
     }
     
-    // Only allow appearance-related settings to be saved through this endpoint
-    const allowedSettings = ['theme', 'invoice_template_preference', 'pdf_format_preference'];
+    // Only allow appearance-related settings to be saved through this endpoint.
+    // A field missing from this list is dropped without complaint, so anything
+    // added to the Appearance tab has to be added here too.
+    const allowedSettings = [
+      'theme',
+      'invoice_template',
+      'pdf_format',
+      'show_stat_cards'
+    ];
     const filteredSettings: Record<string, Record<string, unknown>> = {};
     
     for (const [key, value] of Object.entries(settings)) {

@@ -10,6 +10,7 @@ import { up as migration006 } from './006_align_tables_with_schema.js';
 import { up as migration007 } from './007_drop_clients_zip.js';
 import { up as migration008 } from './008_collapse_payment_columns.js';
 import { up as migration009 } from './009_add_status_to_expenses.js';
+import { up as migration010 } from './010_add_stripe_payment_link_to_invoices.js';
 
 interface Migration {
   id: string;
@@ -60,6 +61,11 @@ const migrations: Migration[] = [
     id: '009',
     name: 'add_status_to_expenses',
     up: migration009
+  },
+  {
+    id: '010',
+    name: 'add_stripe_payment_link_to_invoices',
+    up: migration010
   }
 ];
 

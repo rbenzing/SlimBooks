@@ -24,10 +24,10 @@ import { usePagination } from '@/hooks/usePagination';
 import { toast } from 'sonner';
 import { 
   themeClasses, 
-  getIconColorClasses, 
   getButtonClasses, 
   getStatusColor 
 } from '@/utils/themeUtils.util';
+import { StatCard, StatCardGrid } from '@/components/ui/StatCard';
 import { filterByDateRange, getDateRangeForPeriod, type DateRangePeriod } from '@/utils/data';
 import { authenticatedFetch } from '@/utils/api';
 import { formatDateSync } from '@/components/ui/FormattedDate';
@@ -377,18 +377,13 @@ export const PaymentManagement: React.FC = () => {
         </div>
 
         {/* Statistics Cards */}
-        <div className={themeClasses.statsGrid}>
-          <div className={themeClasses.statCard}>
-            <div className={themeClasses.statCardContent}>
-              <div>
-                <p className={themeClasses.statLabel}>Total Received</p>
-                <p className={themeClasses.statValue}>
-                  <FormattedCurrency amount={totalAmount} />
-                </p>
-              </div>
-              <DollarSign className={`${themeClasses.iconLarge} ${getIconColorClasses('green')}`} />
-            </div>
-          </div>
+        <StatCardGrid className={themeClasses.statsGrid}>
+          <StatCard
+            label="Total Received"
+            value={<FormattedCurrency amount={totalAmount} />}
+            icon={DollarSign}
+            iconColor="green"
+          />
           <div className={themeClasses.statCard}>
             <div className={themeClasses.statCardContent}>
               <div>
@@ -416,7 +411,7 @@ export const PaymentManagement: React.FC = () => {
               <XCircle className="h-8 w-8 text-red-600 dark:text-red-400" />
             </div>
           </div>
-        </div>
+        </StatCardGrid>
 
         {/* Search and Filter Controls */}
         <div className="bg-card p-6 rounded-lg shadow-sm border border-border">

@@ -30,7 +30,17 @@ print_error() {
 # Function to generate a secure random string
 generate_secret() {
     length=${1:-64}
-    openssl rand -base64 "$length" | tr -d "=+/" | cut -c1-"$length"
+    # Keep only alphanumerics, which drops the base64 padding and symbols AND
+    # the line wrap in one unambiguous step. `tr -d "=+/\n"` is not portable
+    # here: whether `\n` means a newline or the letter n depends on the tr
+    # implementation.
+    #
+    # The wrap is the part that matters. `openssl rand -base64` wraps its
+    # output, so without removing it the secret spans two lines in .env — the
+    # second line looks like a command to anything that sources the file, which
+    # deploy.sh does, and the value reaching the application is truncated at
+    # the wrap.
+    openssl rand -base64 "$length" | LC_ALL=C tr -dc 'A-Za-z0-9' | cut -c1-"$length"
 }
 
 # Check if openssl is available
@@ -57,82 +67,38 @@ if [ -f "$ENV_FILE" ]; then
     print_status "Backup created: $BACKUP_FILE"
 fi
 
-printf "%b\n" "${BLUE}📝 Creating .env file with secure configuration...${NC}"
+printf "%b\n" "${BLUE}📝 Creating .env file from .env.example...${NC}"
 
-cat > "$ENV_FILE" << EOF
-# Slimbooks Production Environment Configuration
-# Generated on $(date)
+# .env.example is the single source for which variables exist. This script used
+# to emit its own hardcoded list, which made it a third copy to keep in step
+# alongside .env.example and the since-removed .env.production — and it had
+# already drifted, omitting nine variables the application reads.
+if [ ! -f ".env.example" ]; then
+    print_error ".env.example not found. Run this from the project root."
+    exit 1
+fi
 
-# Server Configuration
-NODE_ENV=production
-PORT=3002
-HOST=0.0.0.0
+cp .env.example "$ENV_FILE"
 
-# Frontend Configuration
-VITE_API_URL=http://localhost:3002
-VITE_APP_NAME=Slimbooks
-CLIENT_URL=http://localhost:8080
+# Fill in the three secrets. The whole line is rewritten including the key name,
+# so this cannot leave a bare secret sitting on a line with no variable — which
+# is what the documented `sed 's/PLACEHOLDER.*/$SECRET/'` did when it matched.
+set_env_value() {
+    key="$1"
+    value="$2"
 
-# Security Configuration - SECURE SECRETS
-JWT_SECRET=$JWT_SECRET
-JWT_REFRESH_SECRET=$JWT_REFRESH_SECRET
-SESSION_SECRET=$SESSION_SECRET
+    if grep -q "^${key}=" "$ENV_FILE"; then
+        awk -v k="$key" -v v="$value" \
+            'index($0, k "=") == 1 { print k "=" v; next } { print }' \
+            "$ENV_FILE" > "${ENV_FILE}.tmp" && mv "${ENV_FILE}.tmp" "$ENV_FILE"
+    else
+        printf '%s=%s\n' "$key" "$value" >> "$ENV_FILE"
+    fi
+}
 
-# Token Expiration (in milliseconds)
-ACCESS_TOKEN_EXPIRY=900000
-REFRESH_TOKEN_EXPIRY=604800000
-EMAIL_TOKEN_EXPIRY=86400000
-PASSWORD_RESET_EXPIRY=3600000
-
-# Database Configuration
-DB_PATH=./server/data/slimbooks.db
-DB_BACKUP_PATH=./server/data/backups
-
-# CORS Configuration - UPDATE THIS FOR YOUR DOMAIN
-CORS_ORIGIN=http://localhost:8080
-CORS_CREDENTIALS=true
-
-# Rate Limiting - Production settings
-RATE_LIMIT_WINDOW_MS=900000
-RATE_LIMIT_MAX_REQUESTS=100
-LOGIN_RATE_LIMIT_WINDOW_MS=900000
-LOGIN_RATE_LIMIT_MAX_ATTEMPTS=5
-
-# File Upload Configuration
-MAX_FILE_SIZE=10485760
-UPLOAD_PATH=./uploads
-
-# Email Configuration (if using email features)
-SMTP_HOST=
-SMTP_PORT=587
-SMTP_SECURE=false
-SMTP_USER=
-SMTP_PASS=
-EMAIL_FROM=noreply@slimbooks.app
-
-# Google OAuth (if using)
-GOOGLE_CLIENT_ID=
-GOOGLE_CLIENT_SECRET=
-
-# Stripe Configuration (if using)
-STRIPE_PUBLISHABLE_KEY=
-STRIPE_SECRET_KEY=
-STRIPE_WEBHOOK_SECRET=
-
-# Security Settings
-BCRYPT_ROUNDS=12
-MAX_FAILED_LOGIN_ATTEMPTS=5
-ACCOUNT_LOCKOUT_DURATION=1800000
-REQUIRE_EMAIL_VERIFICATION=true
-
-# Logging
-LOG_LEVEL=info
-LOG_FILE=./logs/app.log
-
-# Development Settings (only for development)
-ENABLE_DEBUG_ENDPOINTS=false
-ENABLE_SAMPLE_DATA=false
-EOF
+set_env_value "JWT_SECRET" "$JWT_SECRET"
+set_env_value "JWT_REFRESH_SECRET" "$JWT_REFRESH_SECRET"
+set_env_value "SESSION_SECRET" "$SESSION_SECRET"
 
 print_status ".env file created with secure secrets"
 

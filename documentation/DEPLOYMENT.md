@@ -111,19 +111,28 @@ cp .env.example .env
 
 ### 3. Security Configuration
 
-**CRITICAL**: Update your `.env` file with secure secrets:
+**CRITICAL**: Give your `.env` file real secrets before exposing this to a
+network. Left blank, the application signs tokens with a default whose value is
+published in this repository, which means anyone can mint a valid session.
 
 ```bash
-# Generate secure secrets (64 characters each)
-JWT_SECRET=$(openssl rand -base64 64 | tr -d "=+/" | cut -c1-64)
-JWT_REFRESH_SECRET=$(openssl rand -base64 64 | tr -d "=+/" | cut -c1-64)
-SESSION_SECRET=$(openssl rand -base64 64 | tr -d "=+/" | cut -c1-64)
-
-# Update .env file with these secrets
-sed -i "s/CHANGE_THIS_JWT_SECRET_IN_PRODUCTION.*/$JWT_SECRET/" .env
-sed -i "s/CHANGE_THIS_REFRESH_SECRET_IN_PRODUCTION.*/$JWT_REFRESH_SECRET/" .env
-sed -i "s/CHANGE_THIS_SESSION_SECRET_IN_PRODUCTION.*/$SESSION_SECRET/" .env
+# Creates .env from .env.example and fills in all three secrets
+./scripts/generate-secrets.sh
 ```
+
+This replaces the `.env` you copied above, so run it either instead of the
+`cp` or before you edit anything else. It backs up any existing `.env` first.
+
+To do it by hand instead, generate each secret and paste it in:
+
+```bash
+openssl rand -base64 64 | tr -dc 'A-Za-z0-9' | cut -c1-64
+```
+
+Set `JWT_SECRET`, `JWT_REFRESH_SECRET` and `SESSION_SECRET` from three separate
+runs. `tr -dc 'A-Za-z0-9'` is not optional — `openssl rand -base64` wraps its
+output, and a secret containing that line break spans two lines in `.env`,
+which truncates the value and breaks any script that sources the file.
 
 ### 4. Build and Deploy
 

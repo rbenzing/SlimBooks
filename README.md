@@ -31,6 +31,20 @@
 - **📈 Financial Reports**: Profit & loss, invoice, expense and client reports. P&L supports cash or accrual
   accounting and breaks multi-period ranges into monthly or quarterly columns that reconcile with the totals
 
+### 💳 Getting Paid
+- **🔗 Stripe Payment Links**: Generate a card payment link for any invoice. Optional — Slimbooks works
+  fully without it
+- **🔁 Automatic Reconciliation**: Stripe webhooks record the payment and mark the invoice paid, verified by
+  signature and safe against duplicate delivery
+- **🔑 Keys Stay Server-Side**: The Stripe secret key is read only by the server and never reaches the browser
+
+### 📧 Email
+- **✉️ Real SMTP Delivery**: Send invoices and reminders from your own mail server
+- **📋 Provider Presets**: Pick from Gmail, Outlook, Yahoo, iCloud, Zoho, Fastmail, SendGrid, Mailgun,
+  Postmark, Brevo or Amazon SES and the host, port and encryption are filled in together — or enter your own
+- **🔍 Connection Testing**: Test the connection before you rely on it; a wrong password fails there rather
+  than silently when an invoice goes out
+
 ### 🔒 Security & Privacy
 - **🛡️ Hardened by Default**: Rate limiting, input validation, and security headers
 - **🔐 JWT Authentication**: Access tokens with silent refresh and refresh-token rotation
@@ -111,23 +125,45 @@ npm run build       # Production build
 
 ### Environment Variables
 
-The application uses environment variables for secure configuration:
+`.env.example` is the single environment template and lists every variable the
+application reads, with comments. Copy it and edit the copy:
+
+```bash
+cp .env.example .env
+```
 
 ```env
-# Security (REQUIRED - change in production)
-JWT_SECRET=your-secure-64-character-secret
-JWT_REFRESH_SECRET=your-secure-refresh-secret
-SESSION_SECRET=your-secure-session-secret
+# Security (REQUIRED — blank means a published default is used)
+JWT_SECRET=
+JWT_REFRESH_SECRET=
+SESSION_SECRET=
 
 # Network
 CORS_ORIGIN=http://localhost:8080
 PORT=3002
 
+# Email — note SMTP_*, not EMAIL_*
+SMTP_HOST=
+SMTP_PORT=587
+SMTP_USER=
+SMTP_PASS=
+EMAIL_FROM=noreply@slimbooks.app
+
+# Stripe (optional). Setting both keys switches the integration on.
+STRIPE_PUBLISHABLE_KEY=
+STRIPE_SECRET_KEY=
+STRIPE_WEBHOOK_SECRET=
+
 # Features
 ENABLE_DEBUG_ENDPOINTS=false
 ```
 
-Use `./scripts/generate-secrets.sh` to create secure secrets automatically.
+Use `./scripts/generate-secrets.sh` to build `.env` from the template with the
+three secrets filled in automatically.
+
+Anything configured in the Settings screens takes precedence over the values
+here, so `.env` sets the defaults an install starts from. Email and Stripe can
+be configured entirely from Settings instead if you prefer.
 
 ### Database
 
@@ -154,6 +190,35 @@ Slimbooks includes a powerful recurring invoice system for automated billing:
 /api/recurring-templates/*    - Template CRUD operations
 /api/cron/recurring-invoices  - Automated processing endpoint
 ```
+
+## 💳 Taking Payments with Stripe
+
+Stripe is optional; every other feature works without it.
+
+1. Put your keys in `.env` (`STRIPE_SECRET_KEY`, `STRIPE_PUBLISHABLE_KEY`) or
+   enter them under **Settings → Stripe**. Keys in `.env` switch the
+   integration on automatically.
+2. Add a webhook endpoint in the Stripe dashboard pointing at
+   `https://your-host/api/webhooks/stripe`, subscribed to
+   `checkout.session.completed` and `payment_intent.succeeded`.
+3. Paste the signing secret it gives you into `STRIPE_WEBHOOK_SECRET` or the
+   Stripe settings tab.
+4. Use **Test Connection** to check the keys against Stripe before relying on
+   them.
+
+Without the webhook secret, clients can still pay, but invoices will not be
+marked paid automatically — there is no verified way to know the payment
+happened.
+
+```
+/api/stripe/status                       - Integration state (no credentials)
+/api/stripe/test-connection              - Verify keys against Stripe
+/api/stripe/invoices/:id/payment-link    - Create or return an invoice's link
+/api/webhooks/stripe                     - Payment notifications from Stripe
+```
+
+The webhook endpoint is public because Stripe cannot authenticate; every
+delivery is verified against the signing secret before anything is written.
 
 ### Template Management
 - Create recurring templates with client association

@@ -1,0 +1,136 @@
+# Release
+#
+# Fires on a pushed `v*` tag and publishes a GitHub release for it.
+#
+# Two things this deliberately does before publishing anything:
+#
+#   1. Refuses a tag that disagrees with package.json. A `v1.2.0` tag on a tree
+#      whose package.json says 1.1.0 produces a release whose contents report a
+#      different version than its name — and the server reads its version from
+#      package.json, so the running app would contradict the release it came
+#      from.
+#
+#   2. Runs the full gate. A tag is not a promise that someone ran the tests
+#      before pushing it, so the release job proves it rather than assuming it.
+#
+# Publishing is a separate job that depends on the first, so a failure at any
+# earlier step leaves no release behind.
+
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  # Needed to create the release. Nothing here needs any other scope.
+  contents: write
+
+jobs:
+  verify:
+    name: Verify and build
+    runs-on: ubuntu-latest
+
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+
+    steps:
+      - name: Check out the tag
+        uses: actions/checkout@v4
+        with:
+          # Full history and tags, so the annotated tag's own message can be
+          # read back for the release notes.
+          fetch-depth: 0
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Check the tag matches package.json
+        id: version
+        run: |
+          TAG_VERSION="${GITHUB_REF_NAME#v}"
+          PACKAGE_VERSION="$(node -p "require('./package.json').version")"
+
+          if [ "$TAG_VERSION" != "$PACKAGE_VERSION" ]; then
+            echo "::error::Tag ${GITHUB_REF_NAME} does not match package.json version ${PACKAGE_VERSION}."
+            echo "::error::Bump package.json to ${TAG_VERSION}, or retag as v${PACKAGE_VERSION}."
+            exit 1
+          fi
+
+          echo "version=${PACKAGE_VERSION}" >> "$GITHUB_OUTPUT"
+          echo "Releasing version ${PACKAGE_VERSION}"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint and typecheck
+        run: npm run lint
+
+      - name: Test
+        run: npm test
+
+      - name: Build
+        run: npm run build
+
+      # The frontend bundle and the compiled server, ready to drop onto a host
+      # alongside an `npm ci --omit=dev`. The lockfile travels with it so that
+      # install resolves the same dependency tree this release was tested on.
+      - name: Package the build
+        run: |
+          tar -czf "slimbooks-${{ steps.version.outputs.version }}.tar.gz" \
+            dist \
+            server/dist \
+            package.json \
+            package-lock.json \
+            .env.example
+
+      - name: Keep the package for the publish job
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-build
+          path: slimbooks-*.tar.gz
+          retention-days: 7
+
+  publish:
+    name: Publish the release
+    runs-on: ubuntu-latest
+    needs: verify
+
+    steps:
+      - name: Check out the tag
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Retrieve the package
+        uses: actions/download-artifact@v4
+        with:
+          name: release-build
+
+      # An annotated tag carries its own message; that is the release note the
+      # person cutting the release actually wrote. Anything else is generated
+      # from commit subjects, which is a worse description of what changed.
+      - name: Assemble the release notes
+        run: |
+          git tag -l --format='%(contents)' "${GITHUB_REF_NAME}" > RELEASE_NOTES.md
+
+          if [ ! -s RELEASE_NOTES.md ]; then
+            echo "Release ${GITHUB_REF_NAME}." > RELEASE_NOTES.md
+          fi
+
+          cat RELEASE_NOTES.md
+
+      # `gh` is preinstalled on GitHub runners, so this needs no third-party
+      # action. `--verify-tag` refuses to invent a tag that does not exist.
+      - name: Create the GitHub release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "${GITHUB_REF_NAME}" \
+            --title "Slimbooks ${GITHUB_REF_NAME}" \
+            --notes-file RELEASE_NOTES.md \
+            --verify-tag \
+            slimbooks-*.tar.gz

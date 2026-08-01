@@ -1,0 +1,60 @@
+# Continuous integration
+#
+# Runs the same gate the project uses locally, in the same order, so a green
+# checkmark here means the same thing as a clean run on a developer machine:
+#
+#   npm run lint   ESLint at 0 errors AND 0 warnings, then typecheck across
+#                  frontend, vite config and server
+#   npm test       the Vitest suite
+#   npm run build  server tsc build, then the Vite bundle
+#
+# `npm run lint` already chains typecheck, so it is not run twice.
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# Superseded runs on the same branch are pointless once a newer commit exists.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Lint, test and build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          # .nvmrc is the single source of truth, so CI and developers cannot
+          # drift onto different runtimes.
+          node-version-file: .nvmrc
+          cache: npm
+
+      # `npm ci` rather than `npm install`: it installs exactly what the
+      # lockfile pins and fails if the lockfile and package.json disagree,
+      # which is the behaviour a build wants.
+      #
+      # better-sqlite3 is a native module. It uses a prebuilt binary where one
+      # exists for this Node version and compiles from source otherwise, which
+      # ubuntu-latest has the toolchain for either way.
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint and typecheck
+        run: npm run lint
+
+      - name: Test
+        run: npm test
+
+      - name: Build
+        run: npm run build

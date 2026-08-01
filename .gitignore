@@ -41,3 +41,5 @@ certs/*
 /coverage
 public/uploads/*
 default.php
+# Release archives produced by the packaging step
+*.tar.gz

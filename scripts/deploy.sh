@@ -62,16 +62,21 @@ printf "%s📁 Creating necessary directories...%s\n" "$BLUE" "$NC"
 mkdir -p "$DATA_DIR" "$UPLOADS_DIR" "$LOGS_DIR"
 print_status "Directories created"
 
-# Check for environment file
+# Check for environment file.
+#
+# `.env.example` is the only template; `.env` is the only file the application
+# reads. This used to copy from a second `.env.production` template that had to
+# be kept in step with the first by hand.
 if [ ! -f ".env" ]; then
-    print_warning "No .env file found. Creating from .env.production template..."
-    if [ -f ".env.production" ]; then
-        cp .env.production .env
-        print_warning "Please edit .env file and update the JWT secrets before continuing!"
+    print_warning "No .env file found. Creating from .env.example template..."
+    if [ -f ".env.example" ]; then
+        cp .env.example .env
+        print_warning "Please edit .env and set the JWT secrets before continuing!"
+        printf "%sGenerate each with: node -e \"console.log(require('crypto').randomBytes(64).toString('base64'))\"%s\n" "$YELLOW" "$NC"
         printf "%sPress ENTER to continue after updating .env file...%s" "$YELLOW" "$NC"
         read dummy
     else
-        print_error ".env.production template not found. Please create .env file manually."
+        print_error ".env.example template not found. Please create .env file manually."
         exit 1
     fi
 fi
@@ -80,15 +85,35 @@ fi
 printf "%s🔍 Validating environment configuration...%s\n" "$BLUE" "$NC"
 . .env
 
-if echo "$JWT_SECRET" | grep -q "CHANGE_THIS" || echo "$JWT_SECRET" | grep -q "default"; then
-    print_error "JWT_SECRET is not properly configured in .env file!"
-    exit 1
-fi
+# A secret is acceptable only if it is present and long. The previous check
+# looked for the strings "CHANGE_THIS" or "default", which the shipped
+# placeholder ("your-secret-key-here-replace-with-random-64-chars") contained
+# neither of — so it passed validation and deployed with a published secret.
+check_secret() {
+    name="$1"
+    value="$2"
 
-if echo "$JWT_REFRESH_SECRET" | grep -q "CHANGE_THIS" || echo "$JWT_REFRESH_SECRET" | grep -q "default"; then
-    print_error "JWT_REFRESH_SECRET is not properly configured in .env file!"
-    exit 1
-fi
+    if [ -z "$value" ]; then
+        print_error "$name is empty in .env - generate one before deploying!"
+        exit 1
+    fi
+
+    case "$value" in
+        *your-*|*CHANGE_THIS*|*default*|*replace-with*|*change-in-production*)
+            print_error "$name is still set to a placeholder in .env!"
+            exit 1
+            ;;
+    esac
+
+    if [ "${#value}" -lt 32 ]; then
+        print_error "$name is shorter than 32 characters - too weak for signing tokens."
+        exit 1
+    fi
+}
+
+check_secret "JWT_SECRET" "$JWT_SECRET"
+check_secret "JWT_REFRESH_SECRET" "$JWT_REFRESH_SECRET"
+check_secret "SESSION_SECRET" "$SESSION_SECRET"
 
 print_status "Environment configuration validated"
 

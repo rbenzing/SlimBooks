@@ -27,6 +27,17 @@ services:
       - "8080:3002"
 
     # Environment variables
+    #
+    # `.env` is the single environment file — the same one used in development,
+    # created from .env.example. It is passed in at run time rather than baked
+    # into the image, so secrets never end up in a layer and a key can be
+    # rotated by restarting the container instead of rebuilding it.
+    #
+    # Create it before the first `docker compose up`:  cp .env.example .env
+    env_file:
+      - .env
+
+    # Fixed for this deployment, so they override whatever .env says.
     environment:
       - NODE_ENV=production
       - ENABLE_HTTPS=true

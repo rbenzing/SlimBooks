@@ -47,12 +47,19 @@ RUN npm ci --no-audit && npm cache clean --force
 # Clean up build dependencies to reduce image size
 RUN apk del python3 make gcc g++ freetype-dev
 
-# Copy the rest of app (frontend assets + server + env)
+# Copy the rest of app (frontend assets + server)
 COPY --from=frontend-builder /app/dist ./dist
 COPY server ./server
 COPY certs ./certs
-COPY .env.production ./.env
 COPY vite.config.ts ./vite.config.ts
+
+# No environment file is baked into the image. This previously copied
+# `.env.production` — a template of placeholder values — to `/app/.env`, so
+# every container built from this image ran with the published default signing
+# secret unless something happened to override it, and nothing did.
+#
+# Configuration is supplied at run time instead: docker-compose passes the
+# operator's own `.env` through `env_file`.
 
 # Create necessary directories & fix ownership
 RUN mkdir -p /app/data /app/uploads /app/logs && \

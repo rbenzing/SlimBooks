@@ -9,8 +9,40 @@ import { existsSync, readFileSync } from 'fs';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
+/**
+ * The project root, found by walking up to the directory holding package.json.
+ *
+ * A fixed relative path cannot work here: this module sits at `server/config`
+ * when run by tsx and at `server/dist/config` once compiled, so `../..` means
+ * the project root in development and the `server` directory in production.
+ *
+ * That difference was not cosmetic. `.env` was loaded from `../../.env`, so a
+ * compiled deployment — which is what `npm start` runs — read no environment
+ * file at all and silently fell back to every default in this file, including
+ * a JWT signing secret whose literal value is published in this repository.
+ * Nothing reported it: the guard in validateConfig only rejects the default
+ * secret when NODE_ENV is 'production', and NODE_ENV comes from the same file
+ * that was never read.
+ */
+const findProjectRoot = (): string => {
+  let directory = __dirname;
+
+  for (let level = 0; level < 5; level += 1) {
+    if (existsSync(join(directory, 'package.json'))) {
+      return directory;
+    }
+    directory = dirname(directory);
+  }
+
+  // Nothing found: fall back to the old assumption rather than throwing at
+  // import time, and let validateConfig report what is missing.
+  return join(__dirname, '..', '..');
+};
+
+const projectRoot = findProjectRoot();
+
 // Load environment variables from project root
-dotenv.config({ path: join(__dirname, '..', '..', '.env') });
+dotenv.config({ path: join(projectRoot, '.env') });
 
 /**
  * The application version, read from package.json.
@@ -19,25 +51,14 @@ dotenv.config({ path: join(__dirname, '..', '..', '.env') });
  * places — here, the health endpoint and the seed data — while package.json
  * said something different again, so "which version is running" had four
  * possible answers.
- *
- * Resolved by walking up rather than by a fixed relative path, because this
- * module sits at `server/config` in development and `server/dist/config` once
- * compiled, and a fixed path cannot be right in both.
  */
 const readPackageVersion = (): string => {
   try {
-    let directory = __dirname;
+    const parsed = JSON.parse(
+      readFileSync(join(projectRoot, 'package.json'), 'utf8')
+    ) as { version?: string };
 
-    for (let level = 0; level < 5; level += 1) {
-      const candidate = join(directory, 'package.json');
-
-      if (existsSync(candidate)) {
-        const parsed = JSON.parse(readFileSync(candidate, 'utf8')) as { version?: string };
-        if (parsed.version) return parsed.version;
-      }
-
-      directory = dirname(directory);
-    }
+    if (parsed.version) return parsed.version;
   } catch (error) {
     console.warn('Could not read version from package.json:', (error as Error).message);
   }

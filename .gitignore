@@ -9,9 +9,12 @@ pnpm-debug.log*
 lerna-debug.log*
 
 # Environment files
-.env
-.env.local
-.env.production.local
+#
+# Every variant is ignored and the template is the one exception, so a real
+# environment file cannot be committed by picking a name nobody thought of.
+# `.env.production` was tracked precisely because it was not on the old list.
+.env*
+!.env.example
 
 # Database and data
 #

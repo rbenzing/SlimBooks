@@ -1,7 +1,13 @@
 // PDF Service - Domain-specific service for PDF generation operations
 // Handles PDF-related database operations, settings retrieval, and PDF generation
 
-import puppeteer, { type Browser, type Page, type PDFOptions, type PaperFormat } from 'puppeteer';
+// puppeteer is an optional dependency, so it must not be imported at module
+// scope: a static import makes this whole module fail to load on a host that
+// has no Chromium, which takes the rest of the API down with it. These are
+// type-only imports (erased at compile time); the module itself is loaded
+// lazily in initialize(), and runtime.features.pdf decides whether that ever
+// happens.
+import type { Browser, Page, PDFOptions, PaperFormat } from 'puppeteer';
 import { databaseService } from '../core/DatabaseService.js';
 import { settingsService } from './SettingsService.js';
 import { type InvoiceWithClient } from '../types/index.js';
@@ -43,6 +49,12 @@ export class PdfService {
     if (this.isInitialized) return;
 
     try {
+      // Loaded here rather than at module scope. On a host without Chromium
+      // this throws, and the caller reports PDF as unavailable — the rest of
+      // the application is unaffected.
+      const puppeteerModule = await import('puppeteer');
+      const puppeteer = puppeteerModule.default ?? puppeteerModule;
+
       this.browser = await puppeteer.launch({
         headless: true,
         args: [

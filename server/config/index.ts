@@ -187,14 +187,18 @@ export interface AppConfig {
 /**
  * Logging configuration interface
  */
+/**
+ * Logging configuration.
+ *
+ * Logs go to stdout and nowhere else, which is what every supported host
+ * expects. There are deliberately no file paths here: the four that used to be
+ * declared were read by nothing, and advertising them told an operator to
+ * provision a log directory the application never wrote to.
+ */
 export interface LoggingConfig {
   level: string;
   enableRequestLogging: boolean;
   enableErrorLogging: boolean;
-  logDir: string;
-  logFile: string;
-  errorLogFile: string;
-  accessLogFile: string;
 }
 
 /**
@@ -391,13 +395,7 @@ export const appConfig: AppConfig = {
 export const loggingConfig: LoggingConfig = {
   level: process.env.LOG_LEVEL || (serverConfig.isDevelopment ? 'debug' : 'info'),
   enableRequestLogging: true,
-  enableErrorLogging: true,
-
-  // Log file paths
-  logDir: 'logs',
-  logFile: process.env.LOG_FILE || './logs/app.log',
-  errorLogFile: 'error.log',
-  accessLogFile: 'access.log'
+  enableErrorLogging: true
 };
 
 /**

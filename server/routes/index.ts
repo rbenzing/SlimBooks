@@ -8,7 +8,8 @@ import clientRoutes from './clientRoutes.js';
 import invoiceRoutes from './invoiceRoutes.js';
 import expenseRoutes from './expenseRoutes.js';
 import paymentRoutes from './paymentRoutes.js';
-import healthRoutes from './healthRoutes.js';
+import { createHealthRoutes } from './healthRoutes.js';
+import { createConfigRoutes } from './configRoutes.js';
 import settingsRoutes from './settingsRoutes.js';
 import projectSettingsRoutes from './projectSettingsRoutes.js';
 import counterRoutes from './counterRoutes.js';
@@ -63,8 +64,13 @@ export const createRoutes = (runtime: Runtime): Router => {
   router.use('/api/stripe', stripeRoutes);
   router.use('/api/email', emailRoutes);
 
+  // What this instance resolved, for the SPA and for operators. Public and
+  // secret-free by design: the bundle is built once and deployed anywhere, so
+  // it cannot know its host's capabilities until it asks.
+  router.use('/api/config', createConfigRoutes(runtime));
+
   // Health check routes
-  router.use('/api/health', healthRoutes);
+  router.use('/api/health', createHealthRoutes(runtime));
 
   return router;
 };

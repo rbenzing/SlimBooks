@@ -3,7 +3,9 @@
 
 import { Router, type Request, type Response } from 'express';
 import { serverConfig, appConfig } from '../config/index.js';
+import type { Runtime } from '../runtime/types.js';
 
+export const createHealthRoutes = (runtime: Runtime): Router => {
 const router: Router = Router();
 
 /**
@@ -13,16 +15,26 @@ router.get('/', async (req: Request, res: Response) => {
   try {
     const { databaseHealthService } = await import('../services/DatabaseHealthService.js');
     const isHealthy = await databaseHealthService.checkDatabaseHealth();
-    
-    res.json({ 
-      status: 'ok', 
+
+    res.json({
+      status: 'ok',
       database: isHealthy ? 'connected' : 'disconnected',
+      version: appConfig.version,
       timestamp: new Date().toISOString(),
-      environment: serverConfig.nodeEnv
+      environment: serverConfig.nodeEnv,
+      // What this instance actually resolved. "Why is there no PDF button here"
+      // should be answerable from this endpoint rather than from the container's
+      // logs, which an operator may not be able to reach.
+      features: runtime.features,
+      providers: {
+        pdf: runtime.pdf?.name ?? null,
+        scheduler: runtime.features.scheduler ? 'in-process' : null,
+        tls: runtime.listener.tls
+      }
     });
   } catch (error) {
-    res.status(500).json({ 
-      status: 'error', 
+    res.status(500).json({
+      status: 'error',
       database: 'disconnected',
       error: (error as Error).message,
       timestamp: new Date().toISOString()
@@ -104,10 +116,13 @@ router.get('/ready', async (req: Request, res: Response) => {
  * Liveness check (for container orchestration)
  */
 router.get('/live', (req: Request, res: Response) => {
-  res.json({ 
+  res.json({
     alive: true,
     timestamp: new Date().toISOString()
   });
 });
 
-export default router;
+  return router;
+};
+
+export default createHealthRoutes;

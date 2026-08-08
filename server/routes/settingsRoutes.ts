@@ -3,10 +3,9 @@
 
 import { Router, type Request, type Response } from 'express';
 import multer from 'multer';
-import { fileURLToPath } from 'url';
-import { dirname, resolve, extname } from 'path';
+import { extname } from 'path';
 import { randomUUID } from 'crypto';
-import fs from 'fs/promises';
+import type { Runtime } from '../runtime/types.js';
 import {
   getAllSettings,
   getSettingByKey,
@@ -17,28 +16,21 @@ import { requireAuth, requireAdmin } from '../middleware/index.js';
 
 const router: Router = Router();
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+/**
+ * Turn a stored branding URL back into a storage key.
+ *
+ * Returns null for anything that is not one of our own upload URLs, so an
+ * externally-hosted logo is left alone rather than producing a bogus key.
+ */
+const storageKeyFromUrl = (url: string): string | null =>
+  url.startsWith('/uploads/') ? url.slice('/uploads/'.length) : null;
 
-// Configure multer for image uploads
-const imageStorage = multer.diskStorage({
-  destination: async (req, file, cb) => {
-    const uploadDir = resolve(__dirname, '../../public/uploads/logos');
-    try {
-      await fs.mkdir(uploadDir, { recursive: true });
-      cb(null, uploadDir);
-    } catch (error) {
-      cb(error as Error, uploadDir);
-    }
-  },
-  filename: (req, file, cb) => {
-    const uniqueName = `logo-${randomUUID()}${extname(file.originalname)}`;
-    cb(null, uniqueName);
-  }
-});
-
+// Uploads are buffered and then written through the storage provider, so the
+// write path and the path Express serves from are the same resolved value.
+// Previously the two were computed separately and disagreed: logos were written
+// to <root>/public/uploads/logos and served from server/public/uploads.
 const uploadImage = multer({
-  storage: imageStorage,
+  storage: multer.memoryStorage(),
   limits: {
     fileSize: 5 * 1024 * 1024, // 5MB limit for images
     files: 1
@@ -128,7 +120,11 @@ router.post('/company/logo', requireAuth, uploadImage.single('logo'), async (req
     }
 
     const { settingsService } = await import('../services/SettingsService.js');
-    const logoPath = `/uploads/logos/${req.file.filename}`;
+    const runtime = req.app.locals.runtime as Runtime;
+
+    const key = `logos/logo-${randomUUID()}${extname(req.file.originalname)}`;
+    await runtime.storage.put(key, req.file.buffer, { contentType: req.file.mimetype });
+    const logoPath = runtime.storage.publicUrl(key);
 
     // Get existing company settings
     const existingSettings = (await settingsService.getSettingByKey('company.company_settings') as Record<string, string>) || {
@@ -143,16 +139,17 @@ router.post('/company/logo', requireAuth, uploadImage.single('logo'), async (req
       brandingImage: ''
     };
 
-    // Delete old logo file if it exists
-    if (existingSettings.brandingImage && existingSettings.brandingImage.startsWith('/uploads/logos/')) {
-      const oldFilename = existingSettings.brandingImage.split('/').pop();
-      if (oldFilename && oldFilename.startsWith('logo-')) {
-        const oldFilePath = resolve(__dirname, '../../public/uploads/logos', oldFilename);
-        try {
-          await fs.unlink(oldFilePath);
-        } catch (deleteError) {
-          console.warn('Could not delete old logo file:', deleteError);
-        }
+    // Replace the previous logo. Deleting an absent object succeeds, so an
+    // interrupted earlier request cannot leave this path failing forever.
+    const previousKey = existingSettings.brandingImage
+      ? storageKeyFromUrl(existingSettings.brandingImage)
+      : null;
+
+    if (previousKey !== null) {
+      try {
+        await runtime.storage.delete(previousKey);
+      } catch (deleteError) {
+        console.warn('Could not delete old logo file:', deleteError);
       }
     }
 
@@ -180,6 +177,7 @@ router.post('/company/logo', requireAuth, uploadImage.single('logo'), async (req
 router.delete('/company/logo', requireAuth, async (req: Request, res: Response): Promise<void> => {
   try {
     const { settingsService } = await import('../services/SettingsService.js');
+    const runtime = req.app.locals.runtime as Runtime;
 
     // Get existing company settings
     const existingSettings = (await settingsService.getSettingByKey('company.company_settings') as Record<string, string>) || {
@@ -194,17 +192,17 @@ router.delete('/company/logo', requireAuth, async (req: Request, res: Response):
       brandingImage: ''
     };
 
-    // Delete logo file if it exists
-    if (existingSettings.brandingImage && existingSettings.brandingImage.startsWith('/uploads/logos/')) {
-      const filename = existingSettings.brandingImage.split('/').pop();
-      if (filename && filename.startsWith('logo-')) {
-        const filePath = resolve(__dirname, '../../public/uploads/logos', filename);
-        try {
-          await fs.unlink(filePath);
-        } catch (deleteError) {
-          console.warn('Could not delete logo file:', deleteError);
-          // Don't fail if file doesn't exist
-        }
+    // Remove the stored object. A missing file is not an error here — the
+    // setting is being cleared either way.
+    const key = existingSettings.brandingImage
+      ? storageKeyFromUrl(existingSettings.brandingImage)
+      : null;
+
+    if (key !== null) {
+      try {
+        await runtime.storage.delete(key);
+      } catch (deleteError) {
+        console.warn('Could not delete logo file:', deleteError);
       }
     }
 

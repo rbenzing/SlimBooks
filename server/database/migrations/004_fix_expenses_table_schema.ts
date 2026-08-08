@@ -3,12 +3,12 @@
 
 import type { IDatabase, TableColumnInfo } from '../../types/database.types.js';
 
-export const up = (db: IDatabase): void => {
+export const up = async (db: IDatabase): Promise<void> => {
   console.log('Running migration 004: Fix expenses table schema');
 
   try {
     // First, check if expenses table exists and what columns it has
-    const tableInfo = db.getMany<TableColumnInfo>("PRAGMA table_info(expenses)");
+    const tableInfo = await db.getMany<TableColumnInfo>("PRAGMA table_info(expenses)");
     console.log('Current expenses table structure:', tableInfo);
 
     // Check if the table has the old structure (merchant, status) or new structure (vendor, is_billable)
@@ -17,12 +17,12 @@ export const up = (db: IDatabase): void => {
 
     if (hasOldStructure && !hasNewStructure) {
       console.log('Converting from old expenses structure to new structure');
-      
+
       // Rename old table
-      db.executeQuery('ALTER TABLE expenses RENAME TO expenses_old');
+      await db.executeQuery('ALTER TABLE expenses RENAME TO expenses_old');
 
       // Create new expenses table with correct structure
-      db.executeQuery(`
+      await db.executeQuery(`
         CREATE TABLE expenses (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           description TEXT NOT NULL,
@@ -43,7 +43,7 @@ export const up = (db: IDatabase): void => {
       `);
 
       // Migrate data from old table to new table
-      db.executeQuery(`
+      await db.executeQuery(`
         INSERT INTO expenses (
           id, description, amount, category, date, vendor, receipt_url, created_at, updated_at
         )
@@ -61,15 +61,15 @@ export const up = (db: IDatabase): void => {
       `);
 
       // Drop old table
-      db.executeQuery('DROP TABLE expenses_old');
+      await db.executeQuery('DROP TABLE expenses_old');
 
       console.log('Successfully migrated expenses table structure');
-      
+
     } else if (!hasNewStructure) {
       console.log('Creating new expenses table with correct structure');
-      
+
       // Create the table if it doesn't exist or has no structure
-      db.executeQuery(`
+      await db.executeQuery(`
         CREATE TABLE IF NOT EXISTS expenses (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           description TEXT NOT NULL,
@@ -94,15 +94,15 @@ export const up = (db: IDatabase): void => {
     }
 
     // Create indexes for performance
-    db.executeQuery('CREATE INDEX IF NOT EXISTS idx_expenses_date ON expenses(date)');
-    db.executeQuery('CREATE INDEX IF NOT EXISTS idx_expenses_category ON expenses(category)');
-    db.executeQuery('CREATE INDEX IF NOT EXISTS idx_expenses_vendor ON expenses(vendor)');
-    db.executeQuery('CREATE INDEX IF NOT EXISTS idx_expenses_client_id ON expenses(client_id)');
-    db.executeQuery('CREATE INDEX IF NOT EXISTS idx_expenses_is_billable ON expenses(is_billable)');
-    db.executeQuery('CREATE INDEX IF NOT EXISTS idx_expenses_date_category ON expenses(date, category)');
+    await db.executeQuery('CREATE INDEX IF NOT EXISTS idx_expenses_date ON expenses(date)');
+    await db.executeQuery('CREATE INDEX IF NOT EXISTS idx_expenses_category ON expenses(category)');
+    await db.executeQuery('CREATE INDEX IF NOT EXISTS idx_expenses_vendor ON expenses(vendor)');
+    await db.executeQuery('CREATE INDEX IF NOT EXISTS idx_expenses_client_id ON expenses(client_id)');
+    await db.executeQuery('CREATE INDEX IF NOT EXISTS idx_expenses_is_billable ON expenses(is_billable)');
+    await db.executeQuery('CREATE INDEX IF NOT EXISTS idx_expenses_date_category ON expenses(date, category)');
 
     // Create trigger for automatic timestamp updates
-    db.executeQuery(`
+    await db.executeQuery(`
       CREATE TRIGGER IF NOT EXISTS update_expenses_timestamp 
         AFTER UPDATE ON expenses
         FOR EACH ROW
@@ -117,14 +117,14 @@ export const up = (db: IDatabase): void => {
   }
 };
 
-export const down = (db: IDatabase): void => {
+export const down = async (db: IDatabase): Promise<void> => {
   console.log('Rolling back migration 004: Fix expenses table schema');
-  
+
   // Note: This is a destructive rollback - data may be lost
-  db.executeQuery('DROP TABLE IF EXISTS expenses');
-  
+  await db.executeQuery('DROP TABLE IF EXISTS expenses');
+
   // Recreate old structure (if needed for rollback)
-  db.executeQuery(`
+  await db.executeQuery(`
     CREATE TABLE expenses (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       date TEXT NOT NULL,

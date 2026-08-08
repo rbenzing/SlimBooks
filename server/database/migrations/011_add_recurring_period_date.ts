@@ -13,29 +13,29 @@
 
 import type { IDatabase } from '../../types/database.types.js';
 
-const hasColumn = (db: IDatabase, table: string, column: string): boolean => {
-  if (!db.tableExists(table)) return false;
+const hasColumn = async (db: IDatabase, table: string, column: string): Promise<boolean> => {
+  if (!(await db.tableExists(table))) return false;
 
-  return db
-    .getMany<{ name: string }>(`PRAGMA table_info(${table})`)
+  return (await db
+    .getMany<{ name: string }>(`PRAGMA table_info(${table})`))
     .some(info => info.name === column);
 };
 
-export const up = (db: IDatabase): void => {
+export const up = async (db: IDatabase): Promise<void> => {
   console.log('Running migration 011: Add recurring_period_date to invoices');
 
-  if (!db.tableExists('invoices')) {
+  if (!(await db.tableExists('invoices'))) {
     console.log('Skipping - invoices table does not exist');
     return;
   }
 
-  if (!hasColumn(db, 'invoices', 'recurring_period_date')) {
-    db.executeQuery('ALTER TABLE invoices ADD COLUMN recurring_period_date TEXT');
+  if (!(await hasColumn(db, 'invoices', 'recurring_period_date'))) {
+    await db.executeQuery('ALTER TABLE invoices ADD COLUMN recurring_period_date TEXT');
     console.log('✓ Added invoices.recurring_period_date');
   }
 
   // Backfill: an existing recurring invoice covers the period it was issued in.
-  db.executeQuery(`
+  await db.executeQuery(`
     UPDATE invoices
        SET recurring_period_date = issue_date
      WHERE recurring_template_id IS NOT NULL
@@ -45,7 +45,7 @@ export const up = (db: IDatabase): void => {
   // Collapse pre-existing duplicates, keeping the earliest row of each pair.
   // Without this the unique index below fails on any live database that already
   // double-generated.
-  const duplicates = db.executeQuery(`
+  const duplicates = await db.executeQuery(`
     DELETE FROM invoices
      WHERE recurring_template_id IS NOT NULL
        AND id NOT IN (
@@ -61,7 +61,7 @@ export const up = (db: IDatabase): void => {
 
   // Belongs here rather than in tables.schema.ts: createTables() runs before
   // migrations and would not find the column yet.
-  db.executeQuery(`
+  await db.executeQuery(`
     CREATE UNIQUE INDEX IF NOT EXISTS idx_invoices_recurring_period
       ON invoices (recurring_template_id, recurring_period_date)
       WHERE recurring_template_id IS NOT NULL
@@ -70,10 +70,10 @@ export const up = (db: IDatabase): void => {
   console.log('Migration 011 completed successfully');
 };
 
-export const down = (db: IDatabase): void => {
-  db.executeQuery('DROP INDEX IF EXISTS idx_invoices_recurring_period');
+export const down = async (db: IDatabase): Promise<void> => {
+  await db.executeQuery('DROP INDEX IF EXISTS idx_invoices_recurring_period');
 
-  if (hasColumn(db, 'invoices', 'recurring_period_date')) {
-    db.executeQuery('ALTER TABLE invoices DROP COLUMN recurring_period_date');
+  if (await hasColumn(db, 'invoices', 'recurring_period_date')) {
+    await db.executeQuery('ALTER TABLE invoices DROP COLUMN recurring_period_date');
   }
 };

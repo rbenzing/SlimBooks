@@ -10,10 +10,10 @@
 
 import type { IDatabase } from '../../types/database.types.js';
 
-export const up = (db: IDatabase): void => {
+export const up = async (db: IDatabase): Promise<void> => {
   console.log('Running migration 012: Add scheduler_leases and stripe_events');
 
-  db.executeQuery(`
+  await db.executeQuery(`
     CREATE TABLE IF NOT EXISTS scheduler_leases (
       job_name TEXT PRIMARY KEY,
       owner TEXT NOT NULL,
@@ -22,7 +22,7 @@ export const up = (db: IDatabase): void => {
     )
   `);
 
-  db.executeQuery(`
+  await db.executeQuery(`
     CREATE TABLE IF NOT EXISTS stripe_events (
       event_id TEXT PRIMARY KEY,
       event_type TEXT NOT NULL,
@@ -33,7 +33,7 @@ export const up = (db: IDatabase): void => {
   console.log('Migration 012 completed successfully');
 };
 
-export const down = (db: IDatabase): void => {
-  db.executeQuery('DROP TABLE IF EXISTS scheduler_leases');
-  db.executeQuery('DROP TABLE IF EXISTS stripe_events');
+export const down = async (db: IDatabase): Promise<void> => {
+  await db.executeQuery('DROP TABLE IF EXISTS scheduler_leases');
+  await db.executeQuery('DROP TABLE IF EXISTS stripe_events');
 };

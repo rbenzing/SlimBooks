@@ -137,16 +137,16 @@ const indexes: string[] = [
 /**
  * Read the current column names of a table (empty when the table does not exist).
  */
-const getColumnNames = (db: IDatabase, table: string): string[] => {
-  if (!db.tableExists(table)) {
+const getColumnNames = async (db: IDatabase, table: string): Promise<string[]> => {
+  if (!(await db.tableExists(table))) {
     return [];
   }
 
-  const tableInfo = db.getMany<{ name: string }>(`PRAGMA table_info(${table})`);
+  const tableInfo = await db.getMany<{ name: string }>(`PRAGMA table_info(${table})`);
   return tableInfo.map(column => column.name);
 };
 
-export const up = (db: IDatabase): void => {
+export const up = async (db: IDatabase): Promise<void> => {
   console.log('Running migration 006: Align tables with schema file');
 
   try {
@@ -154,7 +154,7 @@ export const up = (db: IDatabase): void => {
     const tables = [...new Set(columnAdditions.map(addition => addition.table))];
 
     for (const table of tables) {
-      const existingColumns = getColumnNames(db, table);
+      const existingColumns = await getColumnNames(db, table);
 
       if (existingColumns.length === 0) {
         console.log(`Skipping ${table} - table does not exist`);
@@ -163,7 +163,7 @@ export const up = (db: IDatabase): void => {
 
       for (const addition of columnAdditions.filter(item => item.table === table)) {
         if (!existingColumns.includes(addition.column)) {
-          db.executeQuery(`ALTER TABLE ${table} ADD COLUMN ${addition.column} ${addition.definition}`);
+          await db.executeQuery(`ALTER TABLE ${table} ADD COLUMN ${addition.column} ${addition.definition}`);
           existingColumns.push(addition.column);
           console.log(`✓ Added ${table}.${addition.column}`);
         }
@@ -177,7 +177,7 @@ export const up = (db: IDatabase): void => {
         const sourcesPresent = sources.every(column => existingColumns.includes(column));
 
         if (addition.backfill && sourcesPresent) {
-          db.executeQuery(addition.backfill);
+          await db.executeQuery(addition.backfill);
         } else if (addition.backfill) {
           console.log(
             `Skipping ${table}.${addition.column} backfill - ` +
@@ -187,7 +187,9 @@ export const up = (db: IDatabase): void => {
       }
     }
 
-    indexes.forEach(sql => db.executeQuery(sql));
+    for (const sql of indexes) {
+      await db.executeQuery(sql);
+    }
 
     console.log('✓ Migration 006 complete');
   } catch (error) {
@@ -196,6 +198,6 @@ export const up = (db: IDatabase): void => {
   }
 };
 
-export const down = (_db: IDatabase): void => {
+export const down = async (_db: IDatabase): Promise<void> => {
   console.log('Warning: SQLite does not support DROP COLUMN. Migration 006 cannot be rolled back automatically.');
 };

@@ -6,13 +6,13 @@ import type { IDatabase, TableColumnInfo } from '../../types/database.types.js';
 /**
  * Migration to separate template functionality into design templates and recurring templates
  */
-export const up = (db: IDatabase): void => {
+export const up = async (db: IDatabase): Promise<void> => {
   try {
     console.log('Creating separate template tables...');
 
     // Create invoice design templates table
     console.log('Creating invoice_design_templates table...');
-    db.executeQuery(`
+    await db.executeQuery(`
       CREATE TABLE IF NOT EXISTS invoice_design_templates (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT NOT NULL CHECK (length(trim(name)) >= 2 AND length(name) <= 100),
@@ -26,7 +26,7 @@ export const up = (db: IDatabase): void => {
 
     // Create recurring invoice templates table
     console.log('Creating recurring_invoice_templates table...');
-    db.executeQuery(`
+    await db.executeQuery(`
       CREATE TABLE IF NOT EXISTS recurring_invoice_templates (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT NOT NULL CHECK (length(trim(name)) >= 2 AND length(name) <= 100),
@@ -51,14 +51,14 @@ export const up = (db: IDatabase): void => {
     `);
 
     // Check if old templates table exists and has recurring template structure
-    const tableInfo = db.getMany<TableColumnInfo>("PRAGMA table_info(templates)");
+    const tableInfo = await db.getMany<TableColumnInfo>("PRAGMA table_info(templates)");
     const hasClientId = tableInfo.some((row) => row.name === 'client_id');
     const hasFrequency = tableInfo.some((row) => row.name === 'frequency');
 
     if (hasClientId && hasFrequency) {
       console.log('Migrating existing recurring templates data...');
       // Migrate existing templates to recurring_invoice_templates
-      db.executeQuery(`
+      await db.executeQuery(`
         INSERT OR IGNORE INTO recurring_invoice_templates (
           name, client_id, amount, description, frequency, payment_terms, 
           next_invoice_date, is_active, line_items, tax_amount, tax_rate_id, 
@@ -73,10 +73,10 @@ export const up = (db: IDatabase): void => {
     }
 
     // Add default design template if none exists
-    const designTemplateCount = db.getOne<{ count: number }>("SELECT COUNT(*) as count FROM invoice_design_templates");
+    const designTemplateCount = await db.getOne<{ count: number }>("SELECT COUNT(*) as count FROM invoice_design_templates");
     if (!designTemplateCount || designTemplateCount.count === 0) {
       console.log('Adding default invoice design template...');
-      db.executeQuery(`
+      await db.executeQuery(`
         INSERT INTO invoice_design_templates (name, content, is_default, created_at, updated_at)
         VALUES (
           'Default Template', 
@@ -89,25 +89,25 @@ export const up = (db: IDatabase): void => {
     }
 
     // Add new columns to invoices table if they don't exist
-    const invoiceTableInfo = db.getMany<TableColumnInfo>("PRAGMA table_info(invoices)");
+    const invoiceTableInfo = await db.getMany<TableColumnInfo>("PRAGMA table_info(invoices)");
     const hasDesignTemplateId = invoiceTableInfo.some((row) => row.name === 'design_template_id');
     const hasRecurringTemplateId = invoiceTableInfo.some((row) => row.name === 'recurring_template_id');
 
     if (!hasDesignTemplateId) {
       console.log('Adding design_template_id column to invoices table...');
-      db.executeQuery('ALTER TABLE invoices ADD COLUMN design_template_id INTEGER');
+      await db.executeQuery('ALTER TABLE invoices ADD COLUMN design_template_id INTEGER');
     }
 
     if (!hasRecurringTemplateId) {
       console.log('Adding recurring_template_id column to invoices table...');
-      db.executeQuery('ALTER TABLE invoices ADD COLUMN recurring_template_id INTEGER');
+      await db.executeQuery('ALTER TABLE invoices ADD COLUMN recurring_template_id INTEGER');
     }
 
     // Migrate existing template_id to recurring_template_id if applicable
     const hasTemplateId = invoiceTableInfo.some((row) => row.name === 'template_id');
     if (hasTemplateId && hasClientId && hasFrequency) {
       console.log('Migrating template_id references to recurring_template_id...');
-      db.executeQuery(`
+      await db.executeQuery(`
         UPDATE invoices 
         SET recurring_template_id = template_id
         WHERE template_id IS NOT NULL
@@ -125,14 +125,14 @@ export const up = (db: IDatabase): void => {
  * Rollback migration
  * Note: This is a complex rollback due to data separation
  */
-export const down = (db: IDatabase): void => {
+export const down = async (db: IDatabase): Promise<void> => {
   console.log('Warning: Rolling back template separation is complex and may result in data loss.');
   console.log('Manual intervention recommended to preserve data integrity.');
-  
+
   try {
     // Drop the new tables (this will lose data!)
-    db.executeQuery('DROP TABLE IF EXISTS invoice_design_templates');
-    db.executeQuery('DROP TABLE IF EXISTS recurring_invoice_templates');
+    await db.executeQuery('DROP TABLE IF EXISTS invoice_design_templates');
+    await db.executeQuery('DROP TABLE IF EXISTS recurring_invoice_templates');
     
     console.log('✓ Dropped separated template tables');
   } catch (error) {

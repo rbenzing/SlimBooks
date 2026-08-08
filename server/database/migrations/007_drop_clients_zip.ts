@@ -14,20 +14,20 @@ import type { IDatabase } from '../../types/database.types.js';
 /**
  * Read the current column names of a table (empty when the table does not exist).
  */
-const getColumnNames = (db: IDatabase, table: string): string[] => {
-  if (!db.tableExists(table)) {
+const getColumnNames = async (db: IDatabase, table: string): Promise<string[]> => {
+  if (!(await db.tableExists(table))) {
     return [];
   }
 
-  const tableInfo = db.getMany<{ name: string }>(`PRAGMA table_info(${table})`);
+  const tableInfo = await db.getMany<{ name: string }>(`PRAGMA table_info(${table})`);
   return tableInfo.map(column => column.name);
 };
 
-export const up = (db: IDatabase): void => {
+export const up = async (db: IDatabase): Promise<void> => {
   console.log('Running migration 007: Drop clients.zip in favour of clients.zipCode');
 
   try {
-    const columns = getColumnNames(db, 'clients');
+    const columns = await getColumnNames(db, 'clients');
 
     if (columns.length === 0) {
       console.log('Skipping - clients table does not exist');
@@ -41,16 +41,16 @@ export const up = (db: IDatabase): void => {
 
     if (!columns.includes('zipCode')) {
       // Migration 006 should have added it; add it here so 007 stands alone.
-      db.executeQuery('ALTER TABLE clients ADD COLUMN zipCode TEXT');
+      await db.executeQuery('ALTER TABLE clients ADD COLUMN zipCode TEXT');
       console.log('✓ Added clients.zipCode');
     }
 
     // Carry across anything that only exists under the old name.
-    db.executeQuery(
+    await db.executeQuery(
       'UPDATE clients SET zipCode = zip WHERE zipCode IS NULL AND zip IS NOT NULL'
     );
 
-    const stranded = db.getOne<{ count: number }>(
+    const stranded = await db.getOne<{ count: number }>(
       'SELECT COUNT(*) as count FROM clients WHERE zipCode IS NULL AND zip IS NOT NULL'
     );
 
@@ -60,8 +60,8 @@ export const up = (db: IDatabase): void => {
       );
     }
 
-    db.executeQuery('DROP INDEX IF EXISTS idx_clients_zip');
-    db.executeQuery('ALTER TABLE clients DROP COLUMN zip');
+    await db.executeQuery('DROP INDEX IF EXISTS idx_clients_zip');
+    await db.executeQuery('ALTER TABLE clients DROP COLUMN zip');
     console.log('✓ Dropped clients.zip');
 
     console.log('Migration 007 completed successfully');
@@ -71,7 +71,7 @@ export const up = (db: IDatabase): void => {
   }
 };
 
-export const down = (): void => {
+export const down = async (): Promise<void> => {
   // Re-adding `zip` would recreate the duplicate column this migration removes.
   throw new Error('Migration 007 is not reversible');
 };

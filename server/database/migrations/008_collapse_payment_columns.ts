@@ -59,19 +59,19 @@ const REBUILT_INDEXES = [
   'CREATE INDEX IF NOT EXISTS idx_payments_client_name ON payments (client_name)'
 ];
 
-const getColumnNames = (db: IDatabase, table: string): string[] => {
-  if (!db.tableExists(table)) {
+const getColumnNames = async (db: IDatabase, table: string): Promise<string[]> => {
+  if (!(await db.tableExists(table))) {
     return [];
   }
 
-  return db.getMany<{ name: string }>(`PRAGMA table_info(${table})`).map(column => column.name);
+  return (await db.getMany<{ name: string }>(`PRAGMA table_info(${table})`)).map(column => column.name);
 };
 
-export const up = (db: IDatabase): void => {
+export const up = async (db: IDatabase): Promise<void> => {
   console.log('Running migration 008: Collapse duplicated payment columns');
 
   try {
-    let columns = getColumnNames(db, 'payments');
+    let columns = await getColumnNames(db, 'payments');
 
     if (columns.length === 0) {
       console.log('Skipping - payments table does not exist');
@@ -80,7 +80,7 @@ export const up = (db: IDatabase): void => {
 
     // client_name is the survivor of the client_id/client_name pair.
     if (columns.includes('client_id') && columns.includes('client_name')) {
-      db.executeQuery(`
+      await db.executeQuery(`
         UPDATE payments SET client_name = (
           SELECT c.name FROM clients c WHERE c.id = payments.client_id
         ) WHERE client_name IS NULL AND client_id IS NOT NULL
@@ -89,9 +89,9 @@ export const up = (db: IDatabase): void => {
 
     for (const { from, to } of COLUMN_MERGES) {
       if (columns.includes(from) && columns.includes(to)) {
-        db.executeQuery(`UPDATE payments SET ${to} = ${from} WHERE ${to} IS NULL AND ${from} IS NOT NULL`);
+        await db.executeQuery(`UPDATE payments SET ${to} = ${from} WHERE ${to} IS NULL AND ${from} IS NOT NULL`);
 
-        const stranded = db.getOne<{ count: number }>(
+        const stranded = await db.getOne<{ count: number }>(
           `SELECT COUNT(*) as count FROM payments WHERE ${to} IS NULL AND ${from} IS NOT NULL`
         );
 
@@ -105,7 +105,7 @@ export const up = (db: IDatabase): void => {
       }
     }
 
-    columns = getColumnNames(db, 'payments');
+    columns = await getColumnNames(db, 'payments');
     const legacy = ['client_id', 'transaction_id', 'notes'].filter(column => columns.includes(column));
 
     if (legacy.length === 0) {
@@ -117,12 +117,12 @@ export const up = (db: IDatabase): void => {
     // SQLite's supported table-rebuild procedure. foreign_keys must be toggled
     // outside a transaction, which is why the migration runner does not wrap
     // migrations in one.
-    db.executeQuery('PRAGMA foreign_keys = OFF');
-    db.executeQuery('DROP INDEX IF EXISTS idx_payments_client_id');
-    db.executeQuery('DROP TABLE IF EXISTS payments_new');
-    db.executeQuery(REBUILT_TABLE);
+    await db.executeQuery('PRAGMA foreign_keys = OFF');
+    await db.executeQuery('DROP INDEX IF EXISTS idx_payments_client_id');
+    await db.executeQuery('DROP TABLE IF EXISTS payments_new');
+    await db.executeQuery(REBUILT_TABLE);
 
-    db.executeQuery(`
+    await db.executeQuery(`
       INSERT INTO payments_new (
         id, invoice_id, client_name, amount, currency, method, status,
         reference, description, stripe_payment_id, date, created_at, updated_at, deleted_at
@@ -133,26 +133,26 @@ export const up = (db: IDatabase): void => {
       FROM payments
     `);
 
-    const before = db.getOne<{ count: number }>('SELECT COUNT(*) as count FROM payments');
-    const after = db.getOne<{ count: number }>('SELECT COUNT(*) as count FROM payments_new');
+    const before = await db.getOne<{ count: number }>('SELECT COUNT(*) as count FROM payments');
+    const after = await db.getOne<{ count: number }>('SELECT COUNT(*) as count FROM payments_new');
 
     if (!before || !after || before.count !== after.count) {
-      db.executeQuery('DROP TABLE IF EXISTS payments_new');
-      db.executeQuery('PRAGMA foreign_keys = ON');
+      await db.executeQuery('DROP TABLE IF EXISTS payments_new');
+      await db.executeQuery('PRAGMA foreign_keys = ON');
       throw new Error(
         `Row count mismatch rebuilding payments (${before?.count} -> ${after?.count}); aborted without dropping the original`
       );
     }
 
-    db.executeQuery('DROP TABLE payments');
-    db.executeQuery('ALTER TABLE payments_new RENAME TO payments');
+    await db.executeQuery('DROP TABLE payments');
+    await db.executeQuery('ALTER TABLE payments_new RENAME TO payments');
 
     for (const index of REBUILT_INDEXES) {
-      db.executeQuery(index);
+      await db.executeQuery(index);
     }
 
-    const violations = db.getMany('PRAGMA foreign_key_check(payments)');
-    db.executeQuery('PRAGMA foreign_keys = ON');
+    const violations = await db.getMany('PRAGMA foreign_key_check(payments)');
+    await db.executeQuery('PRAGMA foreign_keys = ON');
 
     if (violations.length > 0) {
       throw new Error(`Foreign key check failed after rebuilding payments: ${JSON.stringify(violations)}`);
@@ -166,7 +166,7 @@ export const up = (db: IDatabase): void => {
   }
 };
 
-export const down = (): void => {
+export const down = async (): Promise<void> => {
   // Re-adding these columns would recreate the duplication this migration removes.
   throw new Error('Migration 008 is not reversible');
 };

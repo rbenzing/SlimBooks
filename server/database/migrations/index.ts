@@ -17,7 +17,7 @@ import { up as migration012 } from './012_add_runtime_tables.js';
 interface Migration {
   id: string;
   name: string;
-  up: (db: IDatabase) => void;
+  up: (db: IDatabase) => Promise<void>;
 }
 
 /**
@@ -84,8 +84,8 @@ const migrations: Migration[] = [
 /**
  * Create migrations tracking table if it doesn't exist
  */
-const createMigrationsTable = (db: IDatabase): void => {
-  db.executeQuery(`
+const createMigrationsTable = async (db: IDatabase): Promise<void> => {
+  await db.executeQuery(`
     CREATE TABLE IF NOT EXISTS migrations (
       id TEXT PRIMARY KEY,
       name TEXT NOT NULL,
@@ -97,9 +97,9 @@ const createMigrationsTable = (db: IDatabase): void => {
 /**
  * Check if a migration has been applied
  */
-const isMigrationApplied = (db: IDatabase, migrationId: string): boolean => {
+const isMigrationApplied = async (db: IDatabase, migrationId: string): Promise<boolean> => {
   try {
-    const result = db.getMany('SELECT id FROM migrations WHERE id = ?', [migrationId]);
+    const result = await db.getMany('SELECT id FROM migrations WHERE id = ?', [migrationId]);
     return result.length > 0;
   } catch {
     return false;
@@ -109,8 +109,8 @@ const isMigrationApplied = (db: IDatabase, migrationId: string): boolean => {
 /**
  * Mark a migration as applied
  */
-const markMigrationApplied = (db: IDatabase, migration: Migration): void => {
-  db.executeQuery(
+const markMigrationApplied = async (db: IDatabase, migration: Migration): Promise<void> => {
+  await db.executeQuery(
     'INSERT INTO migrations (id, name) VALUES (?, ?)',
     [migration.id, migration.name]
   );
@@ -119,25 +119,25 @@ const markMigrationApplied = (db: IDatabase, migration: Migration): void => {
 /**
  * Run all pending migrations
  */
-export const runMigrations = (db: IDatabase): void => {
+export const runMigrations = async (db: IDatabase): Promise<void> => {
   try {
     console.log('Running database migrations...');
-    
+
     // Create migrations table if it doesn't exist
-    createMigrationsTable(db);
-    
+    await createMigrationsTable(db);
+
     let migrationsRun = 0;
-    
+
     // Run each migration if not already applied
     for (const migration of migrations) {
-      if (!isMigrationApplied(db, migration.id)) {
+      if (!(await isMigrationApplied(db, migration.id))) {
         console.log(`Running migration ${migration.id}: ${migration.name}`);
-        migration.up(db);
-        markMigrationApplied(db, migration);
+        await migration.up(db);
+        await markMigrationApplied(db, migration);
         migrationsRun++;
       }
     }
-    
+
     if (migrationsRun > 0) {
       console.log(`✓ Applied ${migrationsRun} migration(s)`);
     } else {
@@ -152,12 +152,17 @@ export const runMigrations = (db: IDatabase): void => {
 /**
  * Get migration status
  */
-export const getMigrationStatus = (db: IDatabase): Array<{id: string, name: string, applied: boolean}> => {
-  createMigrationsTable(db);
-  
-  return migrations.map(migration => ({
-    id: migration.id,
-    name: migration.name,
-    applied: isMigrationApplied(db, migration.id)
-  }));
+export const getMigrationStatus = async (db: IDatabase): Promise<Array<{id: string, name: string, applied: boolean}>> => {
+  await createMigrationsTable(db);
+
+  const status: Array<{id: string, name: string, applied: boolean}> = [];
+  for (const migration of migrations) {
+    status.push({
+      id: migration.id,
+      name: migration.name,
+      applied: await isMigrationApplied(db, migration.id)
+    });
+  }
+
+  return status;
 };

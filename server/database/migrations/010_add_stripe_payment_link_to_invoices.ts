@@ -19,19 +19,19 @@ const NEW_COLUMNS = [
   'stripe_checkout_session_id'
 ] as const;
 
-const getColumnNames = (db: IDatabase, table: string): string[] => {
-  if (!db.tableExists(table)) {
+const getColumnNames = async (db: IDatabase, table: string): Promise<string[]> => {
+  if (!(await db.tableExists(table))) {
     return [];
   }
 
-  return db.getMany<{ name: string }>(`PRAGMA table_info(${table})`).map(column => column.name);
+  return (await db.getMany<{ name: string }>(`PRAGMA table_info(${table})`)).map(column => column.name);
 };
 
-export const up = (db: IDatabase): void => {
+export const up = async (db: IDatabase): Promise<void> => {
   console.log('Running migration 010: Add Stripe payment link columns to invoices');
 
   try {
-    const columns = getColumnNames(db, 'invoices');
+    const columns = await getColumnNames(db, 'invoices');
 
     if (columns.length === 0) {
       console.log('Skipping - invoices table does not exist');
@@ -44,7 +44,7 @@ export const up = (db: IDatabase): void => {
         continue;
       }
 
-      db.executeQuery(`ALTER TABLE invoices ADD COLUMN ${column} TEXT`);
+      await db.executeQuery(`ALTER TABLE invoices ADD COLUMN ${column} TEXT`);
       console.log(`✓ Added invoices.${column}`);
     }
 
@@ -52,10 +52,10 @@ export const up = (db: IDatabase): void => {
     // reconciliation guard looks a payment up by the Stripe payment id. Both
     // indexes belong here rather than in tables.schema.ts, because createTables()
     // runs before migrations and would not find the columns yet.
-    db.executeQuery(
+    await db.executeQuery(
       'CREATE INDEX IF NOT EXISTS idx_invoices_stripe_checkout_session ON invoices (stripe_checkout_session_id)'
     );
-    db.executeQuery(
+    await db.executeQuery(
       'CREATE INDEX IF NOT EXISTS idx_payments_stripe_payment_id ON payments (stripe_payment_id)'
     );
 
@@ -66,15 +66,15 @@ export const up = (db: IDatabase): void => {
   }
 };
 
-export const down = (db: IDatabase): void => {
-  const columns = getColumnNames(db, 'invoices');
+export const down = async (db: IDatabase): Promise<void> => {
+  const columns = await getColumnNames(db, 'invoices');
 
-  db.executeQuery('DROP INDEX IF EXISTS idx_invoices_stripe_checkout_session');
-  db.executeQuery('DROP INDEX IF EXISTS idx_payments_stripe_payment_id');
+  await db.executeQuery('DROP INDEX IF EXISTS idx_invoices_stripe_checkout_session');
+  await db.executeQuery('DROP INDEX IF EXISTS idx_payments_stripe_payment_id');
 
   for (const column of NEW_COLUMNS) {
     if (columns.includes(column)) {
-      db.executeQuery(`ALTER TABLE invoices DROP COLUMN ${column}`);
+      await db.executeQuery(`ALTER TABLE invoices DROP COLUMN ${column}`);
     }
   }
 };

@@ -21,13 +21,13 @@ let raw: Database.Database;
 /** Minimal IDatabase surface backed by an in-memory SQLite database. */
 const adapt = (database: Database.Database): IDatabase =>
   ({
-    executeQuery: (query: string, params: unknown[] = []) => {
+    executeQuery: async (query: string, params: unknown[] = []) => {
       const info = database.prepare(query).run(...(params as never[]));
       return { changes: info.changes, lastInsertRowid: Number(info.lastInsertRowid) };
     },
-    getMany: <T>(query: string, params: unknown[] = []) =>
+    getMany: async <T>(query: string, params: unknown[] = []) =>
       database.prepare(query).all(...(params as never[])) as T[],
-    tableExists: (name: string) =>
+    tableExists: async (name: string) =>
       database
         .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = ?")
         .get(name) !== undefined
@@ -53,19 +53,19 @@ describe('payments without client_id', () => {
     raw.exec('CREATE TABLE payments (id INTEGER PRIMARY KEY, invoice_id INTEGER, client_name TEXT)');
   });
 
-  it('completes instead of failing the boot', () => {
-    expect(() => up(adapt(raw))).not.toThrow();
+  it('completes instead of failing the boot', async () => {
+    await expect(up(adapt(raw))).resolves.not.toThrow();
   });
 
-  it('still adds the columns it owns', () => {
-    up(adapt(raw));
+  it('still adds the columns it owns', async () => {
+    await up(adapt(raw));
 
     expect(columnsOf('payments')).toContain('reference');
     expect(columnsOf('payments')).toContain('description');
   });
 
-  it('does not invent a client_id it was never asked to add', () => {
-    up(adapt(raw));
+  it('does not invent a client_id it was never asked to add', async () => {
+    await up(adapt(raw));
 
     expect(columnsOf('payments')).not.toContain('client_id');
   });
@@ -78,8 +78,8 @@ describe('payments with client_id', () => {
     raw.prepare('INSERT INTO payments (id, invoice_id, client_id) VALUES (1, 1, 3)').run();
   });
 
-  it('backfills client_name from the client when the source column exists', () => {
-    up(adapt(raw));
+  it('backfills client_name from the client when the source column exists', async () => {
+    await up(adapt(raw));
 
     const row = raw.prepare('SELECT client_name FROM payments WHERE id = 1').get();
     expect((row as { client_name: string }).client_name).toBe('Acme Ltd');
@@ -91,10 +91,10 @@ describe('re-running', () => {
     raw.exec('CREATE TABLE payments (id INTEGER PRIMARY KEY, invoice_id INTEGER, client_name TEXT)');
   });
 
-  it('is idempotent, as every migration in this project must be', () => {
-    up(adapt(raw));
+  it('is idempotent, as every migration in this project must be', async () => {
+    await up(adapt(raw));
 
-    expect(() => up(adapt(raw))).not.toThrow();
+    await expect(up(adapt(raw))).resolves.not.toThrow();
     expect(columnsOf('payments')).toContain('reference');
   });
 });

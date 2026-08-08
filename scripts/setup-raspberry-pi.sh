@@ -127,9 +127,22 @@ DATE=$(date +%Y%m%d_%H%M%S)
 
 mkdir -p "$BACKUP_DIR"
 
-if [ -f "$APP_DIR/server/data/slimbooks.db" ]; then
-    cp "$APP_DIR/server/data/slimbooks.db" "$BACKUP_DIR/slimbooks_$DATE.db"
+# The database lives under DATA_DIR (default $APP_DIR/data). `server/data` was
+# where broken path resolution used to put it before 2.0.0; backing that up now
+# would silently archive nothing, which is worse than failing.
+DB_FILE="${DATA_DIR:-$APP_DIR/data}/slimbooks.db"
+
+if [ -f "$DB_FILE" ]; then
+    # sqlite3 .backup is safe against a running server; cp of a WAL database is
+    # not. Fall back to cp only if sqlite3 is unavailable.
+    if command -v sqlite3 >/dev/null 2>&1; then
+        sqlite3 "$DB_FILE" ".backup '$BACKUP_DIR/slimbooks_$DATE.db'"
+    else
+        cp "$DB_FILE" "$BACKUP_DIR/slimbooks_$DATE.db"
+    fi
     echo "Database backed up to $BACKUP_DIR/slimbooks_$DATE.db"
+else
+    echo "WARNING: no database found at $DB_FILE - nothing backed up" >&2
 fi
 
 if [ -d "$APP_DIR/uploads" ]; then

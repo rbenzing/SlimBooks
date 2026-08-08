@@ -78,11 +78,15 @@ jobs:
       # The frontend bundle and the compiled server, ready to drop onto a host
       # alongside an `npm ci --omit=dev`. The lockfile travels with it so that
       # install resolves the same dependency tree this release was tested on.
+      #
+      # `dist` covers both halves: the build emits dist/client (the SPA) and
+      # dist/server (the compiled backend). It used to also list server/dist,
+      # which 2.0.0 removed — the two dist directories collided, and the paths
+      # resolved differently under tsx than compiled.
       - name: Package the build
         run: |
           tar -czf "slimbooks-${{ steps.version.outputs.version }}.tar.gz" \
             dist \
-            server/dist \
             package.json \
             package-lock.json \
             .env.example

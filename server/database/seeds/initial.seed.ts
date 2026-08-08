@@ -8,9 +8,9 @@ import { appConfig } from '../../config/index.js';
 /**
  * Initialize application counters
  */
-export const initializeCounters = (db: IDatabase): void => {
-  const counterCheck = db.getOne<{ count: number }>('SELECT COUNT(*) as count FROM counters');
-  
+export const initializeCounters = async (db: IDatabase): Promise<void> => {
+  const counterCheck = await db.getOne<{ count: number }>('SELECT COUNT(*) as count FROM counters');
+
   if (!counterCheck || counterCheck.count === 0) {
     const counters: SeedData = {
       table: 'counters',
@@ -23,8 +23,8 @@ export const initializeCounters = (db: IDatabase): void => {
         { name: 'payments', value: 0 }
       ]
     };
-    
-    seedData(db, counters);
+
+    await seedData(db, counters);
   }
 };
 
@@ -32,8 +32,8 @@ export const initializeCounters = (db: IDatabase): void => {
  * Initialize admin user if none exists
  */
 export const initializeAdminUser = async (db: IDatabase): Promise<void> => {
-  const userCheck = db.getOne<{ count: number }>('SELECT COUNT(*) as count FROM users');
-  
+  const userCheck = await db.getOne<{ count: number }>('SELECT COUNT(*) as count FROM users');
+
   if (!userCheck || userCheck.count === 0) {
     const defaultPassword = process.env.ADMIN_PASSWORD || 'password';
     const hashedPassword = await bcrypt.hash(defaultPassword, 12);
@@ -52,7 +52,7 @@ export const initializeAdminUser = async (db: IDatabase): Promise<void> => {
       }]
     };
     
-    seedData(db, adminUser);
+    await seedData(db, adminUser);
     console.log('✓ Admin user created with email: admin@slimbooks.app');
   }
 };
@@ -60,9 +60,9 @@ export const initializeAdminUser = async (db: IDatabase): Promise<void> => {
 /**
  * Initialize default application settings
  */
-export const initializeSettings = (db: IDatabase): void => {
-  const settingsCheck = db.getOne<{ count: number }>('SELECT COUNT(*) as count FROM settings');
-  
+export const initializeSettings = async (db: IDatabase): Promise<void> => {
+  const settingsCheck = await db.getOne<{ count: number }>('SELECT COUNT(*) as count FROM settings');
+
   if (!settingsCheck || settingsCheck.count === 0) {
     const defaultSettings: SeedData = {
       table: 'settings',
@@ -118,18 +118,18 @@ export const initializeSettings = (db: IDatabase): void => {
         }
       ]
     };
-    
-    seedData(db, defaultSettings);
+
+    await seedData(db, defaultSettings);
   }
 };
 
 /**
  * Initialize sample clients for development
  */
-export const initializeSampleClients = (db: IDatabase): void => {
+export const initializeSampleClients = async (db: IDatabase): Promise<void> => {
   if (process.env.NODE_ENV === 'production') return;
 
-  const clientCheck = db.getOne<{ count: number }>('SELECT COUNT(*) as count FROM clients');
+  const clientCheck = await db.getOne<{ count: number }>('SELECT COUNT(*) as count FROM clients');
   if (clientCheck && clientCheck.count > 0) return;
 
   const sampleClients: SeedData = {
@@ -174,17 +174,17 @@ export const initializeSampleClients = (db: IDatabase): void => {
       }
     ]
   };
-  
-  seedData(db, sampleClients);
+
+  await seedData(db, sampleClients);
 };
 
 /**
  * Initialize sample invoices for development
  */
-export const initializeSampleInvoices = (db: IDatabase): void => {
+export const initializeSampleInvoices = async (db: IDatabase): Promise<void> => {
   if (process.env.NODE_ENV === 'production') return;
 
-  const invoiceCheck = db.getOne<{ count: number }>('SELECT COUNT(*) as count FROM invoices');
+  const invoiceCheck = await db.getOne<{ count: number }>('SELECT COUNT(*) as count FROM invoices');
   if (invoiceCheck && invoiceCheck.count > 0) return;
 
   const sampleInvoices: SeedData = {
@@ -214,17 +214,17 @@ export const initializeSampleInvoices = (db: IDatabase): void => {
       }
     ]
   };
-  
-  seedData(db, sampleInvoices);
+
+  await seedData(db, sampleInvoices);
 };
 
 /**
  * Initialize sample payments for development
  */
-export const initializeSamplePayments = (db: IDatabase): void => {
+export const initializeSamplePayments = async (db: IDatabase): Promise<void> => {
   if (process.env.NODE_ENV === 'production') return;
 
-  const paymentCheck = db.getOne<{ count: number }>('SELECT COUNT(*) as count FROM payments');
+  const paymentCheck = await db.getOne<{ count: number }>('SELECT COUNT(*) as count FROM payments');
   if (paymentCheck && paymentCheck.count > 0) return;
 
   const samplePayments: SeedData = {
@@ -246,31 +246,31 @@ export const initializeSamplePayments = (db: IDatabase): void => {
       }
     ]
   };
-  
-  seedData(db, samplePayments);
+
+  await seedData(db, samplePayments);
 };
 
 /**
  * Generic seed data insertion function
  */
-export const seedData = (db: IDatabase, seed: SeedData): void => {
+export const seedData = async (db: IDatabase, seed: SeedData): Promise<void> => {
   if (seed.truncate) {
-    db.executeQuery(`DELETE FROM ${seed.table}`);
+    await db.executeQuery(`DELETE FROM ${seed.table}`);
   }
-  
+
   if (seed.data.length === 0) return;
-  
+
   const firstRow = seed.data[0];
   if (!firstRow) return;
-  
+
   const columns = Object.keys(firstRow);
   const placeholders = columns.map(() => '?').join(', ');
   const query = `INSERT INTO ${seed.table} (${columns.join(', ')}) VALUES (${placeholders})`;
-  
-  seed.data.forEach(row => {
+
+  for (const row of seed.data) {
     const values = columns.map(col => row[col]);
-    db.executeQuery(query, values);
-  });
+    await db.executeQuery(query, values);
+  }
 };
 
 /**
@@ -279,15 +279,15 @@ export const seedData = (db: IDatabase, seed: SeedData): void => {
 export const initializeAllSeeds = async (db: IDatabase, includeSampleData = false): Promise<void> => {
   try {
     // Always initialize these
-    initializeCounters(db);
+    await initializeCounters(db);
     await initializeAdminUser(db);
-    initializeSettings(db);
-    
+    await initializeSettings(db);
+
     // Only in development
     if (includeSampleData && process.env.NODE_ENV !== 'production') {
-      initializeSampleClients(db);
-      initializeSampleInvoices(db);
-      initializeSamplePayments(db);
+      await initializeSampleClients(db);
+      await initializeSampleInvoices(db);
+      await initializeSamplePayments(db);
     }
   } catch (error) {
     console.error('❌ Seed data initialization failed:', error);

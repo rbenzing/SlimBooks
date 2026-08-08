@@ -41,7 +41,7 @@ const sleep = (ms: number): Promise<void> =>
  */
 const acquireBootLock = async (owner: string): Promise<boolean> => {
   // Safe to race: concurrent CREATE TABLE IF NOT EXISTS is a no-op for the loser.
-  db.executeQuery(`
+  await db.executeQuery(`
     CREATE TABLE IF NOT EXISTS boot_locks (
       name TEXT PRIMARY KEY,
       owner TEXT NOT NULL,
@@ -56,7 +56,7 @@ const acquireBootLock = async (owner: string): Promise<boolean> => {
     const expiresAt = new Date(now.getTime() + BOOT_LOCK_TTL_MS).toISOString();
 
     // One statement, so two instances racing cannot both observe "unheld".
-    const result = db.executeQuery(
+    const result = await db.executeQuery(
       `INSERT INTO boot_locks (name, owner, expires_at) VALUES ('schema', ?, ?)
        ON CONFLICT (name) DO UPDATE SET owner = excluded.owner, expires_at = excluded.expires_at
        WHERE boot_locks.expires_at <= ?`,
@@ -76,8 +76,8 @@ const acquireBootLock = async (owner: string): Promise<boolean> => {
   return false;
 };
 
-const releaseBootLock = (owner: string): void => {
-  db.executeQuery('DELETE FROM boot_locks WHERE name = ? AND owner = ?', ['schema', owner]);
+const releaseBootLock = async (owner: string): Promise<void> => {
+  await db.executeQuery('DELETE FROM boot_locks WHERE name = ? AND owner = ?', ['schema', owner]);
 };
 
 /**
@@ -108,11 +108,11 @@ export const initializeDatabase = async (
   const holder = await acquireBootLock(owner);
 
   try {
-    createTables(db);
-    runMigrations(db);
+    await createTables(db);
+    await runMigrations(db);
     await initializeAllSeeds(db, includeSampleData);
   } finally {
-    if (holder) releaseBootLock(owner);
+    if (holder) await releaseBootLock(owner);
   }
 };
 

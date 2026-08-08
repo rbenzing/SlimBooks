@@ -230,15 +230,19 @@ export const initializeSamplePayments = (db: IDatabase): void => {
   const samplePayments: SeedData = {
     table: 'payments',
     data: [
+      // Column names must match the payments table as migration 008 left it:
+      // client_name (not client_id), reference (not transaction_id) and
+      // description (not notes). The seed was never updated when 008 collapsed
+      // those columns, so enabling sample data failed the boot outright.
       {
         invoice_id: 2,
-        client_id: 2,
+        client_name: 'Sample Client',
         amount: 2700.00,
         method: 'bank_transfer',
         status: 'received',
-        transaction_id: 'TXN-12345',
+        reference: 'TXN-12345',
         date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-        notes: 'Payment received via bank transfer'
+        description: 'Payment received via bank transfer'
       }
     ]
   };

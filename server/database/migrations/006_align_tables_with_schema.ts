@@ -18,6 +18,16 @@ interface ColumnAddition {
   definition: string;
   /** Optional UPDATE run after the column exists; must be guarded so re-running is a no-op */
   backfill?: string;
+  /**
+   * Columns the backfill reads. It is skipped unless all of them exist.
+   *
+   * A backfill that sources data from another column cannot assume that column
+   * is present: `payments.client_name` was backfilled from `payments.client_id`,
+   * which some databases never had and which migration 008 drops from the rest.
+   * On those the statement fails with "no such column" and takes the whole boot
+   * down — a migration that only ever ADDs columns must not be able to do that.
+   */
+  backfillRequires?: string[];
 }
 
 /**
@@ -59,7 +69,8 @@ const columnAdditions: ColumnAddition[] = [
     definition: 'TEXT',
     backfill: `UPDATE invoices SET client_name = (
         SELECT c.name FROM clients c WHERE c.id = invoices.client_id
-      ) WHERE client_name IS NULL`
+      ) WHERE client_name IS NULL`,
+    backfillRequires: ['client_id']
   },
   {
     table: 'invoices',
@@ -67,7 +78,8 @@ const columnAdditions: ColumnAddition[] = [
     definition: 'TEXT',
     backfill: `UPDATE invoices SET client_email = (
         SELECT c.email FROM clients c WHERE c.id = invoices.client_id
-      ) WHERE client_email IS NULL`
+      ) WHERE client_email IS NULL`,
+    backfillRequires: ['client_id']
   },
   {
     table: 'invoices',
@@ -75,7 +87,8 @@ const columnAdditions: ColumnAddition[] = [
     definition: 'TEXT',
     backfill: `UPDATE invoices SET client_phone = (
         SELECT c.phone FROM clients c WHERE c.id = invoices.client_id
-      ) WHERE client_phone IS NULL`
+      ) WHERE client_phone IS NULL`,
+    backfillRequires: ['client_id']
   },
   {
     table: 'invoices',
@@ -83,7 +96,8 @@ const columnAdditions: ColumnAddition[] = [
     definition: 'TEXT',
     backfill: `UPDATE invoices SET client_address = (
         SELECT c.address FROM clients c WHERE c.id = invoices.client_id
-      ) WHERE client_address IS NULL`
+      ) WHERE client_address IS NULL`,
+    backfillRequires: ['client_id']
   },
   { table: 'invoices', column: 'line_items', definition: 'TEXT' },
   { table: 'invoices', column: 'tax_rate_id', definition: 'TEXT' },
@@ -101,7 +115,8 @@ const columnAdditions: ColumnAddition[] = [
     definition: 'TEXT',
     backfill: `UPDATE payments SET client_name = (
         SELECT c.name FROM clients c WHERE c.id = payments.client_id
-      ) WHERE client_name IS NULL`
+      ) WHERE client_name IS NULL`,
+    backfillRequires: ['client_id']
   },
   { table: 'payments', column: 'reference', definition: 'TEXT' },
   { table: 'payments', column: 'description', definition: 'TEXT' }
@@ -153,9 +168,21 @@ export const up = (db: IDatabase): void => {
           console.log(`✓ Added ${table}.${addition.column}`);
         }
 
-        // Backfills are NULL-guarded, so they are safe to re-run
-        if (addition.backfill) {
+        // Backfills are NULL-guarded, so they are safe to re-run. They are also
+        // skipped when a column they read is absent: this migration only ADDs
+        // columns, so it must not fail on a database whose shape it did not
+        // expect. `payments.client_id` is the case in point — some databases
+        // never had it, and migration 008 removes it from the ones that did.
+        const sources = addition.backfillRequires ?? [];
+        const sourcesPresent = sources.every(column => existingColumns.includes(column));
+
+        if (addition.backfill && sourcesPresent) {
           db.executeQuery(addition.backfill);
+        } else if (addition.backfill) {
+          console.log(
+            `Skipping ${table}.${addition.column} backfill - ` +
+              `source column(s) ${sources.join(', ')} not present`
+          );
         }
       }
     }

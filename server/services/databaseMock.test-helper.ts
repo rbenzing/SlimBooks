@@ -34,23 +34,26 @@ export const createDatabaseMock = (): DatabaseMock => {
   const queries: DbCall[] = [];
 
   const mock: DatabaseMock = {
-    getOne: vi.fn(() => undefined),
-    getMany: vi.fn(() => []),
-    executeQuery: vi.fn((sql: string, params: unknown[] = []) => {
+    getOne: vi.fn(async () => undefined),
+    getMany: vi.fn(async () => []),
+    executeQuery: vi.fn(async (sql: string, params: unknown[] = []) => {
       queries.push({ sql, params });
       return { changes: 1, lastInsertRowid: 1 };
     }),
-    exists: vi.fn(() => false),
-    updateRecord: vi.fn(() => true),
-    getNextSequence: vi.fn(() => 1),
-    deleteById: vi.fn(() => true),
-    executeTransaction: vi.fn((fn: () => unknown) => fn()),
-    // Runs the callback inline. The real implementation wraps it in a SQLite
+    exists: vi.fn(async () => false),
+    updateRecord: vi.fn(async () => true),
+    getNextSequence: vi.fn(async () => 1),
+    deleteById: vi.fn(async () => true),
+    executeTransaction: vi.fn(async (fn: () => Promise<unknown>) => await fn()),
+    // Awaits the callback inline. The real implementation wraps it in a SQLite
     // transaction; for assertions on the statements issued, running it straight
-    // through is equivalent and keeps the queries array in call order.
-    withTransaction: vi.fn((fn: () => unknown) => fn()),
-    tableExists: vi.fn(() => true),
-    deleteWithSetting: vi.fn(() => true),
+    // through is equivalent and keeps the queries array in call order. It must
+    // await, or statements issued inside a transaction never reach the queries
+    // array and assertions about transactional writes silently pass against
+    // nothing.
+    withTransaction: vi.fn(async (fn: () => Promise<unknown>) => await fn()),
+    tableExists: vi.fn(async () => true),
+    deleteWithSetting: vi.fn(async () => true),
     queries,
     reset: () => {
       queries.length = 0;
@@ -59,12 +62,12 @@ export const createDatabaseMock = (): DatabaseMock => {
           (value as ReturnType<typeof vi.fn>).mockClear();
         }
       }
-      mock.getOne.mockImplementation(() => undefined);
-      mock.getMany.mockImplementation(() => []);
-      mock.exists.mockImplementation(() => false);
-      mock.getNextSequence.mockImplementation(() => 1);
-      mock.updateRecord.mockImplementation(() => true);
-      mock.executeQuery.mockImplementation((sql: string, params: unknown[] = []) => {
+      mock.getOne.mockImplementation(async () => undefined);
+      mock.getMany.mockImplementation(async () => []);
+      mock.exists.mockImplementation(async () => false);
+      mock.getNextSequence.mockImplementation(async () => 1);
+      mock.updateRecord.mockImplementation(async () => true);
+      mock.executeQuery.mockImplementation(async (sql: string, params: unknown[] = []) => {
         queries.push({ sql, params });
         return { changes: 1, lastInsertRowid: 1 };
       });

@@ -9,7 +9,7 @@ export default defineConfig({
     environment: 'happy-dom',
     setupFiles: ['./src/test/setup.ts'],
     include: ['src/test/**/*.test.{ts,tsx}', 'server/**/*.test.ts'],
-    exclude: ['node_modules', 'dist', '.git', 'server/dist'],
+    exclude: ['node_modules', 'dist', '.git'],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html'],
@@ -24,7 +24,6 @@ export default defineConfig({
         '**/*.d.ts',
         '**/*.config.*',
         '**/dist/**',
-        'server/dist/**',
         // Type declarations carry no executable logic
         'src/types/**',
         'server/types/**',

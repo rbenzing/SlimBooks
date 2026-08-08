@@ -8,7 +8,7 @@
     "esModuleInterop": true,
     "allowJs": true,
     "checkJs": false,
-    "outDir": "./dist",
+    "outDir": "../dist/server",
     "rootDir": "./",
     "strict": true,
     "noImplicitAny": true,
@@ -44,7 +44,7 @@
   ],
   "exclude": [
     "./node_modules",
-    "./dist",
+    "../dist",
     "../src/**/*",
     "../dist",
     "../node_modules",

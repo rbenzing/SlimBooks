@@ -2,7 +2,7 @@
 # Optimized for security, smaller image size, and Raspberry Pi OS Lite compatibility
 
 # Build stage for frontend
-FROM node:20-alpine AS frontend-builder
+FROM node:24-alpine AS frontend-builder
 
 # Minimal memory settings
 ENV NODE_OPTIONS="--max-old-space-size=1024"
@@ -27,7 +27,7 @@ COPY . .
 RUN npm run build
 
 # Production stage
-FROM node:20-alpine
+FROM node:24-alpine
 
 ENV NODE_ENV=production
 
@@ -42,14 +42,13 @@ RUN apk update && apk upgrade && apk add --no-cache \
 
 # Copy package files and install production dependencies
 COPY package*.json ./
-RUN npm ci --no-audit && npm cache clean --force
+RUN npm ci --omit=dev --no-audit && npm cache clean --force
 
 # Clean up build dependencies to reduce image size
 RUN apk del python3 make gcc g++ freetype-dev
 
 # Copy the rest of app (frontend assets + server)
 COPY --from=frontend-builder /app/dist ./dist
-COPY server ./server
 COPY certs ./certs
 COPY vite.config.ts ./vite.config.ts
 

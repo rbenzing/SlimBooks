@@ -53,3 +53,20 @@ export interface PathEnv {
   STATIC_DIR?: string | undefined;
   DB_PATH?: string | undefined;
 }
+
+import type { StorageProvider } from './storage.js';
+import type { PdfProvider } from './pdf.js';
+import type { Scheduler } from './scheduler.js';
+
+export interface Runtime {
+  paths: RuntimePaths;
+  urls: { publicUrl: string };
+  listener: ListenerConfig;
+  features: FeatureSet;
+  storage: StorageProvider;
+  /** Null when the PDF feature is disabled or Chromium is unavailable. */
+  pdf: PdfProvider | null;
+  /** Null when the scheduler feature is disabled. */
+  scheduler: Scheduler | null;
+  describe(): string;
+}

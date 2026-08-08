@@ -47,7 +47,7 @@ export default defineConfig({
   ],
   build: {
     chunkSizeWarningLimit: 1000,
-    outDir: 'dist',    // output directory
+    outDir: 'dist/client',    // output directory
     sourcemap: false,   // disable source maps for production to save memory
     minify: 'esbuild',  // use esbuild for faster, less memory-intensive minification
     rollupOptions: {

@@ -61,3 +61,6 @@ certs/*
 public/uploads/*
 # Release archives produced by the packaging step
 *.tar.gz
+
+# Superpowers design specs and implementation plans stay local
+docs/superpowers/

@@ -49,9 +49,7 @@ export interface QueryOptions extends PaginationOptions {
 }
 
 // Transaction interface
-export interface TransactionCallback<T = unknown> {
-  (): T;
-}
+export type TransactionCallback<T = unknown> = () => Promise<T>;
 
 // Abstract database interface
 export interface IDatabase {
@@ -59,25 +57,26 @@ export interface IDatabase {
   connect(config: DatabaseConfig): Promise<void>;
   disconnect(): Promise<void>;
   isConnected(): boolean;
-  
+
   // Query execution
-  executeQuery(query: string, params?: unknown[]): QueryResult;
-  getOne<T = Record<string, unknown>>(query: string, params?: unknown[]): T | null;
-  getMany<T = Record<string, unknown>>(query: string, params?: unknown[]): T[];
-  getWithPagination<T = Record<string, unknown>>(query: string, params?: unknown[], options?: QueryOptions): SelectResult<T>;
-  
+  executeQuery(query: string, params?: unknown[]): Promise<QueryResult>;
+  getOne<T = Record<string, unknown>>(query: string, params?: unknown[]): Promise<T | null>;
+  getMany<T = Record<string, unknown>>(query: string, params?: unknown[]): Promise<T[]>;
+  getWithPagination<T = Record<string, unknown>>(
+    query: string,
+    params?: unknown[],
+    options?: QueryOptions
+  ): Promise<SelectResult<T>>;
+
   // Transaction support
-  beginTransaction(): void;
-  commit(): void;
-  rollback(): void;
-  transaction<T>(callback: TransactionCallback<T>): T;
-  
+  transaction<T>(callback: TransactionCallback<T>): Promise<T>;
+
   // Schema operations
-  createTable(tableName: string, definition: string): void;
-  dropTable(tableName: string): void;
-  tableExists(tableName: string): boolean;
-  
-  // Utility operations
+  createTable(tableName: string, definition: string): Promise<void>;
+  dropTable(tableName: string): Promise<void>;
+  tableExists(tableName: string): Promise<boolean>;
+
+  // Utility operations — not query paths, so these stay synchronous
   backup(path: string): void;
   vacuum(): void;
   pragma(setting: string, value?: string | number): unknown;

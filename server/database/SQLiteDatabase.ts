@@ -86,7 +86,7 @@ export class SQLiteDatabase implements IDatabase {
   /**
    * Execute a query with parameters and return result metadata
    */
-  executeQuery(query: string, params: unknown[] = []): QueryResult {
+  async executeQuery(query: string, params: unknown[] = []): Promise<QueryResult> {
     this.ensureConnected();
     
     try {
@@ -109,7 +109,7 @@ export class SQLiteDatabase implements IDatabase {
   /**
    * Get a single record
    */
-  getOne<T = Record<string, unknown>>(query: string, params: unknown[] = []): T | null {
+  async getOne<T = Record<string, unknown>>(query: string, params: unknown[] = []): Promise<T | null> {
     this.ensureConnected();
     
     try {
@@ -127,7 +127,7 @@ export class SQLiteDatabase implements IDatabase {
   /**
    * Get multiple records
    */
-  getMany<T = Record<string, unknown>>(query: string, params: unknown[] = []): T[] {
+  async getMany<T = Record<string, unknown>>(query: string, params: unknown[] = []): Promise<T[]> {
     this.ensureConnected();
     
     try {
@@ -145,15 +145,15 @@ export class SQLiteDatabase implements IDatabase {
   /**
    * Get records with pagination support
    */
-  getWithPagination<T = Record<string, unknown>>(query: string, params: unknown[] = [], options: QueryOptions = {}): SelectResult<T> {
+  async getWithPagination<T = Record<string, unknown>>(query: string, params: unknown[] = [], options: QueryOptions = {}): Promise<SelectResult<T>> {
     this.ensureConnected();
-    
+
     try {
       const { limit = 50, offset = 0, page, sort = [] } = options;
-      
+
       // Calculate offset from page if provided
       const actualOffset = page ? (page - 1) * limit : offset;
-      
+
       // Add sorting to query
       let finalQuery = query;
       if (sort.length > 0) {
@@ -162,15 +162,15 @@ export class SQLiteDatabase implements IDatabase {
           .join(', ');
         finalQuery += ` ORDER BY ${sortClause}`;
       }
-      
+
       // Add pagination
       finalQuery += ` LIMIT ${limit} OFFSET ${actualOffset}`;
-      
-      const data = this.getMany<T>(finalQuery, params);
-      
+
+      const data = await this.getMany<T>(finalQuery, params);
+
       // Get total count for pagination metadata
       const countQuery = `SELECT COUNT(*) as total FROM (${query}) as count_query`;
-      const totalResult = this.getOne<{ total: number }>(countQuery, params);
+      const totalResult = await this.getOne<{ total: number }>(countQuery, params);
       const total = totalResult?.total || 0;
       
       return {
@@ -184,59 +184,56 @@ export class SQLiteDatabase implements IDatabase {
   }
 
   /**
-   * Begin a transaction
+   * Run a callback inside a transaction.
+   *
+   * Explicit BEGIN/COMMIT/ROLLBACK rather than better-sqlite3's `.transaction()`
+   * helper, which rejects async callbacks outright. 2.0.0 already established
+   * that the helper could not wrap the boot sequence either, because
+   * createTables() sets PRAGMA synchronous and SQLite forbids a safety-level
+   * change inside a transaction.
+   *
+   * The rollback is itself guarded: if the callback failed because the
+   * connection is gone, ROLLBACK will fail too, and the original error is the
+   * one worth reporting.
    */
-  beginTransaction(): void {
+  async transaction<T>(callback: TransactionCallback<T>): Promise<T> {
     this.ensureConnected();
-    this.db!.exec('BEGIN TRANSACTION');
-  }
+    this.db!.prepare('BEGIN').run();
 
-  /**
-   * Commit a transaction
-   */
-  commit(): void {
-    this.ensureConnected();
-    this.db!.exec('COMMIT');
-  }
-
-  /**
-   * Rollback a transaction
-   */
-  rollback(): void {
-    this.ensureConnected();
-    this.db!.exec('ROLLBACK');
-  }
-
-  /**
-   * Execute a callback within a transaction
-   */
-  transaction<T>(callback: TransactionCallback<T>): T {
-    this.ensureConnected();
-    
-    const transaction = this.db!.transaction(callback);
-    return transaction();
+    try {
+      const result = await callback();
+      this.db!.prepare('COMMIT').run();
+      return result;
+    } catch (error) {
+      try {
+        this.db!.prepare('ROLLBACK').run();
+      } catch {
+        // Preserve the original failure; a failed rollback is a symptom.
+      }
+      throw error;
+    }
   }
 
   /**
    * Create a table
    */
-  createTable(tableName: string, definition: string): void {
+  async createTable(tableName: string, definition: string): Promise<void> {
     const query = `CREATE TABLE IF NOT EXISTS ${tableName} (${definition})`;
-    this.executeQuery(query);
+    await this.executeQuery(query);
   }
 
   /**
    * Drop a table
    */
-  dropTable(tableName: string): void {
-    this.executeQuery(`DROP TABLE IF EXISTS ${tableName}`);
+  async dropTable(tableName: string): Promise<void> {
+    await this.executeQuery(`DROP TABLE IF EXISTS ${tableName}`);
   }
 
   /**
    * Check if a table exists
    */
-  tableExists(tableName: string): boolean {
-    const result = this.getOne<{ count: number }>(
+  async tableExists(tableName: string): Promise<boolean> {
+    const result = await this.getOne<{ count: number }>(
       "SELECT COUNT(*) as count FROM sqlite_master WHERE type='table' AND name=?",
       [tableName]
     );

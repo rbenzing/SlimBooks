@@ -126,10 +126,11 @@ CREATE TABLE IF NOT EXISTS invoices (
     email_sent_at TEXT,
     email_error TEXT CHECK (email_error IS NULL OR length(email_error) <= 500),
     last_email_attempt TEXT,
+    recurring_period_date TEXT,
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     updated_at TEXT NOT NULL DEFAULT (datetime('now')),
     deleted_at TEXT,
-    
+
     FOREIGN KEY (client_id) REFERENCES clients (id) ON DELETE RESTRICT,
     FOREIGN KEY (design_template_id) REFERENCES invoice_design_templates (id) ON DELETE SET NULL,
     FOREIGN KEY (recurring_template_id) REFERENCES recurring_invoice_templates (id) ON DELETE SET NULL
@@ -201,6 +202,25 @@ CREATE TABLE IF NOT EXISTS reports (
 CREATE TABLE IF NOT EXISTS counters (
     name TEXT PRIMARY KEY CHECK (length(trim(name)) >= 2 AND length(name) <= 50),
     value INTEGER NOT NULL DEFAULT 0 CHECK (value >= 0)
+);
+
+-- =====================================================
+-- SCHEDULER_LEASES TABLE
+-- =====================================================
+CREATE TABLE IF NOT EXISTS scheduler_leases (
+    job_name TEXT PRIMARY KEY,
+    owner TEXT NOT NULL,
+    acquired_at TEXT NOT NULL,
+    expires_at TEXT NOT NULL
+);
+
+-- =====================================================
+-- STRIPE_EVENTS TABLE
+-- =====================================================
+CREATE TABLE IF NOT EXISTS stripe_events (
+    event_id TEXT PRIMARY KEY,
+    event_type TEXT NOT NULL,
+    processed_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
 -- =====================================================

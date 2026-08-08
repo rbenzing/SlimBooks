@@ -11,6 +11,8 @@ import { up as migration007 } from './007_drop_clients_zip.js';
 import { up as migration008 } from './008_collapse_payment_columns.js';
 import { up as migration009 } from './009_add_status_to_expenses.js';
 import { up as migration010 } from './010_add_stripe_payment_link_to_invoices.js';
+import { up as migration011 } from './011_add_recurring_period_date.js';
+import { up as migration012 } from './012_add_runtime_tables.js';
 
 interface Migration {
   id: string;
@@ -66,6 +68,16 @@ const migrations: Migration[] = [
     id: '010',
     name: 'add_stripe_payment_link_to_invoices',
     up: migration010
+  },
+  {
+    id: '011',
+    name: 'add_recurring_period_date',
+    up: migration011
+  },
+  {
+    id: '012',
+    name: 'add_runtime_tables',
+    up: migration012
   }
 ];
 

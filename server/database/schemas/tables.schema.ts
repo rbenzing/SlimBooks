@@ -106,6 +106,7 @@ const invoicesSchema: TableSchema = {
     { name: 'is_recurring', type: 'INTEGER', constraints: ['DEFAULT 0'] },
     { name: 'recurring_frequency', type: 'TEXT' },
     { name: 'next_due_date', type: 'TEXT' },
+    { name: 'recurring_period_date', type: 'TEXT' },
     { name: 'created_at', type: 'TEXT', constraints: ['NOT NULL DEFAULT (datetime(\'now\'))'] },
     { name: 'updated_at', type: 'TEXT', constraints: ['NOT NULL DEFAULT (datetime(\'now\'))'] },
     { name: 'deleted_at', type: 'TEXT' }
@@ -309,6 +310,34 @@ const countersSchema: TableSchema = {
   ]
 };
 
+/**
+ * Scheduler leases — lets one runtime instance claim a scheduled job so two
+ * instances do not both run it; leases expire so a killed process does not
+ * hold its claim forever.
+ */
+const schedulerLeasesSchema: TableSchema = {
+  name: 'scheduler_leases',
+  columns: [
+    { name: 'job_name', type: 'TEXT', constraints: ['PRIMARY KEY'] },
+    { name: 'owner', type: 'TEXT', constraints: ['NOT NULL'] },
+    { name: 'acquired_at', type: 'TEXT', constraints: ['NOT NULL'] },
+    { name: 'expires_at', type: 'TEXT', constraints: ['NOT NULL'] }
+  ]
+};
+
+/**
+ * Stripe webhook idempotency ledger — records which event ids have already
+ * been processed, since Stripe retries on every non-2xx and on timeout.
+ */
+const stripeEventsSchema: TableSchema = {
+  name: 'stripe_events',
+  columns: [
+    { name: 'event_id', type: 'TEXT', constraints: ['PRIMARY KEY'] },
+    { name: 'event_type', type: 'TEXT', constraints: ['NOT NULL'] },
+    { name: 'processed_at', type: 'TEXT', constraints: ['NOT NULL DEFAULT (datetime(\'now\'))'] }
+  ]
+};
+
 // Export all schemas — order respects foreign-key dependency graph
 export const tableSchemas: TableSchema[] = [
   usersSchema,
@@ -322,7 +351,9 @@ export const tableSchemas: TableSchema[] = [
   reportsSchema,
   settingsSchema,
   projectSettingsSchema,
-  countersSchema
+  countersSchema,
+  schedulerLeasesSchema,
+  stripeEventsSchema
 ];
 
 /**

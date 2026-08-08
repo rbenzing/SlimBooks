@@ -69,6 +69,6 @@ USER slimbooks
 EXPOSE 8080
 
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD node -e "const module = process.env.ENABLE_HTTPS === 'true' ? require('https') : require('http'); const protocol = process.env.ENABLE_HTTPS === 'true' ? 'https:' : 'http:'; module.get({ hostname: 'localhost', port: 3002, path: '/api/health', rejectUnauthorized: false }, (res) => process.exit(res.statusCode === 200 ? 0 : 1))"
+  CMD node -e "const secure = process.env.TLS_MODE === 'self'; const client = secure ? require('https') : require('http'); client.get({ hostname: 'localhost', port: process.env.PORT || 3002, path: '/api/health', rejectUnauthorized: false }, (res) => process.exit(res.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"
 
 CMD ["npm", "run", "start"]

@@ -1,6 +1,70 @@
 # Slimbooks Deployment Guide
 
-This guide will help you securely deploy Slimbooks on your Raspberry Pi using Docker.
+Slimbooks builds to a single artifact that runs unchanged on four kinds of host:
+
+| Host | How it differs |
+|---|---|
+| Docker (Linux/ARM) | `TLS_MODE=self` if exposed directly, `off` behind a mesh |
+| Bare Linux (systemd/PM2) | `TLS_MODE=proxy` behind nginx or Caddy |
+| Windows IIS | `TLS_MODE=proxy`; IIS supplies `PORT` as a named pipe |
+| Node PaaS (e.g. Hostinger) | `TLS_MODE=proxy`, `FEATURE_PDF=off` (no Chromium) |
+
+**They differ only in environment variables.** There is no host-specific code path,
+which is what keeps development and production running the same thing.
+
+## How it runs
+
+One process. `npm run build` produces `dist/client` (the SPA) and `dist/server` (the
+compiled backend); `npm start` runs `node dist/server/index.js`, which serves both the
+API and the SPA on one port. There is no second server and no `vite preview`.
+
+At boot the process resolves every host-dependent fact once, prints what it decided, and
+refuses to start if the configuration is wrong — a missing `CLIENT_URL`, a required
+feature whose dependency is absent, or a database found only at a pre-2026 location. The
+same summary is available at `/api/health`.
+
+## What must survive a redeploy
+
+Exactly two directories. Everything else is rebuilt from the environment:
+
+- **`DATA_DIR`** (default `./data`) — the SQLite database and its backups
+- **`UPLOAD_DIR`** (default `./uploads`) — uploaded logos
+
+On a host with an ephemeral filesystem, these must be mounted on persistent storage or
+the install loses its books on the next deploy. The process may be killed at any instant;
+nothing depends on a clean shutdown for correctness.
+
+## TLS
+
+`TLS_MODE` decides how TLS reaches the process:
+
+- `off` — plain HTTP. Development, or a container behind a service mesh.
+- `self` — this process terminates TLS using `TLS_KEY_PATH` and `TLS_CERT_PATH`.
+- `proxy` — something in front terminates it. **Set `TRUST_PROXY_HOPS`** (normally `1`).
+
+`proxy` without `TRUST_PROXY_HOPS` is a real outage, not a detail: every request appears
+to come from the proxy's single address, so the rate limit is shared by all users at once
+and the whole install locks out together.
+
+## Feature toggles
+
+Each is `auto | on | off`. `auto` enables the feature when its dependency resolves; `on`
+requires it and **refuses to boot** without it; `off` never mounts the routes.
+
+Use `on` in production for anything you are certain the host provides — it converts a
+silent degradation into a startup failure you cannot miss. Use `auto` for the same image
+on a host that lacks the dependency. See `.env.example` for the full list.
+
+## Recurring invoices
+
+They run inside the application on all four hosts — no crontab, no Task Scheduler, no
+PaaS cron panel. Set `FEATURE_SCHEDULER=off` only if an external scheduler owns them; the
+`/api/cron` endpoint is then mounted behind admin authentication.
+
+---
+
+The remainder of this guide covers a Docker deployment on a Raspberry Pi as a worked
+example. Per-host walkthroughs for IIS, systemd and PaaS are not yet written.
 
 ## 🔒 Security Overview
 
@@ -169,7 +233,7 @@ RATE_LIMIT_MAX_REQUESTS=100          # 100 requests per window
 LOGIN_RATE_LIMIT_MAX_ATTEMPTS=5      # 5 login attempts per window
 
 # Security Features
-ENABLE_DEBUG_ENDPOINTS=false         # Never enable in production
+FEATURE_DEBUG=off                    # auto | on | off — never "on" in production
 ENABLE_SAMPLE_DATA=false            # Never enable in production
 BCRYPT_ROUNDS=12                    # Password hashing strength
 ```

@@ -12,7 +12,7 @@
 
 **A secure, self-hosted billing and invoice management application**
 
-🔒 **Security-First** • 🐳 **Docker Ready** • 🥧 **Raspberry Pi Optimized**
+🔒 **Security-First** • 🐳 **Docker Ready** • 🖥️ **Runs Anywhere Node Does**
 
 [Features](#-key-features) • [Quick Start](#-quick-start) • [Documentation](#-documentation) • [License](#-license)
 
@@ -54,7 +54,8 @@
 
 ### 🚀 Deployment
 - **🐳 Docker Ready**: One-command deployment with Docker Compose
-- **🥧 Raspberry Pi**: Optimized for ARM devices and low-power systems
+- **🖥️ Host-Agnostic**: One artifact runs on Docker, bare Linux, Windows IIS or a Node PaaS — they differ only in environment variables
+- **🥧 Raspberry Pi**: Runs well on ARM devices and low-power systems
 - **⚡ Fast Setup**: Automated scripts for quick deployment
 - **📦 Portable**: SQLite database - easy backup and migration
 
@@ -85,7 +86,7 @@ cd slimbooks
 ./scripts/deploy.sh
 ```
 
-Access your app at `http://localhost:8080`
+Access your app at `http://localhost:8080`. In production one process serves both the API and the UI on a single port.
 
 ### 🥧 Raspberry Pi Setup
 
@@ -154,8 +155,14 @@ STRIPE_PUBLISHABLE_KEY=
 STRIPE_SECRET_KEY=
 STRIPE_WEBHOOK_SECRET=
 
-# Features
-ENABLE_DEBUG_ENDPOINTS=false
+# Deployment — how TLS reaches this process: off | self | proxy
+TLS_MODE=off
+TRUST_PROXY_HOPS=1
+
+# Features — each is auto | on | off. `on` refuses to boot if unavailable.
+FEATURE_PDF=
+FEATURE_SCHEDULER=
+FEATURE_DEBUG=off
 ```
 
 Use `./scripts/generate-secrets.sh` to build `.env` from the template with the
@@ -188,7 +195,7 @@ Slimbooks includes a powerful recurring invoice system for automated billing:
 
 ```
 /api/recurring-templates/*    - Template CRUD operations
-/api/cron/recurring-invoices  - Automated processing endpoint
+/api/cron/recurring-invoices  - Only when FEATURE_SCHEDULER=off, admin auth required
 ```
 
 ## 💳 Taking Payments with Stripe
@@ -253,8 +260,8 @@ delivery is verified against the signing secret before anything is written.
 # Generate new secrets
 ./scripts/generate-secrets.sh
 
-# Set up the recurring-invoice cron job
-./scripts/setup-cron.sh
+# Recurring invoices run in-process — no cron setup needed.
+# Set FEATURE_SCHEDULER=off only if an external scheduler owns them.
 ```
 
 ## 📄 License

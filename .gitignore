@@ -64,3 +64,8 @@ public/uploads/*
 
 # Superpowers design specs and implementation plans stay local
 docs/superpowers/
+
+# Uploaded files are operator data, not source. UPLOAD_DIR points here by
+# default; keep the directory so a fresh clone has somewhere to write.
+uploads/*
+!uploads/.gitkeep

@@ -409,17 +409,17 @@ const indexes = [
 /**
  * Create all database tables + performance indexes + better-sqlite3 pragmas
  */
-export const createTables = (db: IDatabase): void => {
+export const createTables = async (db: IDatabase): Promise<void> => {
   // Structural integrity first: enforce referential physics
-  db.executeQuery('PRAGMA foreign_keys = ON');
+  await db.executeQuery('PRAGMA foreign_keys = ON');
 
   // Terrain physics for concurrent city traffic (better-sqlite3 recommended)
-  db.executeQuery('PRAGMA journal_mode = WAL');
-  db.executeQuery('PRAGMA synchronous = NORMAL');
-  db.executeQuery('PRAGMA temp_store = MEMORY');
-  db.executeQuery('PRAGMA cache_size = -64000'); // ~64 MB cache
+  await db.executeQuery('PRAGMA journal_mode = WAL');
+  await db.executeQuery('PRAGMA synchronous = NORMAL');
+  await db.executeQuery('PRAGMA temp_store = MEMORY');
+  await db.executeQuery('PRAGMA cache_size = -64000'); // ~64 MB cache
 
-  tableSchemas.forEach(schema => {
+  for (const schema of tableSchemas) {
     const columnDefs = schema.columns
       .map(col => `${col.name} ${col.type} ${col.constraints?.join(' ') || ''}`.trim())
       .join(', ');
@@ -429,23 +429,25 @@ export const createTables = (db: IDatabase): void => {
       : '';
 
     const createTableSQL = `CREATE TABLE IF NOT EXISTS ${schema.name} (${columnDefs}${constraints})`;
-    db.executeQuery(createTableSQL);
-  });
+    await db.executeQuery(createTableSQL);
+  }
 
   // Lay the arterial roads
-  indexes.forEach(sql => db.executeQuery(sql));
+  for (const sql of indexes) {
+    await db.executeQuery(sql);
+  }
 
   // Token tables (password reset / email verification)
-  createTokenTables(db);
+  await createTokenTables(db);
 };
 
 /**
  * Drop all tables (useful for testing / clean rebuild)
  * Reverse order respects the dependency graph so the city can be safely demolished.
  */
-export const dropAllTables = (db: IDatabase): void => {
+export const dropAllTables = async (db: IDatabase): Promise<void> => {
   const reverseSchemas = [...tableSchemas].reverse();
-  reverseSchemas.forEach(schema => {
-    db.executeQuery(`DROP TABLE IF EXISTS ${schema.name}`);
-  });
+  for (const schema of reverseSchemas) {
+    await db.executeQuery(`DROP TABLE IF EXISTS ${schema.name}`);
+  }
 };

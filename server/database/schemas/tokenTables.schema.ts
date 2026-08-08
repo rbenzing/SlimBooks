@@ -5,9 +5,9 @@ import type { IDatabase } from '../../types/database.types.js';
  * These are short-lived access corridors — designed for fast lookup,
  * automatic expiry, and clean cascade demolition when a user is removed.
  */
-export function createTokenTables(db: IDatabase): void {
+export async function createTokenTables(db: IDatabase): Promise<void> {
   // Password reset tokens
-  db.executeQuery(`
+  await db.executeQuery(`
     CREATE TABLE IF NOT EXISTS password_reset_tokens (
       id          INTEGER PRIMARY KEY AUTOINCREMENT,
       user_id     INTEGER NOT NULL,
@@ -20,25 +20,25 @@ export function createTokenTables(db: IDatabase): void {
   `);
 
   // Arterial indexes
-  db.executeQuery(`
+  await db.executeQuery(`
     CREATE INDEX IF NOT EXISTS idx_password_reset_tokens_user_id
     ON password_reset_tokens (user_id)
   `);
 
-  db.executeQuery(`
+  await db.executeQuery(`
     CREATE INDEX IF NOT EXISTS idx_password_reset_tokens_expires_at
     ON password_reset_tokens (expires_at)
   `);
 
   // Fast path for “still-valid & unused” lookups
-  db.executeQuery(`
+  await db.executeQuery(`
     CREATE INDEX IF NOT EXISTS idx_password_reset_tokens_active
     ON password_reset_tokens (token_hash, expires_at, used_at)
     WHERE used_at IS NULL
   `);
 
   // Email verification tokens
-  db.executeQuery(`
+  await db.executeQuery(`
     CREATE TABLE IF NOT EXISTS email_verification_tokens (
       id          INTEGER PRIMARY KEY AUTOINCREMENT,
       user_id     INTEGER NOT NULL,
@@ -50,17 +50,17 @@ export function createTokenTables(db: IDatabase): void {
     )
   `);
 
-  db.executeQuery(`
+  await db.executeQuery(`
     CREATE INDEX IF NOT EXISTS idx_email_verification_tokens_user_id
     ON email_verification_tokens (user_id)
   `);
 
-  db.executeQuery(`
+  await db.executeQuery(`
     CREATE INDEX IF NOT EXISTS idx_email_verification_tokens_expires_at
     ON email_verification_tokens (expires_at)
   `);
 
-  db.executeQuery(`
+  await db.executeQuery(`
     CREATE INDEX IF NOT EXISTS idx_email_verification_tokens_active
     ON email_verification_tokens (token_hash, expires_at, used_at)
     WHERE used_at IS NULL

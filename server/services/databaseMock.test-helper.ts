@@ -22,6 +22,7 @@ export interface DatabaseMock {
   getNextSequence: ReturnType<typeof vi.fn>;
   deleteById: ReturnType<typeof vi.fn>;
   executeTransaction: ReturnType<typeof vi.fn>;
+  withTransaction: ReturnType<typeof vi.fn>;
   tableExists: ReturnType<typeof vi.fn>;
   deleteWithSetting: ReturnType<typeof vi.fn>;
   /** Every executeQuery call, normalised for assertions. */
@@ -44,6 +45,10 @@ export const createDatabaseMock = (): DatabaseMock => {
     getNextSequence: vi.fn(() => 1),
     deleteById: vi.fn(() => true),
     executeTransaction: vi.fn((fn: () => unknown) => fn()),
+    // Runs the callback inline. The real implementation wraps it in a SQLite
+    // transaction; for assertions on the statements issued, running it straight
+    // through is equivalent and keeps the queries array in call order.
+    withTransaction: vi.fn((fn: () => unknown) => fn()),
     tableExists: vi.fn(() => true),
     deleteWithSetting: vi.fn(() => true),
     queries,

@@ -20,6 +20,7 @@ import recurringInvoiceTemplateRoutes from './recurringInvoiceTemplateRoutes.js'
 import databaseRoutes from './databaseRoutes.js';
 import stripeRoutes from './stripeRoutes.js';
 import emailRoutes from './emailRoutes.js';
+import { requireAuth, requireAdmin } from '../middleware/index.js';
 import type { Runtime } from '../runtime/types.js';
 
 /**
@@ -30,7 +31,7 @@ import type { Runtime } from '../runtime/types.js';
  * each one reaching for a global. Every mount below is unchanged from before
  * this became a factory.
  */
-export const createRoutes = (_runtime: Runtime): Router => {
+export const createRoutes = (runtime: Runtime): Router => {
   const router: Router = Router();
 
   // API routes with /api prefix
@@ -45,7 +46,15 @@ export const createRoutes = (_runtime: Runtime): Router => {
   router.use('/api/counters', counterRoutes);
   router.use('/api/reports', reportRoutes);
   router.use('/api/pdf', pdfRoutes);
-  router.use('/api/cron', cronRoutes);
+
+  // The cron endpoint exists only for hosts where an external scheduler owns
+  // recurring work. When the in-process scheduler is running it would be a
+  // second, redundant trigger — and it used to be mounted unconditionally with
+  // no authentication at all, so anyone who could reach the server could
+  // generate invoices.
+  if (!runtime.features.scheduler) {
+    router.use('/api/cron', requireAuth, requireAdmin, cronRoutes);
+  }
   router.use('/api/templates', templateRoutes);
   router.use('/api/recurring-templates', recurringInvoiceTemplateRoutes);
   router.use('/api/db', databaseRoutes);

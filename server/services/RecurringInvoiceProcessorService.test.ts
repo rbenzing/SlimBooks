@@ -188,14 +188,17 @@ describe('processAllDueTemplates', () => {
       template({ id: 1, next_invoice_date: '2026-07-01' }),
       template({ id: 2, next_invoice_date: '2026-07-01' })
     ] as never);
-    const advance = vi.spyOn(templates, 'updateNextInvoiceDate').mockResolvedValue(true);
-
     const result = await processor.processAllDueTemplates();
 
     expect(result.created).toBe(2);
     expect(result.errors).toEqual([]);
-    expect(advance).toHaveBeenCalledTimes(2);
-    expect(advance).toHaveBeenCalledWith(1, '2026-08-01');
+
+    // The advance is issued inside the same transaction as the insert rather
+    // than through updateNextInvoiceDate, so that a process killed between the
+    // two cannot leave an invoice billed but the schedule un-advanced.
+    const advances = db.queries.filter(q => /UPDATE recurring_invoice_templates/i.test(q.sql));
+    expect(advances).toHaveLength(2);
+    expect(advances[0]?.params).toEqual(['2026-08-01', 1]);
   });
 
   it('keeps going when one template fails', async () => {
@@ -246,14 +249,51 @@ describe('processAllDueTemplates', () => {
 
     const result = await processor.processAllDueTemplates();
 
-    expect(result).toEqual({ created: 0, errors: ['Failed to fetch due templates: table missing'] });
+    expect(result).toEqual({
+      created: 0,
+      skipped: 0,
+      errors: ['Failed to fetch due templates: table missing']
+    });
   });
 
   it('does nothing when nothing is due', async () => {
     vi.spyOn(templates, 'getTemplatesDueForProcessing').mockResolvedValue([]);
 
-    await expect(processor.processAllDueTemplates()).resolves.toEqual({ created: 0, errors: [] });
+    await expect(processor.processAllDueTemplates())
+      .resolves.toEqual({ created: 0, skipped: 0, errors: [] });
     expect(db.queries).toHaveLength(0);
+  });
+
+  it('counts an already-billed period as skipped rather than failed', async () => {
+    // The unique index rejects a second invoice for the same template period.
+    // That means another instance, or an earlier interrupted run, already did
+    // the work — which is the mechanism working, not an error to report.
+    vi.spyOn(templates, 'getTemplatesDueForProcessing').mockResolvedValue([template({ id: 4 })] as never);
+    db.executeQuery.mockImplementation((sql: string) => {
+      if (/INSERT INTO invoices/i.test(sql)) {
+        throw new Error('UNIQUE constraint failed: index idx_invoices_recurring_period');
+      }
+      return { changes: 1, lastInsertRowid: 1 };
+    });
+
+    const result = await processor.processAllDueTemplates();
+
+    expect(result.skipped).toBe(1);
+    expect(result.created).toBe(0);
+    expect(result.errors).toEqual([]);
+  });
+
+  it('stamps the invoice with the period it covers', async () => {
+    // Without this column the unique index has nothing to key on, so duplicate
+    // protection silently stops working.
+    vi.spyOn(templates, 'getTemplatesDueForProcessing')
+      .mockResolvedValue([template({ id: 1, next_invoice_date: '2026-07-01' })] as never);
+
+    await processor.processAllDueTemplates();
+
+    const { columns, valueOf } = invoiceInsert();
+    expect(columns).toContain('recurring_period_date');
+    expect(valueOf('recurring_period_date')).toBe('2026-07-01');
   });
 });
 
@@ -294,11 +334,13 @@ describe('processSingleTemplate', () => {
 
   it('advances the schedule by the template frequency', async () => {
     db.getOne.mockReturnValue(template({ frequency: 'quarterly', next_invoice_date: '2026-07-01' }));
-    const advance = vi.spyOn(templates, 'updateNextInvoiceDate').mockResolvedValue(true);
 
     await processor.processSingleTemplate(5);
 
-    expect(advance).toHaveBeenCalledWith(5, '2026-10-01');
+    // Issued inside the transaction alongside the insert, so a manual run and a
+    // scheduled run cannot bill the same period twice between them.
+    const advance = db.queries.find(q => /UPDATE recurring_invoice_templates/i.test(q.sql));
+    expect(advance?.params).toEqual(['2026-10-01', 5]);
   });
 });
 

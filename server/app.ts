@@ -35,6 +35,7 @@ import { createRoutes } from './routes/index.js';
 import webhookRoutes from './routes/webhookRoutes.js';
 
 import type { Runtime } from './runtime/types.js';
+import { createRuntimeScheduler } from './runtime/index.js';
 
 /**
  * Create and configure Express application
@@ -157,18 +158,38 @@ export const startServer = async (runtime: Runtime) => {
 
   console.log(`🚀 Slimbooks listening (${runtime.listener.tls} TLS)`);
 
-  // `scheduler` is a local rather than a runtime field because the runtime is
-  // frozen; Task 11 builds the real scheduler and threads it through here.
-  // Cast (rather than a plain type annotation) because TS narrows a
-  // const-literal `null` to exactly `null`, which turns the `?.` below into a
-  // property access on `never`.
-  type SchedulerHandle = { stop: () => Promise<void>; start: () => void } | null;
-  const scheduler = null as SchedulerHandle;
+  // Two handles on the same database, deliberately. `models` exports the raw
+  // better-sqlite3 object, which shutdown needs for `pragma` and `close`;
+  // `database` exports the IDatabase wrapper the scheduler queries through.
+  const { db } = await import('./models/index.js');
+  const { db: database } = await import('./database/index.js');
+
+  // A local rather than a runtime field, because the runtime is frozen.
+  //
+  // process.env appears here rather than inside the scheduler because
+  // startServer sits above the runtime boundary; the scheduler itself only ever
+  // receives resolved values.
+  const scheduler = createRuntimeScheduler(database, runtime.features.scheduler, process.env, {
+    name: 'recurring-invoices',
+    run: async () => {
+      const { recurringInvoiceProcessorService } = await import(
+        './services/RecurringInvoiceProcessorService.js'
+      );
+
+      const result = await recurringInvoiceProcessorService.processAllDueTemplates();
+
+      if (result.created > 0 || result.errors.length > 0) {
+        console.log(
+          `Recurring invoices: ${result.created} created, ` +
+            `${result.skipped} already billed, ${result.errors.length} failed`
+        );
+      }
+    }
+  });
 
   scheduler?.start();
   healthLogger();
 
-  const { db } = await import('./models/index.js');
   registerShutdown(server, db, scheduler);
 
   return server;

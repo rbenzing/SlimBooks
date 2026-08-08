@@ -11,7 +11,9 @@
 
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
-import { assertNoRemovedVars, readRequired, type RawEnv } from './env.js';
+import { assertNoRemovedVars, readInt, readRequired, type RawEnv } from './env.js';
+import { createScheduler, type Scheduler, type SchedulerJob } from './scheduler.js';
+import type { IDatabase } from '../types/database.types.js';
 import { resolveFeatures, type FeatureProbes } from './features.js';
 import { resolveListener } from './listener.js';
 import { resolvePaths } from './paths.js';
@@ -85,8 +87,10 @@ export const assertNoLegacyData = (
 /** Probe each feature's dependency on this host. */
 const probeFeatures = (env: RawEnv, overrides: Partial<FeatureProbes>): FeatureProbes => {
   const defaults: FeatureProbes = {
-    // PDF availability is decided in Task 7, when the provider can be loaded.
-    // Until then the toggle alone governs it.
+    // PDF availability can only be known by trying to load the optional
+    // puppeteer dependency, which is async. The caller probes it and passes the
+    // answer in via `probes`; assuming true here means the toggle alone governs
+    // it if a caller forgets.
     pdf: true,
     email: Boolean(env.SMTP_HOST && env.SMTP_USER && env.SMTP_PASS),
     stripe: Boolean(env.STRIPE_SECRET_KEY && env.STRIPE_PUBLISHABLE_KEY),
@@ -162,4 +166,29 @@ export const resolveRuntime = (
   };
 
   return Object.freeze(runtime);
+};
+
+/**
+ * Build the in-process scheduler, or null when an external one owns the work.
+ *
+ * Replaces the OS crontab that hit an unauthenticated endpoint — neither IIS
+ * nor Hostinger offers a crontab, and the endpoint was reachable by anyone.
+ *
+ * `env` is passed in rather than read here so this stays callable from a test
+ * without touching the real environment.
+ */
+export const createRuntimeScheduler = (
+  db: IDatabase,
+  enabled: boolean,
+  env: RawEnv,
+  job: SchedulerJob
+): Scheduler | null => {
+  if (!enabled) return null;
+
+  return createScheduler(db, [job], {
+    intervalMs: readInt(env, 'SCHEDULER_INTERVAL_MS', 3_600_000),
+    leaseTtlMs: readInt(env, 'SCHEDULER_LEASE_TTL_MS', 3_600_000),
+    // A delay before the first run keeps simultaneous restarts from stampeding.
+    initialDelayMs: readInt(env, 'SCHEDULER_INITIAL_DELAY_MS', 15_000)
+  });
 };

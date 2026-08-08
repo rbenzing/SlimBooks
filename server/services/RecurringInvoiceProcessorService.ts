@@ -12,6 +12,8 @@ interface InvoiceCreationData {
   invoice_number: string;
   client_id: number;
   recurring_template_id: number;
+  /** Which billing period this invoice covers. Unique per template. */
+  recurring_period_date: string;
   amount: number;
   tax_amount: number;
   total_amount: number;
@@ -35,9 +37,10 @@ export class RecurringInvoiceProcessorService {
   /**
    * Process all due recurring templates and create invoices
    */
-  async processAllDueTemplates(): Promise<{ created: number; errors: string[] }> {
+  async processAllDueTemplates(): Promise<{ created: number; skipped: number; errors: string[] }> {
     const results = {
       created: 0,
+      skipped: 0,
       errors: [] as string[]
     };
 
@@ -45,20 +48,42 @@ export class RecurringInvoiceProcessorService {
       const dueTemplates = await recurringInvoiceTemplateService.getTemplatesDueForProcessing();
 
       for (const template of dueTemplates) {
-        try {
-          await this.createInvoiceFromTemplate(template);
-          results.created++;
+        const periodDate = template.next_invoice_date;
 
-          // Update next invoice date
+        try {
+          const row = await this.buildInvoiceRow(template, periodDate);
+
           const nextDate = recurringInvoiceTemplateService.calculateNextInvoiceDate(
-            template.next_invoice_date,
+            periodDate,
             template.frequency
           );
-          await recurringInvoiceTemplateService.updateNextInvoiceDate(template.id, nextDate);
 
+          // One transaction. Creating the invoice and advancing the template
+          // used to be two statements, so a process killed between them — which
+          // an ephemeral host does on every redeploy — re-created the invoice on
+          // the next boot with nothing to reject it.
+          databaseService.withTransaction(() => {
+            this.insertInvoiceRow(row);
+
+            databaseService.executeQuery(
+              'UPDATE recurring_invoice_templates SET next_invoice_date = ?, updated_at = DATETIME(\'now\') WHERE id = ?',
+              [nextDate, template.id]
+            );
+          });
+
+          results.created++;
         } catch (error) {
-          const errorMessage = `Template ID ${template.id}: ${(error as Error).message}`;
-          results.errors.push(errorMessage);
+          const message = (error as Error).message;
+
+          // The unique index is the real guarantee. A duplicate here means
+          // another instance, or an earlier interrupted run, already billed this
+          // period — which is success, not failure.
+          if (message.includes('idx_invoices_recurring_period') || message.includes('UNIQUE')) {
+            results.skipped++;
+            continue;
+          }
+
+          results.errors.push(`Template ID ${template.id}: ${message}`);
         }
       }
     } catch (error) {
@@ -83,14 +108,26 @@ export class RecurringInvoiceProcessorService {
         return { success: false, error: 'Recurring template is inactive' };
       }
 
-      const invoiceId = await this.createInvoiceFromTemplate(template);
+      const periodDate = template.next_invoice_date;
+      const row = await this.buildInvoiceRow(template, periodDate);
 
-      // Update next invoice date
       const nextDate = recurringInvoiceTemplateService.calculateNextInvoiceDate(
-        template.next_invoice_date,
+        periodDate,
         template.frequency
       );
-      await recurringInvoiceTemplateService.updateNextInvoiceDate(template.id, nextDate);
+
+      // Same guarantee as the scheduled path: create and advance together, or
+      // neither. A manual run and a scheduled run can otherwise collide.
+      const invoiceId = databaseService.withTransaction(() => {
+        const id = this.insertInvoiceRow(row);
+
+        databaseService.executeQuery(
+          'UPDATE recurring_invoice_templates SET next_invoice_date = ?, updated_at = DATETIME(\'now\') WHERE id = ?',
+          [nextDate, template.id]
+        );
+
+        return id;
+      });
 
       return { success: true, invoiceId };
 
@@ -100,85 +137,89 @@ export class RecurringInvoiceProcessorService {
   }
 
   /**
-   * Create an invoice from a recurring template
+   * Assemble the invoice row for a template's billing period.
+   *
+   * Split from the insert because generating the invoice number is async, and
+   * better-sqlite3 transactions are synchronous — an await inside one would
+   * commit at an unpredictable point.
    */
-  private async createInvoiceFromTemplate(template: {
-    id: number;
-    name: string;
-    client_id: number;
-    amount: number;
-    description?: string | null;
-    frequency: string;
-    payment_terms: string;
-    next_invoice_date: string;
-    is_active: boolean;
-    line_items?: string | null;
-    tax_amount: number;
-    tax_rate_id?: string | null;
-    shipping_amount: number;
-    shipping_rate_id?: string | null;
-    notes?: string | null;
-  }): Promise<number> {
-    // Use the same numbering service manual invoices use, so a configured
-    // prefix applies to both and the counter is not advanced twice.
+  private async buildInvoiceRow(
+    template: {
+      id: number;
+      client_id: number;
+      amount: number;
+      description?: string | null;
+      payment_terms: string;
+      line_items?: string | null;
+      tax_amount: number;
+      tax_rate_id?: string | null;
+      shipping_amount: number;
+      shipping_rate_id?: string | null;
+      notes?: string | null;
+    },
+    periodDate: string
+  ): Promise<InvoiceCreationData> {
+    // The same numbering service manual invoices use, so a configured prefix
+    // applies to both and the counter is not advanced twice.
     const invoiceNumber = await invoiceNumberService.generateInvoiceNumber();
 
-    // Calculate due date based on payment terms
     const issueDate: string = new Date().toISOString().split('T')[0]!;
-    const dueDate = this.calculateDueDate(issueDate, template.payment_terms!);
+    const dueDate = this.calculateDueDate(issueDate, template.payment_terms);
 
-    // Calculate total amount
-    const totalAmount = template.amount + template.tax_amount + template.shipping_amount;
-
-    const invoiceData: InvoiceCreationData = {
+    return {
       invoice_number: invoiceNumber,
       client_id: template.client_id,
       recurring_template_id: template.id,
+      recurring_period_date: periodDate,
       amount: template.amount,
       tax_amount: template.tax_amount,
-      total_amount: totalAmount,
+      total_amount: template.amount + template.tax_amount + template.shipping_amount,
       status: 'draft',
       due_date: dueDate,
       issue_date: issueDate,
       description: template.description ?? null,
       line_items: template.line_items ?? null,
       notes: template.notes ?? null,
-      payment_terms: template.payment_terms!,
+      payment_terms: template.payment_terms,
       shipping_amount: template.shipping_amount,
       tax_rate_id: template.tax_rate_id ?? null,
       shipping_rate_id: template.shipping_rate_id ?? null
     };
+  }
 
-    // Insert invoice into database
+  /** Insert an assembled invoice row. Synchronous, so it can run in a transaction. */
+  private insertInvoiceRow(data: InvoiceCreationData): number {
     const result = databaseService.executeQuery(
       `INSERT INTO invoices (
-        invoice_number, client_id, recurring_template_id, amount, tax_amount,
-        total_amount, status, due_date, issue_date, description, line_items,
-        notes, payment_terms, shipping_amount, tax_rate_id, shipping_rate_id,
-        created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, DATETIME('now'), DATETIME('now'))`,
+        invoice_number, client_id, recurring_template_id, recurring_period_date,
+        amount, tax_amount, total_amount, status, due_date, issue_date,
+        description, line_items, notes, payment_terms, shipping_amount,
+        tax_rate_id, shipping_rate_id, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, DATETIME('now'), DATETIME('now'))`,
       [
-        invoiceData.invoice_number,
-        invoiceData.client_id,
-        invoiceData.recurring_template_id,
-        invoiceData.amount,
-        invoiceData.tax_amount,
-        invoiceData.total_amount,
-        invoiceData.status,
-        invoiceData.due_date,
-        invoiceData.issue_date,
-        invoiceData.description || null,
-        invoiceData.line_items || null,
-        invoiceData.notes || null,
-        invoiceData.payment_terms,
-        invoiceData.shipping_amount,
-        invoiceData.tax_rate_id,
-        invoiceData.shipping_rate_id
+        data.invoice_number,
+        data.client_id,
+        data.recurring_template_id,
+        data.recurring_period_date,
+        data.amount,
+        data.tax_amount,
+        data.total_amount,
+        data.status,
+        data.due_date,
+        data.issue_date,
+        data.description,
+        data.line_items,
+        data.notes,
+        data.payment_terms,
+        data.shipping_amount,
+        data.tax_rate_id,
+        data.shipping_rate_id
       ]
     );
 
     return result.lastInsertRowid;
   }
+
 
   /**
    * Calculate due date based on payment terms

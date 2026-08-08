@@ -3,9 +3,9 @@ import { type Request, type Response } from 'express';
 import { createReadStream, existsSync, unlinkSync, statSync } from 'fs';
 import { copyFile } from 'fs/promises';
 import multer from 'multer';
-import { getDatabasePath } from '../config/database.js';
 import { closeDatabase, initializeDatabase } from '../database/index.js';
 import { databaseService } from '../core/DatabaseService.js';
+import type { Runtime } from '../runtime/types.js';
 
 // Configure multer for file uploads
 const upload = multer({
@@ -26,7 +26,8 @@ const upload = multer({
 // Export database
 export const exportDatabase = async (req: Request, res: Response): Promise<void> => {
   try {
-    const dbPath = getDatabasePath();
+    const runtime = req.app.locals.runtime as Runtime;
+    const dbPath = runtime.paths.dbFile;
 
     if (!existsSync(dbPath)) {
       res.status(404).json({
@@ -91,9 +92,10 @@ export const importDatabase = [
         return;
       }
 
+      const runtime = req.app.locals.runtime as Runtime;
       const uploadedFilePath = req.file.path;
-      const dbPath = getDatabasePath();
-      
+      const dbPath = runtime.paths.dbFile;
+
       // Create backup of current database
       const backupPath = `${dbPath}.backup-${Date.now()}`;
       
@@ -127,7 +129,7 @@ export const importDatabase = [
 
         // Reconnect to the new database
         console.log('Reconnecting to database...');
-        await initializeDatabase();
+        await initializeDatabase(runtime.paths);
 
         // Checkpoint the new database to ensure proper WAL initialization
         try {
@@ -156,7 +158,7 @@ export const importDatabase = [
         // Always try to reconnect the database, even if import failed
         try {
           console.log('Reconnecting to database after import failure...');
-          await initializeDatabase();
+          await initializeDatabase(runtime.paths);
         } catch (reconnectError) {
           console.error('Failed to reconnect to database:', reconnectError);
         }

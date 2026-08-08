@@ -14,7 +14,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 
 const { authenticatedFetch } = vi.hoisted(() => ({ authenticatedFetch: vi.fn() }));
 
-vi.mock('@/utils/api', () => ({ authenticatedFetch }));
+vi.mock('@/utils/api', () => ({ authenticatedFetch, API_BASE: '/api' }));
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
 import { ExpenseReport } from '@/components/reports/ExpenseReport';

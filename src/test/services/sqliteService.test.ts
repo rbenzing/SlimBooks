@@ -30,7 +30,7 @@ const { fetchMock } = vi.hoisted(() => {
   return { fetchMock };
 });
 
-vi.mock('@/utils/api', () => ({ getToken: vi.fn(() => 'test-token') }));
+vi.mock('@/utils/api', () => ({ getToken: vi.fn(() => 'test-token'), API_BASE: '/api' }));
 vi.mock('@/utils/api/auth.util', () => ({ getToken: vi.fn(() => 'test-token') }));
 
 const jsonResponse = (body: unknown): Response =>

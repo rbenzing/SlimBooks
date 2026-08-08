@@ -20,31 +20,42 @@ import recurringInvoiceTemplateRoutes from './recurringInvoiceTemplateRoutes.js'
 import databaseRoutes from './databaseRoutes.js';
 import stripeRoutes from './stripeRoutes.js';
 import emailRoutes from './emailRoutes.js';
+import type { Runtime } from '../runtime/types.js';
 
-const router: Router = Router();
+/**
+ * Build the API router.
+ *
+ * Takes the runtime so future sub-routers (e.g. the config routes that read
+ * `runtime.features`) can be threaded through from a single place, without
+ * each one reaching for a global. Every mount below is unchanged from before
+ * this became a factory.
+ */
+export const createRoutes = (_runtime: Runtime): Router => {
+  const router: Router = Router();
 
-// API routes with /api prefix
-router.use('/api/auth', authRoutes);
-router.use('/api/users', userRoutes);
-router.use('/api/clients', clientRoutes);
-router.use('/api/invoices', invoiceRoutes);
-router.use('/api/expenses', expenseRoutes);
-router.use('/api/payments', paymentRoutes);
-router.use('/api/settings', settingsRoutes);
-router.use('/api/project-settings', projectSettingsRoutes);
-router.use('/api/counters', counterRoutes);
-router.use('/api/reports', reportRoutes);
-router.use('/api/pdf', pdfRoutes);
-router.use('/api/cron', cronRoutes);
-router.use('/api/templates', templateRoutes);
-router.use('/api/recurring-templates', recurringInvoiceTemplateRoutes);
-router.use('/api/db', databaseRoutes);
-// The Stripe webhook receiver is not mounted here - it needs the raw request
-// body, so app.ts mounts it ahead of the body parsers.
-router.use('/api/stripe', stripeRoutes);
-router.use('/api/email', emailRoutes);
+  // API routes with /api prefix
+  router.use('/api/auth', authRoutes);
+  router.use('/api/users', userRoutes);
+  router.use('/api/clients', clientRoutes);
+  router.use('/api/invoices', invoiceRoutes);
+  router.use('/api/expenses', expenseRoutes);
+  router.use('/api/payments', paymentRoutes);
+  router.use('/api/settings', settingsRoutes);
+  router.use('/api/project-settings', projectSettingsRoutes);
+  router.use('/api/counters', counterRoutes);
+  router.use('/api/reports', reportRoutes);
+  router.use('/api/pdf', pdfRoutes);
+  router.use('/api/cron', cronRoutes);
+  router.use('/api/templates', templateRoutes);
+  router.use('/api/recurring-templates', recurringInvoiceTemplateRoutes);
+  router.use('/api/db', databaseRoutes);
+  // The Stripe webhook receiver is not mounted here - it needs the raw request
+  // body, so app.ts mounts it ahead of the body parsers.
+  router.use('/api/stripe', stripeRoutes);
+  router.use('/api/email', emailRoutes);
 
-// Health check routes
-router.use('/api/health', healthRoutes);
+  // Health check routes
+  router.use('/api/health', healthRoutes);
 
-export default router;
+  return router;
+};

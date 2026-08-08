@@ -9,8 +9,6 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-vi.mock('@/lib/env-config', () => ({ envConfig: { API_URL: 'http://api.test' } }));
-
 import { AuthService } from '@/services/auth.svc';
 import type { User } from '@/types';
 
@@ -48,7 +46,7 @@ describe('register', () => {
   it('posts to the registration endpoint', async () => {
     await auth.register(validRegistration);
 
-    expect(fetchMock.mock.calls[0][0]).toBe('http://api.test/api/auth/register');
+    expect(fetchMock.mock.calls[0][0]).toBe('/api/auth/register');
     expect((fetchMock.mock.calls[0][1] as RequestInit).method).toBe('POST');
   });
 
@@ -121,7 +119,7 @@ describe('login', () => {
 
     await auth.login(credentials);
 
-    expect(fetchMock.mock.calls[0][0]).toBe('http://api.test/api/auth/login');
+    expect(fetchMock.mock.calls[0][0]).toBe('/api/auth/login');
   });
 
   it('defaults rememberMe to false rather than sending undefined', async () => {
@@ -208,7 +206,7 @@ describe('verifyToken', () => {
     await auth.verifyToken('jwt-value');
 
     const [url, init] = fetchMock.mock.calls[0];
-    expect(url).toBe('http://api.test/api/auth/profile');
+    expect(url).toBe('/api/auth/profile');
     expect((init as RequestInit).headers).toMatchObject({ Authorization: 'Bearer jwt-value' });
   });
 

@@ -7,6 +7,7 @@ import { formatDateSync } from '@/components/ui/FormattedDate';
 import { FormattedCurrency } from '@/components/ui/FormattedCurrency';
 import { pdfService } from '@/services/pdf.svc';
 import { useCompanySettings } from '@/hooks/useSettings.hook';
+import { useRuntimeConfig } from '@/hooks/useRuntimeConfig.hook';
 import type { Invoice, InvoiceViewLineItem } from '@/types';
 
 interface InvoiceViewModalProps {
@@ -18,6 +19,8 @@ interface InvoiceViewModalProps {
 
 export const InvoiceViewModal: React.FC<InvoiceViewModalProps> = ({ invoice, isOpen, onClose, onMarkAsPaid }) => {
   const { settings: companySettings, isLoading: companySettingsLoading } = useCompanySettings();
+  const { data: runtimeConfig } = useRuntimeConfig();
+  const pdfEnabled = runtimeConfig?.features.pdf === true;
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
 
   // Helper function to clean up stored client address that may contain "null" values
@@ -194,14 +197,16 @@ export const InvoiceViewModal: React.FC<InvoiceViewModalProps> = ({ invoice, isO
                 Mark as Paid
               </button>
             )}
-            <button
-              onClick={handleDownloadPDF}
-              disabled={isGeneratingPDF}
-              className="flex items-center px-3 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
-            >
-              <Download className="h-4 w-4 mr-2" />
-              {isGeneratingPDF ? 'Generating...' : 'Download PDF'}
-            </button>
+            {pdfEnabled && (
+              <button
+                onClick={handleDownloadPDF}
+                disabled={isGeneratingPDF}
+                className="flex items-center px-3 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+              >
+                <Download className="h-4 w-4 mr-2" />
+                {isGeneratingPDF ? 'Generating...' : 'Download PDF'}
+              </button>
+            )}
             <button
               onClick={onClose}
               className={styles.closeButton}

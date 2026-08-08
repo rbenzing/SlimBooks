@@ -5,7 +5,8 @@ import { CompanyHeader } from './invoices/CompanyHeader';
 import { formatDateSync } from '@/components/ui/FormattedDate';
 import { FormattedCurrency } from '@/components/ui/FormattedCurrency';
 import { pdfService } from '@/services/pdf.svc';
-import { envConfig } from '@/lib/env-config';
+import { API_BASE } from '@/utils/api';
+import { useRuntimeConfig } from '@/hooks/useRuntimeConfig.hook';
 import { type InvoiceItem, type PublicInvoiceData } from '@/types';
 import { formatClientAddress } from '@/utils/formatting';
 
@@ -20,6 +21,8 @@ export const PublicInvoiceView: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [companyLogo, setCompanyLogo] = useState<string>('');
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
+  const { data: runtimeConfig } = useRuntimeConfig();
+  const pdfEnabled = runtimeConfig?.features.pdf === true;
 
   useEffect(() => {
     const loadInvoice = async () => {
@@ -31,7 +34,7 @@ export const PublicInvoiceView: React.FC = () => {
 
       try {
         // Use the new secure public endpoint
-        const response = await fetch(`${envConfig.API_URL}/api/invoices/public/${id}?token=${token}`);
+        const response = await fetch(`${API_BASE}/invoices/public/${id}?token=${token}`);
 
         if (!response.ok) {
           setError('Invalid or expired invoice link');
@@ -160,14 +163,16 @@ export const PublicInvoiceView: React.FC = () => {
             </p>
           </div>
           <div className="flex space-x-3">
-            <button
-              onClick={handleDownloadPDF}
-              disabled={isGeneratingPDF}
-              className="flex items-center px-4 py-2 bg-secondary text-secondary-foreground rounded-lg hover:bg-secondary/80 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <Download className="h-4 w-4 mr-2" />
-              {isGeneratingPDF ? 'Generating PDF...' : 'Download PDF'}
-            </button>
+            {pdfEnabled && (
+              <button
+                onClick={handleDownloadPDF}
+                disabled={isGeneratingPDF}
+                className="flex items-center px-4 py-2 bg-secondary text-secondary-foreground rounded-lg hover:bg-secondary/80 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <Download className="h-4 w-4 mr-2" />
+                {isGeneratingPDF ? 'Generating PDF...' : 'Download PDF'}
+              </button>
+            )}
           </div>
         </div>
       </div>

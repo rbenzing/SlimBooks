@@ -24,33 +24,36 @@ export const createDatabase = (): SQLiteDatabase => {
  * Initialize the complete database setup
  * This includes creating tables and seeding initial data
  */
-export const initializeDatabase = async (includeSampleData = false): Promise<void> => {
+export const initializeDatabase = async (
+  paths: { dataDir: string; dbFile: string },
+  includeSampleData = false
+): Promise<void> => {
+  if (!db.isConnected()) {
+    await db.connect(getDatabaseConfig(paths));
+  }
+
+  // Boot lock. Two instances starting against a shared volume must not race
+  // migrations. `BEGIN IMMEDIATE` takes SQLite's single writer slot for the
+  // whole sequence, so the second instance blocks until the first commits and
+  // then finds every step already done — which is safe precisely because
+  // createTables, runMigrations and the seeds are all idempotent.
+  //
+  // No lock table is used: one would have to exist before it could be read,
+  // which is the bootstrapping problem this avoids entirely.
+  db.executeQuery('BEGIN IMMEDIATE');
+
   try {
-    // Ensure database is connected before proceeding
-    if (!db.isConnected()) {
-      console.log('Database not connected, attempting to connect...');
-      await db.connect(getDatabaseConfig());
-    }
-
-    // Create all tables
     createTables(db);
-    console.log('✓ Database tables created');
-
-    // Run migrations
     runMigrations(db);
-    console.log('✓ Database migrations completed');
-
-    // Initialize seed data
-    await initializeAllSeeds(db, includeSampleData);
-    console.log('✓ Database seed data initialized');
-
-    if (process.env.NODE_ENV === 'development') {
-      console.log('✓ Database initialization complete');
-    }
+    db.executeQuery('COMMIT');
   } catch (error) {
-    console.error('❌ Database initialization failed:', error);
+    db.executeQuery('ROLLBACK');
     throw error;
   }
+
+  // Seeding runs outside the lock: it is idempotent on its own, and it is async,
+  // which a SQLite write transaction must not span.
+  await initializeAllSeeds(db, includeSampleData);
 };
 
 /**

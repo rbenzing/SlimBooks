@@ -7,9 +7,12 @@ import { StatCard, StatCardGrid } from '@/components/ui/StatCard';
 import { formatDateRangeSync } from '@/utils/formatting';
 import { FormattedCurrency, useCurrencyFormatter } from '@/components/ui/FormattedCurrency';
 import { pdfService } from '@/services/pdf.svc';
+import { useRuntimeConfig } from '@/hooks/useRuntimeConfig.hook';
 import { type ProfitLossReportProps, type ProfitLossReportData, type ReportDateRange, type AccountingMethod, type BreakdownPeriod } from '@/types';
 
 export const ProfitLossReport: React.FC<ProfitLossReportProps> = ({ onBack, onSave }) => {
+  const { data: runtimeConfig } = useRuntimeConfig();
+  const pdfEnabled = runtimeConfig?.features.pdf === true;
   const [reportData, setReportData] = useState<ProfitLossReportData | null>(null);
   const [loading, setLoading] = useState(false);
   const [isExportingPDF, setIsExportingPDF] = useState(false);
@@ -176,14 +179,16 @@ export const ProfitLossReport: React.FC<ProfitLossReportProps> = ({ onBack, onSa
               <Save className={themeClasses.iconButton} />
               Save Report
             </button>
-            <button
-              onClick={handleExportPDF}
-              disabled={isExportingPDF}
-              className={getButtonClasses('secondary')}
-            >
-              <Download className={themeClasses.iconButton} />
-              {isExportingPDF ? 'Generating...' : 'Export PDF'}
-            </button>
+            {pdfEnabled && (
+              <button
+                onClick={handleExportPDF}
+                disabled={isExportingPDF}
+                className={getButtonClasses('secondary')}
+              >
+                <Download className={themeClasses.iconButton} />
+                {isExportingPDF ? 'Generating...' : 'Export PDF'}
+              </button>
+            )}
           </div>
         </div>
 

@@ -321,41 +321,49 @@ export const timeoutHandler = (timeout = 30000) => {
 };
 
 /**
- * Graceful shutdown handler
+ * Register the process's only shutdown handler.
+ *
+ * Shutdown is an optimization, never a correctness dependency — the process may
+ * be SIGKILLed at any instant — but it should at least run, which it previously
+ * never did because index.ts exited first.
  */
-export const gracefulShutdown = (server: Server, db?: Database): void => {
+export const registerShutdown = (
+  server: Server,
+  db: Database,
+  scheduler: { stop: () => Promise<void> } | null
+): void => {
+  let shuttingDown = false;
+
   const shutdown = (signal: string): void => {
-    console.log(`\n${signal} received. Starting graceful shutdown...`);
-    
-    server.close((err) => {
-      if (err) {
-        console.error('Error during server shutdown:', err);
-        process.exit(1);
-      }
-      
-      console.log('HTTP server closed.');
-      
-      // Close database connection
-      if (db && typeof db.close === 'function') {
-        try {
-          db.close();
-          console.log('Database connection closed.');
-        } catch (dbErr) {
-          console.error('Error closing database:', dbErr);
-        }
-      }
-      
-      console.log('Graceful shutdown completed.');
-      process.exit(0);
-    });
-    
-    // Force shutdown after 10 seconds
-    setTimeout(() => {
+    if (shuttingDown) return;
+    shuttingDown = true;
+
+    console.log(`${signal} received, shutting down...`);
+
+    const forced = setTimeout(() => {
       console.error('Forced shutdown after timeout');
       process.exit(1);
-    }, 10000);
+    }, 10_000);
+    forced.unref();
+
+    server.close(async () => {
+      try {
+        await scheduler?.stop();
+
+        // Fold the WAL back into the database so the next boot has nothing to
+        // recover. Best effort: a killed process skips this and SQLite recovers
+        // on its own.
+        db.pragma('wal_checkpoint(TRUNCATE)');
+        db.close();
+      } catch (error) {
+        console.error('Error during shutdown:', error);
+      }
+
+      clearTimeout(forced);
+      process.exit(0);
+    });
   };
-  
+
   process.on('SIGTERM', () => shutdown('SIGTERM'));
   process.on('SIGINT', () => shutdown('SIGINT'));
 };

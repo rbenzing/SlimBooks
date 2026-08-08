@@ -21,7 +21,7 @@ const { fetchMock, getToken } = vi.hoisted(() => {
   return { fetchMock, getToken: vi.fn(() => 'test-token') };
 });
 
-vi.mock('@/utils/api', () => ({ getToken }));
+vi.mock('@/utils/api', () => ({ getToken, API_BASE: '/api' }));
 vi.mock('@/utils/api/auth.util', () => ({ getToken }));
 
 import { sqliteService } from '@/services/sqlite.svc';

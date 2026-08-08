@@ -9,6 +9,7 @@ import { themeClasses } from '@/utils/themeUtils.util';
 import { validateInvoiceForSave, validateInvoiceForSend } from '@/utils/data';
 import { invoiceService } from '@/services/invoices.svc';
 import { pdfService } from '@/services/pdf.svc';
+import { useRuntimeConfig } from '@/hooks/useRuntimeConfig.hook';
 import { getEmailConfigurationStatus } from '@/utils/emailConfig.util';
 import { type EmailConfigStatus, type EmailStatus, type InvoiceFormSnapshot } from '@/types';
 import { toast } from 'sonner';
@@ -26,6 +27,8 @@ interface CreateInvoicePageProps {
 
 export const CreateInvoicePage: React.FC<CreateInvoicePageProps> = ({ editingInvoice, viewOnly = false }) => {
   const navigate = useNavigate();
+  const { data: runtimeConfig } = useRuntimeConfig();
+  const pdfEnabled = runtimeConfig?.features.pdf === true;
   const [clients, setClients] = useState<Client[]>([]);
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [invoiceData, setInvoiceData] = useState({
@@ -444,7 +447,7 @@ export const CreateInvoicePage: React.FC<CreateInvoicePageProps> = ({ editingInv
               </button>
 
               {/* Print button in header - only show after invoice is saved */}
-              {editingInvoice?.id && (
+              {pdfEnabled && editingInvoice?.id && (
                 <button
                   onClick={handlePrintInvoice}
                   className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors flex items-center"
@@ -491,7 +494,7 @@ export const CreateInvoicePage: React.FC<CreateInvoicePageProps> = ({ editingInv
                   const printTooltipMessage = !editingInvoice?.id ? 'Save invoice first to enable printing' : '';
                   const showTooltip = tooltipMessage || printTooltipMessage;
 
-                  return (
+                  return pdfEnabled ? (
                     <div className="relative group">
                       <button
                         onClick={handlePrintInvoice}
@@ -508,7 +511,7 @@ export const CreateInvoicePage: React.FC<CreateInvoicePageProps> = ({ editingInv
                         </div>
                       )}
                     </div>
-                  );
+                  ) : null;
                 }
               })()}
             </div>

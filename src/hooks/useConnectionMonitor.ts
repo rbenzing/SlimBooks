@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { API_BASE } from '@/utils/api';
 
 interface ConnectionMonitorOptions {
   checkInterval?: number; // How often to check connection when connected (ms)
@@ -19,7 +20,7 @@ export const useConnectionMonitor = (options: ConnectionMonitorOptions = {}) => 
     checkInterval = 60000, // Check every minute when connected
     retryInterval = 20000, // Retry every 20 seconds when disconnected
     maxRetries = 30, // Max 30 retries (10 minutes at 20s intervals)
-    baseUrl = 'http://localhost:3002/api'
+    baseUrl = API_BASE
   } = options;
 
   const [connectionState, setConnectionState] = useState<ConnectionState>({

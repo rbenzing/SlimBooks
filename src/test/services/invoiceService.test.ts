@@ -28,7 +28,8 @@ vi.mock('@/utils/api', () => ({
     }
     return response;
   }),
-  getToken: vi.fn(() => 'mock-token')
+  getToken: vi.fn(() => 'mock-token'),
+  API_BASE: '/api'
 }));
 
 describe('InvoiceService - Email Functionality', () => {

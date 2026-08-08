@@ -10,23 +10,15 @@ import {
 } from '@/types';
 import type { ApiResponse } from '@/types';
 import { parseProjectSettingsWithDefaults, validateProjectSettings } from '@/utils/settingsValidation';
-import { getToken } from '@/utils/api';
+import { getToken, API_BASE } from '@/utils/api';
 class SQLiteService {
   private isInitialized = false;
   private initializationPromise: Promise<void> | null = null;
-  private baseUrl = this.getApiBaseUrl();
-  
+  private baseUrl = API_BASE;
+
   // Performance optimization: Settings cache
   private settingsCache = new Map<string, { value: unknown; timestamp: number; ttl: number }>();
   private readonly SETTINGS_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
-
-  private getApiBaseUrl(): string {
-    // Check if we're running on HTTPS
-    if (typeof window !== 'undefined' && window.location.protocol === 'https:') {
-      return 'https://localhost:3002/api';
-    }
-    return 'http://localhost:3002/api';
-  }
 
   async initialize(): Promise<void> {
     // If already initialized, return immediately

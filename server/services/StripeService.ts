@@ -67,6 +67,8 @@ export interface StripeWebhookOutcome {
   handled: boolean;
   invoice_id?: number;
   payment_id?: number;
+  /** True when this delivery is a Stripe retry of an already-processed event. */
+  duplicate?: boolean;
 }
 
 /**
@@ -318,6 +320,18 @@ export class StripeService {
 
     const stripe = this.getClient();
     const event = stripe.webhooks.constructEvent(rawBody, signature, webhookSecret);
+
+    // Stripe retries on every non-2xx and on timeout, and an ephemeral restart
+    // mid-processing replays the delivery. The event id is the idempotency key:
+    // the insert either claims the event or tells us someone already handled it.
+    const claim = databaseService.executeQuery(
+      'INSERT OR IGNORE INTO stripe_events (event_id, event_type) VALUES (?, ?)',
+      [event.id, event.type]
+    );
+
+    if (claim.changes === 0) {
+      return { received: true, type: event.type, handled: false, duplicate: true };
+    }
 
     switch (event.type) {
       case 'checkout.session.completed': {

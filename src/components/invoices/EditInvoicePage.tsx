@@ -9,6 +9,7 @@ import { validateInvoiceForSave, validateInvoiceForSend } from '@/utils/data';
 import { getInvoiceStatusPermissions } from '@/utils/business/invoice.util';
 import { invoiceService } from '@/services/invoices.svc';
 import { pdfService } from '@/services/pdf.svc';
+import { useRuntimeConfig } from '@/hooks/useRuntimeConfig.hook';
 import { getEmailConfigurationStatus } from '@/utils/emailConfig.util';
 import { type EmailConfigStatus } from '@/types';
 import { toast } from 'sonner';
@@ -130,6 +131,8 @@ function reconstructLineItems(record: Invoice): InvoiceItem[] {
 export const EditInvoicePage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { data: runtimeConfig } = useRuntimeConfig();
+  const pdfEnabled = runtimeConfig?.features.pdf === true;
 
   // Core data
   const [invoice, setInvoice] = useState<Invoice | null>(null);
@@ -627,7 +630,7 @@ export const EditInvoicePage = () => {
                 <Send className="h-4 w-4 mr-2" />
                 {isSending ? 'Sending...' : 'Send Invoice'}
               </button>
-            ) : (
+            ) : pdfEnabled ? (
               <div className="relative group">
                 <button
                   onClick={handlePrintInvoice}
@@ -647,7 +650,7 @@ export const EditInvoicePage = () => {
                   <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-900" />
                 </div>
               </div>
-            )}
+            ) : null}
           </div>
         </div>
 

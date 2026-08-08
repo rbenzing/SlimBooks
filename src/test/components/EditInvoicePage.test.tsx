@@ -13,6 +13,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { Invoice, Client } from '@/types';
 
 const { authenticatedFetch } = vi.hoisted(() => ({
@@ -95,14 +96,21 @@ const mockApi = (overrides: Record<string, unknown> = {}) => {
   });
 };
 
-const renderPage = () =>
-  render(
-    <MemoryRouter initialEntries={['/invoices/edit/1']}>
-      <Routes>
-        <Route path="/invoices/edit/:id" element={<EditInvoicePage />} />
-      </Routes>
-    </MemoryRouter>
+const renderPage = () => {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false } }
+  });
+
+  return render(
+    <QueryClientProvider client={queryClient}>
+      <MemoryRouter initialEntries={['/invoices/edit/1']}>
+        <Routes>
+          <Route path="/invoices/edit/:id" element={<EditInvoicePage />} />
+        </Routes>
+      </MemoryRouter>
+    </QueryClientProvider>
   );
+};
 
 describe('EditInvoicePage', () => {
   beforeEach(() => {

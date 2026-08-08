@@ -5,8 +5,10 @@ import express from 'express';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import multer from 'multer';
-import { fileURLToPath } from 'url';
-import { dirname, join, resolve } from 'path';
+import { join } from 'node:path';
+import { createServer as createHttpServer } from 'node:http';
+import { createServer as createHttpsServer } from 'node:https';
+import { readFileSync } from 'node:fs';
 
 // Import configuration
 import { serverConfig, validateConfig } from './config/index.js';
@@ -24,36 +26,48 @@ import {
   notFoundHandler,
   performanceMonitor,
   healthLogger,
-  validateFileUpload
+  validateFileUpload,
+  registerShutdown
 } from './middleware/index.js';
 
 // Import routes
-import routes from './routes/index.js';
+import { createRoutes } from './routes/index.js';
 import webhookRoutes from './routes/webhookRoutes.js';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+import type { Runtime } from './runtime/types.js';
 
 /**
  * Create and configure Express application
  */
-export const createApp = async () => {
-  // Validate configuration
+export const createApp = async (runtime: Runtime) => {
   validateConfig();
 
-  // Initialize database
   const includeSampleData = serverConfig.enableSampleData || serverConfig.isDevelopment;
-  await initializeDatabase(includeSampleData);
+  await initializeDatabase(runtime.paths, includeSampleData);
 
-  // Create Express app
   const app = express();
 
-  // Security middleware
-  app.use(createSecurityHeaders(serverConfig.corsOrigin));
-  app.use(cors(createCorsOptions(serverConfig.corsOrigin)));
-  app.use(createGeneralRateLimit());
+  // Stashed on app.locals so request handlers that are not themselves given
+  // the runtime (e.g. controllers reached only via req/res) can still read it
+  // without falling back to process.env or __dirname.
+  app.locals.runtime = runtime;
 
-  // Logging and monitoring middleware
+  // Behind a proxy, forwarded headers decide the client address. Without this,
+  // express-rate-limit attributes every request to the proxy and the shared
+  // budget locks out all users at once.
+  if (runtime.listener.trustProxyHops > 0) {
+    app.set('trust proxy', runtime.listener.trustProxyHops);
+  }
+
+  app.use(createSecurityHeaders(runtime.urls.publicUrl));
+
+  // Same-origin deployment needs no CORS. It exists only for the Vite dev
+  // server on a different port.
+  if (serverConfig.isDevelopment) {
+    app.use(cors(createCorsOptions(serverConfig.corsOrigin)));
+  }
+
+  app.use(createGeneralRateLimit());
   app.use(requestLogger);
   app.use(performanceMonitor());
 
@@ -69,37 +83,24 @@ export const createApp = async () => {
   // Stripe backs off and retries on a 429.
   app.use('/api/webhooks', webhookRoutes);
 
-  // Body parsing middleware with size limits
   app.use(express.json({ limit: '10mb' }));
   app.use(express.urlencoded({ limit: '10mb', extended: true }));
   app.use(cookieParser());
 
-  // Multer configuration for file uploads
-  const projectRoot = join(__dirname, '..');
   const upload = multer({
-    dest: resolve(projectRoot, serverConfig.uploadPath),
-    limits: {
-      fileSize: serverConfig.maxFileSize,
-      files: 1,
-      fieldSize: 1024 * 1024 // 1MB field size limit
-    },
-    fileFilter: (req, file, cb) => {
+    dest: runtime.paths.uploadsDir,
+    limits: { fileSize: serverConfig.maxFileSize, files: 1, fieldSize: 1024 * 1024 },
+    fileFilter: (_req, file, cb) => {
       const allowedMimes = [
         'application/octet-stream',
         'application/x-sqlite3',
         'application/vnd.sqlite3'
       ];
 
-      if (allowedMimes.includes(file.mimetype) || file.originalname.endsWith('.db')) {
-        cb(null, true);
-      } else {
-        cb(null, false);
-        throw new Error('Invalid file type. Only database files are allowed.');
-      }
+      cb(null, allowedMimes.includes(file.mimetype) || file.originalname.endsWith('.db'));
     }
   });
 
-  // File upload endpoint (if needed)
   app.post('/api/upload', upload.single('file'), validateFileUpload(), (req, res) => {
     res.json({
       success: true,
@@ -112,30 +113,19 @@ export const createApp = async () => {
     });
   });
 
-  // Serve static files from uploads directory
-  const uploadsPath = join(__dirname, '..', 'public', 'uploads');
-  app.use('/uploads', express.static(uploadsPath));
+  // Uploads are written and served through the same resolved root, so the two
+  // can no longer drift apart.
+  app.use('/uploads', express.static(runtime.paths.uploadsDir));
+  app.use(express.static(runtime.paths.staticDir));
 
-  // Serve static files from dist directory (built frontend)
-  const distPath = join(__dirname, '..', 'dist');
-  app.use(express.static(distPath));
+  app.use('/', createRoutes(runtime));
 
-  // API routes
-  app.use('/', routes);
-
-  // Serve index.html for client-side routing (must be after API routes)
   app.get('*', (req, res, next) => {
-    // Skip API routes
-    if (req.path.startsWith('/api/')) {
-      return next();
-    }
-    res.sendFile(join(distPath, 'index.html'));
+    if (req.path.startsWith('/api/')) return next();
+    res.sendFile(join(runtime.paths.staticDir, 'index.html'));
   });
 
-  // 404 handler for unmatched routes
   app.use(notFoundHandler);
-
-  // Global error handler (must be last)
   app.use(errorHandler);
 
   return app;
@@ -144,36 +134,44 @@ export const createApp = async () => {
 /**
  * Start the server
  */
-export const startServer = async () => {
-  try {
-    const app = await createApp();
-    
-    // HTTP Server
-    const server = app.listen(serverConfig.port, serverConfig.host, () => {
-      console.log(`🚀 Slimbooks server running on http://${serverConfig.host}:${serverConfig.port}`);
-      console.log(`📊 Environment: ${serverConfig.nodeEnv} | CORS: ${serverConfig.corsOrigin} | Rate limit: ${serverConfig.rateLimiting.maxRequests}/${serverConfig.rateLimiting.windowMs / 1000}s`);
+export const startServer = async (runtime: Runtime) => {
+  const app = await createApp(runtime);
 
-      const features = [];
-      if (serverConfig.enableDebugEndpoints) features.push('Debug');
-      if (serverConfig.enableSampleData || serverConfig.isDevelopment) features.push('Sample data');
-      if (features.length > 0) {
-        console.log(`🔧 Features: ${features.join(', ')}`);
-      }
-    });
+  const server = runtime.listener.tls === 'self'
+    ? createHttpsServer(
+        {
+          key: readFileSync(runtime.listener.tlsKeyPath as string),
+          cert: readFileSync(runtime.listener.tlsCertPath as string)
+        },
+        app
+      )
+    : createHttpServer(app);
 
-    // Initialize health logging
-    healthLogger();
+  await new Promise<void>((resolve) => {
+    if (runtime.listener.host === null) {
+      server.listen(runtime.listener.target as string, resolve);
+    } else {
+      server.listen(runtime.listener.target as number, runtime.listener.host, resolve);
+    }
+  });
 
-    // Graceful shutdown handling
-    const { gracefulShutdown } = await import('./middleware/index.js');
-    const { db } = await import('./models/index.js');
-    gracefulShutdown(server, db);
+  console.log(`🚀 Slimbooks listening (${runtime.listener.tls} TLS)`);
 
-    return server;
-  } catch (error) {
-    console.error('❌ Failed to start server:', error);
-    process.exit(1);
-  }
+  // `scheduler` is a local rather than a runtime field because the runtime is
+  // frozen; Task 11 builds the real scheduler and threads it through here.
+  // Cast (rather than a plain type annotation) because TS narrows a
+  // const-literal `null` to exactly `null`, which turns the `?.` below into a
+  // property access on `never`.
+  type SchedulerHandle = { stop: () => Promise<void>; start: () => void } | null;
+  const scheduler = null as SchedulerHandle;
+
+  scheduler?.start();
+  healthLogger();
+
+  const { db } = await import('./models/index.js');
+  registerShutdown(server, db, scheduler);
+
+  return server;
 };
 
 export default { createApp, startServer };

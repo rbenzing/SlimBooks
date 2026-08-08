@@ -1,39 +1,25 @@
 // SQLite database configuration for Slimbooks
 // Handles database connection setup and configuration
 
-import { join, dirname, resolve } from 'path';
+import { join } from 'path';
 import { existsSync, mkdirSync } from 'fs';
-import { fileURLToPath } from 'url';
-import type { DatabaseConfig, DatabaseOptions } from '../../types/database.types.js';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+import type { DatabaseConfig } from '../../types/database.types.js';
 
 /**
- * Get the database configuration based on environment
+ * Get the database configuration based on the runtime's resolved paths
  */
-export const getDatabaseConfig = (): DatabaseConfig => {
-  const projectRoot = join(__dirname, '..', '..', '..');
-  const dbPath = process.env.DB_PATH 
-    ? resolve(projectRoot, process.env.DB_PATH)
-    : join(projectRoot, 'data', 'slimbooks.db');
-  
-  // Ensure data directory exists
-  const dataDir = dirname(dbPath);
-  if (!existsSync(dataDir)) {
-    mkdirSync(dataDir, { recursive: true });
+export const getDatabaseConfig = (paths: { dataDir: string; dbFile: string }): DatabaseConfig => {
+  if (!existsSync(paths.dataDir)) {
+    mkdirSync(paths.dataDir, { recursive: true });
   }
-  
-  const options: DatabaseOptions = {
-    // Enable verbose logging in development
-    verbose: process.env.NODE_ENV === 'development' ? console.log : undefined,
-    timeout: parseInt(process.env.DB_TIMEOUT || '30000'),
-    fileMustExist: false
-  };
-  
+
   return {
-    path: dbPath,
-    options
+    path: paths.dbFile,
+    options: {
+      verbose: process.env.NODE_ENV === 'development' ? console.log : undefined,
+      timeout: 30_000,
+      fileMustExist: false
+    }
   };
 };
 
@@ -89,12 +75,10 @@ export interface BackupConfig {
   schedule: string; // cron expression
 }
 
-export const getBackupConfig = (): BackupConfig => {
-  const projectRoot = join(__dirname, '..', '..', '..');
-  
+export const getBackupConfig = (dataDir: string): BackupConfig => {
   return {
     enabled: process.env.BACKUP_ENABLED === 'true',
-    directory: process.env.BACKUP_DIR || join(projectRoot, 'data', 'backups'),
+    directory: process.env.BACKUP_DIR || join(dataDir, 'backups'),
     retention: parseInt(process.env.BACKUP_RETENTION || '30'),
     schedule: process.env.BACKUP_SCHEDULE || '0 2 * * *' // Daily at 2 AM
   };

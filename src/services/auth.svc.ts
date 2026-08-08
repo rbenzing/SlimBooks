@@ -4,8 +4,7 @@
 
 // REMOVED: import { userOperations } from '@/lib/database';
 // Database operations should be done via backend API, not direct DB access
-import { AuthUtils } from '@/utils/api';
-import { envConfig } from '@/lib/env-config';
+import { AuthUtils, API_BASE } from '@/utils/api';
 import { 
   type User, 
   type LoginCredentials, 
@@ -47,7 +46,7 @@ export class AuthService {
       }
 
       // Call backend registration API
-      const response = await fetch(`${envConfig.API_URL}/api/auth/register`, {
+      const response = await fetch(`${API_BASE}/auth/register`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -85,7 +84,7 @@ export class AuthService {
   // User login
   async login(credentials: LoginCredentials & { rememberMe?: boolean }): Promise<AuthResponse> {
     try {
-      const response = await fetch(`${envConfig.API_URL}/api/auth/login`, {
+      const response = await fetch(`${API_BASE}/auth/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -161,7 +160,7 @@ export class AuthService {
   async verifyToken(token: string): Promise<User | null> {
     try {
       // Make a simple authenticated API call to verify the token
-      const response = await fetch(`${envConfig.API_URL}/api/auth/profile`, {
+      const response = await fetch(`${API_BASE}/auth/profile`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,

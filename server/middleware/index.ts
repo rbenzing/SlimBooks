@@ -35,7 +35,7 @@ export {
   asyncHandler,
   notFoundHandler,
   timeoutHandler,
-  gracefulShutdown
+  registerShutdown
 } from './errorHandler.js';
 
 // Logging middleware

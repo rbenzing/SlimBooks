@@ -1,9 +1,8 @@
 // PDF Service for client-side PDF operations
 // Handles PDF generation requests to the server
 
-import { envConfig } from '@/lib/env-config';
 import { type PDFGenerationOptions } from '@/types';
-import { getToken } from '@/utils/api';
+import { getToken, API_BASE } from '@/utils/api';
 
 // PDFGenerationOptions moved to @/types/common.types.ts
 
@@ -11,7 +10,7 @@ class PDFService {
   private baseUrl: string;
 
   constructor() {
-    this.baseUrl = `${envConfig.API_URL}/api/pdf`;
+    this.baseUrl = `${API_BASE}/pdf`;
   }
 
   /**

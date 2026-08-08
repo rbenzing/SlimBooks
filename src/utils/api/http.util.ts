@@ -13,12 +13,15 @@ class ApiError extends Error {
   }
 }
 
-const getBaseUrl = (): string => {
-  if (typeof window !== 'undefined') {
-    return window.location.origin;
-  }
-  return process.env.REACT_APP_API_URL || 'http://localhost:3002';
-};
+/**
+ * The API is always same-origin: one process serves both the SPA and the API,
+ * on every supported host. A relative base is therefore correct everywhere, and
+ * it is the only form that survives one bundle being deployed to four hosts.
+ */
+export const API_BASE = '/api';
+
+const getBaseUrl = (): string =>
+  typeof window !== 'undefined' ? window.location.origin : '';
 
 /** Reads the server's error message out of a failed response body. */
 const errorMessageFor = async (response: Response): Promise<string> => {

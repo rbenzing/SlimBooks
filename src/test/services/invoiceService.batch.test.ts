@@ -18,7 +18,7 @@ const { authenticatedFetch, getToken } = vi.hoisted(() => ({
 }));
 const { sendEmail } = vi.hoisted(() => ({ sendEmail: vi.fn() }));
 
-vi.mock('@/utils/api', () => ({ authenticatedFetch, getToken }));
+vi.mock('@/utils/api', () => ({ authenticatedFetch, getToken, API_BASE: '/api' }));
 vi.mock('@/services/email.svc', () => ({
   EmailService: { getInstance: () => ({ sendEmail }) }
 }));

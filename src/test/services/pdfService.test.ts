@@ -11,8 +11,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 const { getToken } = vi.hoisted(() => ({ getToken: vi.fn(() => 'test-token') }));
 
-vi.mock('@/lib/env-config', () => ({ envConfig: { API_URL: 'http://api.test' } }));
-vi.mock('@/utils/api', () => ({ getToken }));
+vi.mock('@/utils/api', () => ({ getToken, API_BASE: '/api' }));
 
 import { pdfService } from '@/services/pdf.svc';
 
@@ -54,7 +53,7 @@ describe('generateInvoicePDF', () => {
   it('requests the authenticated download route', async () => {
     await pdfService.generateInvoicePDF(7);
 
-    expect(lastCall()[0]).toBe('http://api.test/api/pdf/invoice/7/download');
+    expect(lastCall()[0]).toBe('/api/pdf/invoice/7/download');
     expect(headersOf()).toMatchObject({ Authorization: 'Bearer test-token' });
   });
 
@@ -120,7 +119,7 @@ describe('generatePublicInvoicePDF', () => {
     // The public route is reached by people who are not signed in.
     await pdfService.generatePublicInvoicePDF(7, 'share-token');
 
-    expect(lastCall()[0]).toBe('http://api.test/api/pdf/invoice/7?token=share-token');
+    expect(lastCall()[0]).toBe('/api/pdf/invoice/7?token=share-token');
     expect(headersOf()).not.toHaveProperty('Authorization');
   });
 
@@ -164,7 +163,7 @@ describe('generatePagePDF', () => {
     await pdfService.generatePagePDF('http://app.test/reports/pl', 'Profit-Loss.pdf');
 
     const [url, init] = lastCall();
-    expect(url).toBe('http://api.test/api/pdf/page');
+    expect(url).toBe('/api/pdf/page');
     expect(init?.method).toBe('POST');
     expect(JSON.parse(init?.body as string))
       .toMatchObject({ url: 'http://app.test/reports/pl', filename: 'Profit-Loss.pdf' });
@@ -324,7 +323,7 @@ describe('generatePublicInvoiceToken', () => {
     } as unknown as Response);
 
     await expect(pdfService.generatePublicInvoiceToken(7)).resolves.toBe('minted');
-    expect(lastCall()[0]).toBe('http://api.test/api/invoices/7/public-token');
+    expect(lastCall()[0]).toBe('/api/invoices/7/public-token');
     expect(lastCall()[1]?.method).toBe('POST');
   });
 
@@ -342,7 +341,7 @@ describe('getServiceStatus', () => {
     } as unknown as Response);
 
     await expect(pdfService.getServiceStatus()).resolves.toMatchObject({ status: 'ready' });
-    expect(lastCall()[0]).toBe('http://api.test/api/pdf/status');
+    expect(lastCall()[0]).toBe('/api/pdf/status');
   });
 
   it('raises when the status endpoint fails', async () => {

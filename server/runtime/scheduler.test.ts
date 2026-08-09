@@ -26,13 +26,13 @@ const createTestDb = (): IDatabase => {
   `);
 
   return {
-    executeQuery: (query: string, params: unknown[] = []) => {
+    executeQuery: async (query: string, params: unknown[] = []) => {
       const info = raw.prepare(query).run(...(params as never[]));
       return { changes: info.changes, lastInsertRowid: Number(info.lastInsertRowid) };
     },
-    getOne: <T>(query: string, params: unknown[] = []) =>
+    getOne: async <T>(query: string, params: unknown[] = []) =>
       (raw.prepare(query).get(...(params as never[])) ?? null) as T | null,
-    getMany: <T>(query: string, params: unknown[] = []) =>
+    getMany: async <T>(query: string, params: unknown[] = []) =>
       raw.prepare(query).all(...(params as never[])) as T[]
   } as unknown as IDatabase;
 };
@@ -48,47 +48,47 @@ beforeEach(() => {
 });
 
 describe('acquireLease', () => {
-  it('grants an unheld lease', () => {
-    expect(acquireLease(db, 'recurring', 'owner-a', 3_600_000, T0)).toBe(true);
+  it('grants an unheld lease', async () => {
+    expect(await acquireLease(db, 'recurring', 'owner-a', 3_600_000, T0)).toBe(true);
   });
 
-  it('refuses a lease another owner already holds', () => {
-    acquireLease(db, 'recurring', 'owner-a', 3_600_000, T0);
+  it('refuses a lease another owner already holds', async () => {
+    await acquireLease(db, 'recurring', 'owner-a', 3_600_000, T0);
 
-    expect(acquireLease(db, 'recurring', 'owner-b', 3_600_000, T_LATER)).toBe(false);
+    expect(await acquireLease(db, 'recurring', 'owner-b', 3_600_000, T_LATER)).toBe(false);
   });
 
-  it('reclaims a lease whose holder died without releasing it', () => {
-    acquireLease(db, 'recurring', 'owner-a', 3_600_000, T0);
+  it('reclaims a lease whose holder died without releasing it', async () => {
+    await acquireLease(db, 'recurring', 'owner-a', 3_600_000, T0);
 
-    expect(acquireLease(db, 'recurring', 'owner-b', 3_600_000, T_AFTER_EXPIRY)).toBe(true);
+    expect(await acquireLease(db, 'recurring', 'owner-b', 3_600_000, T_AFTER_EXPIRY)).toBe(true);
   });
 
-  it('lets the same owner renew its own lease', () => {
-    acquireLease(db, 'recurring', 'owner-a', 3_600_000, T0);
+  it('lets the same owner renew its own lease', async () => {
+    await acquireLease(db, 'recurring', 'owner-a', 3_600_000, T0);
 
-    expect(acquireLease(db, 'recurring', 'owner-a', 3_600_000, T_LATER)).toBe(true);
+    expect(await acquireLease(db, 'recurring', 'owner-a', 3_600_000, T_LATER)).toBe(true);
   });
 
-  it('keeps leases for different jobs independent', () => {
-    acquireLease(db, 'recurring', 'owner-a', 3_600_000, T0);
+  it('keeps leases for different jobs independent', async () => {
+    await acquireLease(db, 'recurring', 'owner-a', 3_600_000, T0);
 
-    expect(acquireLease(db, 'backup', 'owner-b', 3_600_000, T0)).toBe(true);
+    expect(await acquireLease(db, 'backup', 'owner-b', 3_600_000, T0)).toBe(true);
   });
 });
 
 describe('releaseLease', () => {
-  it('frees the lease for another owner immediately', () => {
-    acquireLease(db, 'recurring', 'owner-a', 3_600_000, T0);
-    releaseLease(db, 'recurring', 'owner-a');
+  it('frees the lease for another owner immediately', async () => {
+    await acquireLease(db, 'recurring', 'owner-a', 3_600_000, T0);
+    await releaseLease(db, 'recurring', 'owner-a');
 
-    expect(acquireLease(db, 'recurring', 'owner-b', 3_600_000, T_LATER)).toBe(true);
+    expect(await acquireLease(db, 'recurring', 'owner-b', 3_600_000, T_LATER)).toBe(true);
   });
 
-  it('ignores a release from an owner that does not hold the lease', () => {
-    acquireLease(db, 'recurring', 'owner-a', 3_600_000, T0);
-    releaseLease(db, 'recurring', 'owner-b');
+  it('ignores a release from an owner that does not hold the lease', async () => {
+    await acquireLease(db, 'recurring', 'owner-a', 3_600_000, T0);
+    await releaseLease(db, 'recurring', 'owner-b');
 
-    expect(acquireLease(db, 'recurring', 'owner-c', 3_600_000, T_LATER)).toBe(false);
+    expect(await acquireLease(db, 'recurring', 'owner-c', 3_600_000, T_LATER)).toBe(false);
   });
 });

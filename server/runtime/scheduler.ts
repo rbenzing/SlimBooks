@@ -39,19 +39,19 @@ const plusMs = (iso: string, milliseconds: number): string =>
  * Expiry is what makes this ephemeral-safe: a SIGKILLed process cannot release
  * its claim, so the claim must lapse on its own.
  */
-export const acquireLease = (
+export const acquireLease = async (
   db: IDatabase,
   jobName: string,
   owner: string,
   ttlMs: number,
   now: string
-): boolean => {
+): Promise<boolean> => {
   const expiresAt = plusMs(now, ttlMs);
 
   // One statement, so two instances racing cannot both observe "unheld".
   // SQLite serialises writers, and the WHERE clause on the conflict path only
   // matches a lease that has lapsed or that this owner already holds.
-  const result = db.executeQuery(
+  const result = await db.executeQuery(
     `INSERT INTO scheduler_leases (job_name, owner, acquired_at, expires_at)
      VALUES (?, ?, ?, ?)
      ON CONFLICT (job_name) DO UPDATE SET
@@ -66,8 +66,12 @@ export const acquireLease = (
 };
 
 /** Release a claim early. A release from a non-holder is ignored. */
-export const releaseLease = (db: IDatabase, jobName: string, owner: string): void => {
-  db.executeQuery('DELETE FROM scheduler_leases WHERE job_name = ? AND owner = ?', [
+export const releaseLease = async (
+  db: IDatabase,
+  jobName: string,
+  owner: string
+): Promise<void> => {
+  await db.executeQuery('DELETE FROM scheduler_leases WHERE job_name = ? AND owner = ?', [
     jobName,
     owner
   ]);
@@ -90,7 +94,7 @@ export const createScheduler = (
 
       const now = new Date().toISOString();
 
-      if (!acquireLease(db, job.name, owner, options.leaseTtlMs, now)) {
+      if (!(await acquireLease(db, job.name, owner, options.leaseTtlMs, now))) {
         continue;
       }
 
@@ -99,7 +103,7 @@ export const createScheduler = (
       } catch (error) {
         console.error(`Scheduled job "${job.name}" failed:`, error);
       } finally {
-        releaseLease(db, job.name, owner);
+        await releaseLease(db, job.name, owner);
       }
     }
   };

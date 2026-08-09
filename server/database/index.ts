@@ -8,12 +8,27 @@ import { initializeAllSeeds } from './seeds/initial.seed.js';
 import { getDatabaseConfig } from './config/sqlite.config.js';
 import { runMigrations } from './migrations/index.js';
 import { claimExclusive } from './claim.util.js';
+import { MySQLDatabase } from './MySQLDatabase.js';
+import { buildMysqlBaseline } from './baseline.js';
 import type { IDatabase } from '../types/database.types.js';
+import type { DatabaseSettings } from '../runtime/database.js';
 
 /**
- * Main database instance (singleton)
+ * The active database.
+ *
+ * Mutable because the driver is not known until the runtime resolves, and
+ * exported as a live binding rather than a value so the modules that import it
+ * observe the swap. Defaults to the SQLite singleton, which is what every
+ * existing install and every test gets without configuring anything.
+ *
+ * Anything capturing this at module load — a class field initialised from it,
+ * for instance — pins whichever object existed before the driver was chosen.
+ * Read it at call time, or go through `activeDatabase()`.
  */
-export const db: IDatabase = database;
+export let db: IDatabase = database;
+
+/** The active database, read at call time. Safe to hold a reference to. */
+export const activeDatabase = (): IDatabase => db;
 
 /**
  * Get a fresh database instance (for testing or specific use cases)
@@ -94,11 +109,17 @@ const releaseBootLock = async (owner: string): Promise<void> => {
  * This includes creating tables and seeding initial data
  */
 export const initializeDatabase = async (
-  paths: { dataDir: string; dbFile: string },
+  runtime: { paths: { dataDir: string; dbFile: string }; database: DatabaseSettings },
   includeSampleData = false
 ): Promise<void> => {
-  if (!db.isConnected()) {
-    await db.connect(getDatabaseConfig(paths));
+  if (runtime.database.driver === 'mysql') {
+    // Replaces the SQLite singleton for the life of the process. Every importer
+    // of `db` sees the swap because it is a live binding.
+    const mysql = new MySQLDatabase();
+    await mysql.connect({ driver: 'mysql', settings: runtime.database });
+    db = mysql;
+  } else if (!db.isConnected()) {
+    await db.connect(getDatabaseConfig(runtime.paths));
   }
 
   // Boot lock, so two instances starting against a shared volume do not race
@@ -117,8 +138,15 @@ export const initializeDatabase = async (
   const holder = await acquireBootLock(owner);
 
   try {
-    await createTables(db);
-    await runMigrations(db);
+    if (runtime.database.driver === 'mysql') {
+      // MySQL never replays SQLite's history — the migrations are PRAGMA
+      // archaeology. See baseline.ts.
+      await buildMysqlBaseline(db);
+    } else {
+      await createTables(db);
+      await runMigrations(db);
+    }
+
     await initializeAllSeeds(db, includeSampleData);
   } finally {
     if (holder) await releaseBootLock(owner);

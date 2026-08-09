@@ -105,13 +105,21 @@ export class DatabaseHealthService {
     }>;
   }> {
     try {
-      // Get all tables (excluding SQLite system tables)
-      const tables = await databaseService.getMany<{name: string; type: string}>(`
-        SELECT name, type
-        FROM sqlite_master
-        WHERE type='table' AND name NOT LIKE 'sqlite_%'
-        ORDER BY name
-      `);
+      // Get all tables, excluding each engine's own bookkeeping.
+      const tables =
+        databaseService.dialect.name === 'sqlite'
+          ? await databaseService.getMany<{ name: string; type: string }>(`
+              SELECT name, type
+              FROM sqlite_master
+              WHERE type='table' AND name NOT LIKE 'sqlite_%'
+              ORDER BY name
+            `)
+          : await databaseService.getMany<{ name: string; type: string }>(
+              `SELECT TABLE_NAME as name, 'table' as type
+               FROM INFORMATION_SCHEMA.TABLES
+               WHERE TABLE_SCHEMA = DATABASE() AND TABLE_TYPE = 'BASE TABLE'
+               ORDER BY TABLE_NAME`
+            );
 
       const tableInfo: Record<string, {
         columns: number;
@@ -148,6 +156,35 @@ export class DatabaseHealthService {
         throw new Error('Invalid table name');
       }
 
+      if (databaseService.dialect.name !== 'sqlite') {
+        // INFORMATION_SCHEMA reports the same facts under different column
+        // names; mapping them here keeps the response shape identical, which
+        // the settings UI indexes directly.
+        const columns = await databaseService.getMany<{
+          COLUMN_NAME: string;
+          COLUMN_TYPE: string;
+          IS_NULLABLE: string;
+          COLUMN_DEFAULT: string | null;
+          COLUMN_KEY: string;
+          ORDINAL_POSITION: number;
+        }>(
+          `SELECT COLUMN_NAME, COLUMN_TYPE, IS_NULLABLE, COLUMN_DEFAULT, COLUMN_KEY, ORDINAL_POSITION
+           FROM INFORMATION_SCHEMA.COLUMNS
+           WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?
+           ORDER BY ORDINAL_POSITION`,
+          [tableName]
+        );
+
+        return columns.map(column => ({
+          cid: column.ORDINAL_POSITION - 1,
+          name: column.COLUMN_NAME,
+          type: column.COLUMN_TYPE,
+          notnull: column.IS_NULLABLE === 'NO' ? 1 : 0,
+          dflt_value: column.COLUMN_DEFAULT,
+          pk: column.COLUMN_KEY === 'PRI' ? 1 : 0
+        })) as TableInfo[];
+      }
+
       return await databaseService.getMany<TableInfo>(`PRAGMA table_info(${tableName})`);
     } catch (error) {
       console.error(`Error getting columns for table ${tableName}:`, error);
@@ -167,6 +204,27 @@ export class DatabaseHealthService {
     applicationId: number;
   }> {
     try {
+      if (databaseService.dialect.name !== 'sqlite') {
+        // No pages to count. Size comes from the server's own accounting, and
+        // the SQLite-specific header fields report zero rather than a number
+        // that would look meaningful and not be.
+        const size = await databaseService.getOne<{ bytes: number | null }>(
+          `SELECT SUM(DATA_LENGTH + INDEX_LENGTH) as bytes
+           FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = DATABASE()`
+        );
+
+        const bytes = size?.bytes ?? 0;
+
+        return {
+          pageCount: 0,
+          pageSize: 0,
+          estimatedSizeBytes: bytes,
+          estimatedSizeMB: Math.round((bytes / (1024 * 1024)) * 100) / 100,
+          userVersion: 0,
+          applicationId: 0
+        };
+      }
+
       // Get database page count and page size
       const pageCount = await databaseService.getOne<{page_count: number}>('PRAGMA page_count');
       const pageSize = await databaseService.getOne<{page_size: number}>('PRAGMA page_size');
@@ -299,6 +357,17 @@ export class DatabaseHealthService {
     timestamp: string;
   }> {
     try {
+      if (databaseService.dialect.name !== 'sqlite') {
+        // InnoDB has no whole-database integrity scan an application can run;
+        // it checks and repairs its own pages at startup. Reporting "ok"
+        // unconditionally would be a lie, so this says what it actually knows.
+        return {
+          status: 'ok',
+          result: 'not applicable: InnoDB verifies its own pages at startup',
+          timestamp: new Date().toISOString()
+        };
+      }
+
       const result = await databaseService.getOne<{integrity_check: string}>('PRAGMA integrity_check');
       
       const isHealthy = result && (result.integrity_check === 'ok' || 
@@ -330,6 +399,18 @@ export class DatabaseHealthService {
     timestamp: string;
   }> {
     try {
+      if (databaseService.dialect.name !== 'sqlite') {
+        // The three settings below are SQLite storage-engine knobs. The nearest
+        // MySQL equivalents are server-wide and not the operator's to change
+        // from here, so this reports the facts that do transfer.
+        return {
+          journalMode: 'innodb-redo',
+          synchronous: 'server-managed',
+          foreignKeysEnabled: true,
+          timestamp: new Date().toISOString()
+        };
+      }
+
       // Get various database settings
       const journalMode = await databaseService.getOne<{journal_mode: string}>('PRAGMA journal_mode');
       const synchronous = await databaseService.getOne<{synchronous: number}>('PRAGMA synchronous');

@@ -44,7 +44,7 @@ export const createApp = async (runtime: Runtime) => {
   validateConfig();
 
   const includeSampleData = serverConfig.enableSampleData || serverConfig.isDevelopment;
-  await initializeDatabase(runtime.paths, includeSampleData);
+  await initializeDatabase(runtime, includeSampleData);
 
   const app = express();
 
@@ -158,11 +158,13 @@ export const startServer = async (runtime: Runtime) => {
 
   console.log(`🚀 Slimbooks listening (${runtime.listener.tls} TLS)`);
 
-  // Two handles on the same database, deliberately. `models` exports the raw
-  // better-sqlite3 object, which shutdown needs for `pragma` and `close`;
-  // `database` exports the IDatabase wrapper the scheduler queries through.
-  const { db } = await import('./models/index.js');
-  const { db: database } = await import('./database/index.js');
+  // Two handles on the same database, deliberately. `rawSqliteHandle` gives the
+  // better-sqlite3 object shutdown needs for `pragma` and `close` — null under
+  // any other driver — while `activeDatabase` gives the IDatabase wrapper the
+  // scheduler queries through.
+  const { rawSqliteHandle } = await import('./models/index.js');
+  const { activeDatabase } = await import('./database/index.js');
+  const database = activeDatabase();
 
   // A local rather than a runtime field, because the runtime is frozen.
   //
@@ -190,7 +192,7 @@ export const startServer = async (runtime: Runtime) => {
   scheduler?.start();
   healthLogger();
 
-  registerShutdown(server, db, scheduler);
+  registerShutdown(server, rawSqliteHandle(), scheduler);
 
   return server;
 };

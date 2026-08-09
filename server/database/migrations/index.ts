@@ -85,11 +85,16 @@ const migrations: Migration[] = [
  * Create migrations tracking table if it doesn't exist
  */
 const createMigrationsTable = async (db: IDatabase): Promise<void> => {
+  // VARCHAR rather than TEXT, because MySQL cannot make a TEXT column a primary
+  // key without a prefix length; SQLite treats VARCHAR as TEXT affinity, so one
+  // statement serves both. The default comes from the dialect for the same
+  // reason. The schema-drift snapshot excludes this table, so the change does
+  // not perturb it.
   await db.executeQuery(`
     CREATE TABLE IF NOT EXISTS migrations (
-      id TEXT PRIMARY KEY,
-      name TEXT NOT NULL,
-      applied_at TEXT NOT NULL DEFAULT (datetime('now'))
+      id VARCHAR(64) PRIMARY KEY,
+      name VARCHAR(255) NOT NULL,
+      applied_at TEXT NOT NULL DEFAULT (${db.dialect.now()})
     )
   `);
 };
@@ -146,6 +151,24 @@ export const runMigrations = async (db: IDatabase): Promise<void> => {
   } catch (error) {
     console.error('❌ Migration failed:', error);
     throw error;
+  }
+};
+
+/**
+ * Record every migration as applied without executing any of them.
+ *
+ * Used by the MySQL baseline, which builds the fully-migrated shape directly
+ * from tables.schema.ts. It writes through the same INSERT path a real run
+ * uses, so a migration added later is picked up normally on both backends —
+ * this marks history as done, it does not opt the database out of migrations.
+ */
+export const markAllMigrationsApplied = async (db: IDatabase): Promise<void> => {
+  await createMigrationsTable(db);
+
+  for (const migration of migrations) {
+    if (!(await isMigrationApplied(db, migration.id))) {
+      await markMigrationApplied(db, migration);
+    }
   }
 };
 

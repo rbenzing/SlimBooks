@@ -17,7 +17,7 @@ import type { IDatabase } from '../types/database.types.js';
 import { resolveFeatures, type FeatureProbes } from './features.js';
 import { resolveListener } from './listener.js';
 import { resolvePaths } from './paths.js';
-import { resolveDatabase, type DatabaseDriver } from './database.js';
+import { resolveDatabase, type DatabaseDriver, type DatabaseSettings } from './database.js';
 import { LocalDiskStorage } from './storage.js';
 import type { Runtime, RuntimePaths } from './types.js';
 
@@ -91,7 +91,11 @@ export const assertNoLegacyData = (
 };
 
 /** Probe each feature's dependency on this host. */
-const probeFeatures = (env: RawEnv, overrides: Partial<FeatureProbes>): FeatureProbes => {
+const probeFeatures = (
+  env: RawEnv,
+  database: DatabaseSettings,
+  overrides: Partial<FeatureProbes>
+): FeatureProbes => {
   const defaults: FeatureProbes = {
     // PDF availability can only be known by trying to load the optional
     // puppeteer dependency, which is async. The caller probes it and passes the
@@ -103,7 +107,11 @@ const probeFeatures = (env: RawEnv, overrides: Partial<FeatureProbes>): FeatureP
     oauth: Boolean(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET),
     scheduler: true,
     uploads: true,
-    dbAdmin: true,
+    // The database-admin endpoints download and replace the SQLite file itself.
+    // There is no such file under any other driver, so `auto` disables them and
+    // FEATURE_DB_ADMIN=on fails the boot rather than serving endpoints that
+    // cannot work.
+    dbAdmin: database.driver === 'sqlite',
     signup: true,
     debug: false
   };
@@ -167,7 +175,7 @@ export const resolveRuntime = (
   const paths = resolvePaths(env, moduleDir);
   const database = resolveDatabase(env, paths);
   const listener = resolveListener(env, paths.root);
-  const features = resolveFeatures(env, probeFeatures(env, probes));
+  const features = resolveFeatures(env, probeFeatures(env, database, probes));
 
   const publicUrl = readRequired(env, 'CLIENT_URL').replace(/\/+$/, '');
 

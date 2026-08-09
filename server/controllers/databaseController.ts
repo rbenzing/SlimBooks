@@ -24,9 +24,32 @@ const upload = multer({
 });
 
 // Export database
+/**
+ * Both endpoints below move the SQLite file itself — copying it, checkpointing
+ * its WAL, replacing it wholesale. None of that has a MySQL counterpart, and a
+ * handler that half-works is worse than one that says so: an operator who
+ * downloads a "backup" that is not a backup finds out at restore time.
+ *
+ * 501 rather than 404: the route exists, the operation does not apply here.
+ */
+const refuseUnlessSqlite = (runtime: Runtime, res: Response, action: string): boolean => {
+  if (runtime.database.driver === 'sqlite') return true;
+
+  res.status(501).json({
+    success: false,
+    error:
+      `Database ${action} moves the SQLite file, which the ${runtime.database.driver} driver ` +
+      'does not have. Use mysqldump, or npm run db:export / db:import.'
+  });
+
+  return false;
+};
+
 export const exportDatabase = async (req: Request, res: Response): Promise<void> => {
   try {
     const runtime = req.app.locals.runtime as Runtime;
+    if (!refuseUnlessSqlite(runtime, res, 'download')) return;
+
     const dbPath = runtime.paths.dbFile;
 
     if (!existsSync(dbPath)) {
@@ -84,6 +107,9 @@ export const importDatabase = [
   upload.single('database'),
   async (req: Request, res: Response): Promise<void> => {
     try {
+      const runtime = req.app.locals.runtime as Runtime;
+      if (!refuseUnlessSqlite(runtime, res, 'upload')) return;
+
       if (!req.file) {
         res.status(400).json({
           success: false,
@@ -92,7 +118,6 @@ export const importDatabase = [
         return;
       }
 
-      const runtime = req.app.locals.runtime as Runtime;
       const uploadedFilePath = req.file.path;
       const dbPath = runtime.paths.dbFile;
 
@@ -129,7 +154,7 @@ export const importDatabase = [
 
         // Reconnect to the new database
         console.log('Reconnecting to database...');
-        await initializeDatabase(runtime.paths);
+        await initializeDatabase(runtime);
 
         // Checkpoint the new database to ensure proper WAL initialization
         try {
@@ -158,7 +183,7 @@ export const importDatabase = [
         // Always try to reconnect the database, even if import failed
         try {
           console.log('Reconnecting to database after import failure...');
-          await initializeDatabase(runtime.paths);
+          await initializeDatabase(runtime);
         } catch (reconnectError) {
           console.error('Failed to reconnect to database:', reconnectError);
         }

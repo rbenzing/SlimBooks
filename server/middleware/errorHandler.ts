@@ -329,7 +329,8 @@ export const timeoutHandler = (timeout = 30000) => {
  */
 export const registerShutdown = (
   server: Server,
-  db: Database,
+  /** Null when the active driver is not SQLite; there is no WAL to fold back. */
+  db: Database | null,
   scheduler: { stop: () => Promise<void> } | null
 ): void => {
   let shuttingDown = false;
@@ -352,9 +353,12 @@ export const registerShutdown = (
 
         // Fold the WAL back into the database so the next boot has nothing to
         // recover. Best effort: a killed process skips this and SQLite recovers
-        // on its own.
-        db.pragma('wal_checkpoint(TRUNCATE)');
-        db.close();
+        // on its own. Under MySQL there is no handle and nothing to fold — the
+        // pool is closed by the process ending.
+        if (db !== null) {
+          db.pragma('wal_checkpoint(TRUNCATE)');
+          db.close();
+        }
       } catch (error) {
         console.error('Error during shutdown:', error);
       }

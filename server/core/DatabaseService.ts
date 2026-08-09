@@ -3,7 +3,7 @@
 
 import type { IDatabase, QueryOptions, ServiceOptions } from '../types/database.types.js';
 import type { SqlDialect } from '../database/dialect.types.js';
-import { db } from '../database/index.js';
+import { activeDatabase } from '../database/index.js';
 import { validateTableName } from './TableValidator.js';
 
 /**
@@ -12,10 +12,25 @@ import { validateTableName } from './TableValidator.js';
  * This replaces the old Database.ts core service
  */
 export class DatabaseService {
-  protected database: IDatabase;
+  private readonly injected: IDatabase | null;
 
-  constructor(dbInstance: IDatabase = db) {
-    this.database = dbInstance;
+  /**
+   * @param dbInstance A specific backend, or omitted for whichever the runtime
+   *                   selected.
+   *
+   * Omitting it must NOT capture the current database here: this module is
+   * imported, and the shared `databaseService` below constructed, before
+   * initializeDatabase has chosen a driver. Capturing would pin the unconnected
+   * SQLite singleton and every query under DB_DRIVER=mysql would fail with
+   * "Database not connected".
+   */
+  constructor(dbInstance?: IDatabase) {
+    this.injected = dbInstance ?? null;
+  }
+
+  /** The backend this service talks to, resolved at call time. */
+  protected get database(): IDatabase {
+    return this.injected ?? activeDatabase();
   }
 
   /**

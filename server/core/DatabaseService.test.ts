@@ -24,3 +24,47 @@ describe('DatabaseService', () => {
     expect(new DatabaseService(fake).dialect.name).toBe('mysql');
   });
 });
+
+describe('updateRecord', () => {
+  const recorder = () => {
+    const statements: string[] = [];
+
+    const db = {
+      dialect: mysqlDialect,
+      executeQuery: async (sql: string) => {
+        statements.push(sql);
+        return { changes: 1, lastInsertRowid: 1 };
+      }
+    } as unknown as IDatabase;
+
+    return { service: new DatabaseService(db), statements };
+  };
+
+  it('always writes updated_at itself rather than leaving it to a trigger', async () => {
+    // SQLite has an AFTER UPDATE trigger maintaining expenses.updated_at.
+    // MySQL forbids a trigger that modifies "a table that is already being used
+    // by the statement that invoked" it, so that trigger cannot exist there and
+    // the two backends only agree if the application writes the column.
+    const { service, statements } = recorder();
+
+    await service.updateRecord('expenses', 1, { amount: 50 });
+
+    expect(statements[0]).toMatch(/`updated_at` = \?/);
+  });
+
+  it('writes updated_at even when the caller supplies its own value', async () => {
+    const { service, statements } = recorder();
+
+    await service.updateRecord('clients', 1, { name: 'Acme' });
+
+    expect(statements[0]).toMatch(/`updated_at` = \?/);
+  });
+
+  it('quotes every identifier, since a column may be a reserved word', async () => {
+    const { service, statements } = recorder();
+
+    await service.updateRecord('settings', 1, { key: 'a.b', value: 'x' });
+
+    expect(statements[0]).toContain('`key` = ?');
+  });
+});

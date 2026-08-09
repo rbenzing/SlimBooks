@@ -27,11 +27,22 @@ afterEach(async () => {
   rmSync(dataDir, { recursive: true, force: true });
 });
 
-const paths = () => ({ dataDir, dbFile: join(dataDir, 'test.db') });
+/**
+ * initializeDatabase takes the runtime rather than bare paths, because which
+ * backend to open is part of what the runtime resolves.
+ */
+const sqliteRuntime = () => {
+  const dbFile = join(dataDir, 'test.db');
+
+  return {
+    paths: { dataDir, dbFile },
+    database: { driver: 'sqlite' as const, file: dbFile, timeoutMs: 5000 }
+  };
+};
 
 describe('initializeDatabase', () => {
   it('builds a usable database from nothing', async () => {
-    await initializeDatabase(paths(), false);
+    await initializeDatabase(sqliteRuntime(), false);
 
     expect(await db.tableExists('invoices')).toBe(true);
     expect(await db.tableExists('clients')).toBe(true);
@@ -39,7 +50,7 @@ describe('initializeDatabase', () => {
   });
 
   it('records every migration as applied', async () => {
-    await initializeDatabase(paths(), false);
+    await initializeDatabase(sqliteRuntime(), false);
 
     const applied = await db.getMany<{ id: string }>('SELECT id FROM migrations ORDER BY id');
 
@@ -47,14 +58,14 @@ describe('initializeDatabase', () => {
   });
 
   it('creates the tables migrations add, not just those in the schema file', async () => {
-    await initializeDatabase(paths(), false);
+    await initializeDatabase(sqliteRuntime(), false);
 
     expect(await db.tableExists('scheduler_leases')).toBe(true);
     expect(await db.tableExists('stripe_events')).toBe(true);
   });
 
   it('applies the column migration 011 adds', async () => {
-    await initializeDatabase(paths(), false);
+    await initializeDatabase(sqliteRuntime(), false);
 
     const columns = await db.getMany<{ name: string }>('PRAGMA table_info(invoices)');
 
@@ -62,12 +73,12 @@ describe('initializeDatabase', () => {
   });
 
   it('is idempotent, so a restart re-runs it safely', async () => {
-    await initializeDatabase(paths(), false);
-    await expect(initializeDatabase(paths(), false)).resolves.toBeUndefined();
+    await initializeDatabase(sqliteRuntime(), false);
+    await expect(initializeDatabase(sqliteRuntime(), false)).resolves.toBeUndefined();
   });
 
   it('releases the boot lock, so the next start is not blocked', async () => {
-    await initializeDatabase(paths(), false);
+    await initializeDatabase(sqliteRuntime(), false);
 
     const held = await db.getMany('SELECT * FROM boot_locks');
     expect(held).toHaveLength(0);

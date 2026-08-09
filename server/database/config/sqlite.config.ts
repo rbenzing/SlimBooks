@@ -14,6 +14,7 @@ export const getDatabaseConfig = (paths: { dataDir: string; dbFile: string }): D
   }
 
   return {
+    driver: 'sqlite',
     path: paths.dbFile,
     options: {
       verbose: process.env.NODE_ENV === 'development' ? console.log : undefined,

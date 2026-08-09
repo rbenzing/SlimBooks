@@ -19,7 +19,7 @@ let db: SQLiteDatabase;
 
 beforeEach(async () => {
   db = new SQLiteDatabase();
-  await db.connect({ path: ':memory:', options: { fileMustExist: false, timeout: 5000 } });
+  await db.connect({ driver: 'sqlite', path: ':memory:', options: { fileMustExist: false, timeout: 5000 } });
   await db.executeQuery('CREATE TABLE t (id INTEGER PRIMARY KEY, name TEXT)');
 });
 

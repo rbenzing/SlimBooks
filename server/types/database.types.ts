@@ -1,15 +1,21 @@
 import type { SqlDialect } from '../database/dialect.types.js';
+import type { MysqlSettings } from '../runtime/database.js';
 
 // Database types for server use
 // Note: These types are duplicated from src/types/shared/database.types.ts
 // This is intentional to avoid cross-directory imports between client and server code
 // The server extends these types with additional database-specific interfaces
 
-// Database connection configuration
-export interface DatabaseConfig {
-  path: string;
-  options?: DatabaseOptions;
-}
+/**
+ * Connection settings for whichever backend is selected.
+ *
+ * A discriminated union rather than an optional-field bag, so a MySQL adapter
+ * cannot be handed a file path and a SQLite adapter cannot be handed a host —
+ * the mismatch is a compile error rather than a connection failure at boot.
+ */
+export type DatabaseConfig =
+  | { driver: 'sqlite'; path: string; options?: DatabaseOptions }
+  | { driver: 'mysql'; settings: MysqlSettings };
 
 export interface DatabaseOptions {
   readonly?: boolean;

@@ -113,7 +113,11 @@ describe('schema drift', () => {
     const { createTables } = await import('./schemas/tables.schema.js');
     const { runMigrations } = await import('./migrations/index.js');
 
-    await db.connect({ path: join(dataDir, 'drift.db'), options: { fileMustExist: false, timeout: 5000 } });
+    await db.connect({
+      driver: 'sqlite',
+      path: join(dataDir, 'drift.db'),
+      options: { fileMustExist: false, timeout: 5000 }
+    });
     await createTables(db);
 
     const before = await snapshot();

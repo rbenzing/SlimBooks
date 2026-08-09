@@ -33,6 +33,10 @@ export class SQLiteDatabase implements IDatabase {
    * Connect to the SQLite database
    */
   async connect(config: DatabaseConfig): Promise<void> {
+    if (config.driver !== 'sqlite') {
+      throw new Error(`SQLiteDatabase cannot connect with a ${config.driver} configuration.`);
+    }
+
     try {
       if (this._connected && this.db) {
         return; // Already connected

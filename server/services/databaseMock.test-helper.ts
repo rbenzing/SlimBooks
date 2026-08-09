@@ -7,6 +7,8 @@
 // have shipped bugs in this codebase.
 
 import { vi } from 'vitest';
+import type { SqlDialect } from '../database/dialect.types.js';
+import { sqliteDialect } from '../database/dialects/sqlite.dialect.js';
 
 export interface DbCall {
   sql: string;
@@ -25,6 +27,12 @@ export interface DatabaseMock {
   withTransaction: ReturnType<typeof vi.fn>;
   tableExists: ReturnType<typeof vi.fn>;
   deleteWithSetting: ReturnType<typeof vi.fn>;
+  /**
+   * The real dialect, not a stub. Services build statements from it, so the
+   * assertions about the SQL they produce are only meaningful if the mock
+   * spells things the way the backend does.
+   */
+  dialect: SqlDialect;
   /** Every executeQuery call, normalised for assertions. */
   queries: DbCall[];
   reset: () => void;
@@ -54,6 +62,7 @@ export const createDatabaseMock = (): DatabaseMock => {
     withTransaction: vi.fn(async (fn: () => Promise<unknown>) => await fn()),
     tableExists: vi.fn(async () => true),
     deleteWithSetting: vi.fn(async () => true),
+    dialect: sqliteDialect,
     queries,
     reset: () => {
       queries.length = 0;

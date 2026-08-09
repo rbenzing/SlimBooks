@@ -1,3 +1,5 @@
+import type { SqlDialect } from '../database/dialect.types.js';
+
 // Database types for server use
 // Note: These types are duplicated from src/types/shared/database.types.ts
 // This is intentional to avoid cross-directory imports between client and server code
@@ -53,6 +55,15 @@ export type TransactionCallback<T = unknown> = () => Promise<T>;
 
 // Abstract database interface
 export interface IDatabase {
+  /**
+   * How this backend spells the things the two dialects disagree about.
+   *
+   * On the interface rather than imported directly, so a caller holding an
+   * IDatabase always has the right spelling for the database it is actually
+   * talking to — including inside a test that swaps the implementation.
+   */
+  readonly dialect: SqlDialect;
+
   // Connection management
   connect(config: DatabaseConfig): Promise<void>;
   disconnect(): Promise<void>;

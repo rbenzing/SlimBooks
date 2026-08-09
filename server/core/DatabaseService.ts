@@ -2,6 +2,7 @@
 // Provides high-level database service operations built on the abstract database interface
 
 import type { IDatabase, QueryOptions, ServiceOptions } from '../types/database.types.js';
+import type { SqlDialect } from '../database/dialect.types.js';
 import { db } from '../database/index.js';
 import { validateTableName } from './TableValidator.js';
 
@@ -15,6 +16,17 @@ export class DatabaseService {
 
   constructor(dbInstance: IDatabase = db) {
     this.database = dbInstance;
+  }
+
+  /**
+   * The dialect of the underlying backend, for services that build SQL.
+   *
+   * Services reach it through the service they already hold rather than
+   * importing a dialect directly, so a service pointed at a different database
+   * builds statements for that database.
+   */
+  public get dialect(): SqlDialect {
+    return this.database.dialect;
   }
 
   /**

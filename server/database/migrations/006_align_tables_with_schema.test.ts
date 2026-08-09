@@ -15,12 +15,14 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import Database from 'better-sqlite3';
 import type { IDatabase } from '../../types/database.types.js';
 import { up } from './006_align_tables_with_schema.js';
+import { sqliteDialect } from '../dialects/sqlite.dialect.js';
 
 let raw: Database.Database;
 
 /** Minimal IDatabase surface backed by an in-memory SQLite database. */
 const adapt = (database: Database.Database): IDatabase =>
   ({
+    dialect: sqliteDialect,
     executeQuery: async (query: string, params: unknown[] = []) => {
       const info = database.prepare(query).run(...(params as never[]));
       return { changes: info.changes, lastInsertRowid: Number(info.lastInsertRowid) };

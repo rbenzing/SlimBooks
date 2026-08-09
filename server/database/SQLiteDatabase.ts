@@ -10,12 +10,16 @@ import type {
   QueryOptions,
   TransactionCallback
 } from '../types/database.types.js';
+import type { SqlDialect } from './dialect.types.js';
+import { sqliteDialect } from './dialects/sqlite.dialect.js';
 import { getSQLitePragmas } from './config/sqlite.config.js';
 
 /**
  * SQLite implementation of the abstract database interface
  */
 export class SQLiteDatabase implements IDatabase {
+  readonly dialect: SqlDialect = sqliteDialect;
+
   private db: Database.Database | null = null;
   private _connected = false;
   private queryCount = 0;

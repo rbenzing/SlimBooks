@@ -11,6 +11,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import Database from 'better-sqlite3';
 import type { IDatabase } from '../types/database.types.js';
 import { acquireLease, releaseLease } from './scheduler.js';
+import { sqliteDialect } from '../database/dialects/sqlite.dialect.js';
 
 /** Minimal IDatabase surface backed by an in-memory SQLite database. */
 const createTestDb = (): IDatabase => {
@@ -26,6 +27,9 @@ const createTestDb = (): IDatabase => {
   `);
 
   return {
+    // The real dialect: acquireLease builds its statement from it, so a stub
+    // would test a statement no backend ever runs.
+    dialect: sqliteDialect,
     executeQuery: async (query: string, params: unknown[] = []) => {
       const info = raw.prepare(query).run(...(params as never[]));
       return { changes: info.changes, lastInsertRowid: Number(info.lastInsertRowid) };

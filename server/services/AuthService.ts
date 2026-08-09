@@ -51,16 +51,16 @@ export class AuthService {
     }
 
     // Check if user already exists
-    if (databaseService.exists('users', 'email', email)) {
+    if (await databaseService.exists('users', 'email', email)) {
       throw new Error('User with this email already exists');
     }
 
     // Get next user ID from counter
-    const nextId = databaseService.getNextSequence('users');
-    
+    const nextId = await databaseService.getNextSequence('users');
+
     // Create user
     const now = new Date().toISOString();
-    databaseService.executeQuery(`
+    await databaseService.executeQuery(`
       INSERT INTO users (
         id, name, email, username, password_hash, role, email_verified,
         failed_login_attempts, created_at, updated_at
@@ -80,8 +80,8 @@ export class AuthService {
 
     if (success) {
       // Reset failed attempts on successful login
-      databaseService.executeQuery(`
-        UPDATE users 
+      await databaseService.executeQuery(`
+        UPDATE users
         SET failed_login_attempts = 0, account_locked_until = NULL, last_login = datetime('now'), updated_at = datetime('now')
         WHERE id = ?
       `, [userId]);
@@ -89,23 +89,23 @@ export class AuthService {
     }
 
     // Increment failed attempts
-    const user = databaseService.getOne<{failed_login_attempts: number}>(
-      'SELECT failed_login_attempts FROM users WHERE id = ?', 
+    const user = await databaseService.getOne<{failed_login_attempts: number}>(
+      'SELECT failed_login_attempts FROM users WHERE id = ?',
       [userId]
     );
     const newAttempts = (user?.failed_login_attempts || 0) + 1;
-    
+
     // Get current lockout settings
     const maxAttempts = await settingsService.getSecuritySetting('max_failed_login_attempts') as number;
     const lockoutDuration = await settingsService.getSecuritySetting('account_lockout_duration') as number;
-    
+
     let lockedUntil: string | null = null;
     if (newAttempts >= maxAttempts) {
       lockedUntil = new Date(Date.now() + lockoutDuration).toISOString();
     }
-    
-    databaseService.executeQuery(`
-      UPDATE users 
+
+    await databaseService.executeQuery(`
+      UPDATE users
       SET failed_login_attempts = ?, account_locked_until = ?, updated_at = datetime('now')
       WHERE id = ?
     `, [newAttempts, lockedUntil, userId]);
@@ -205,8 +205,8 @@ export class AuthService {
 
     // Check email uniqueness if email is being updated
     if (updateData.email) {
-      const existingUser = databaseService.getOne<{id: number}>(
-        'SELECT id FROM users WHERE email = ? AND id != ?', 
+      const existingUser = await databaseService.getOne<{id: number}>(
+        'SELECT id FROM users WHERE email = ? AND id != ?',
         [updateData.email, userId]
       );
       if (existingUser) {
@@ -242,10 +242,10 @@ export class AuthService {
     }
 
     // Don't allow deletion of the last admin
-    const adminCount = databaseService.getOne<{count: number}>(
+    const adminCount = await databaseService.getOne<{count: number}>(
       "SELECT COUNT(*) as count FROM users WHERE role = 'admin'"
     );
-    const userToDelete = databaseService.getOne<UserPublic>('SELECT * FROM users WHERE id = ?', [userId]);
+    const userToDelete = await databaseService.getOne<UserPublic>('SELECT * FROM users WHERE id = ?', [userId]);
     
     if (userToDelete?.role === 'admin' && (adminCount?.count || 0) <= 1) {
       throw new Error('Cannot delete the last administrator');
@@ -284,8 +284,8 @@ export class AuthService {
     }
 
     if (excludeUserId) {
-      const user = databaseService.getOne<{id: number}>(
-        'SELECT id FROM users WHERE email = ? AND id != ?', 
+      const user = await databaseService.getOne<{id: number}>(
+        'SELECT id FROM users WHERE email = ? AND id != ?',
         [email, excludeUserId]
       );
       return !!user;
@@ -337,7 +337,7 @@ export class AuthService {
       throw new Error('Valid user ID is required');
     }
 
-    const user = databaseService.getOne<{
+    const user = await databaseService.getOne<{
       last_login: string | null;
       failed_login_attempts: number;
       account_locked_until: string | null;

@@ -42,13 +42,13 @@ export class TokenService {
     const expiresAt = new Date(Date.now() + expiryMs).toISOString();
 
     // Delete any existing unused tokens for this user
-    databaseService.executeQuery(
+    await databaseService.executeQuery(
       'DELETE FROM password_reset_tokens WHERE user_id = ? AND used_at IS NULL',
       [userId]
     );
 
     // Insert new token
-    databaseService.executeQuery(
+    await databaseService.executeQuery(
       'INSERT INTO password_reset_tokens (user_id, token_hash, expires_at) VALUES (?, ?, ?)',
       [userId, tokenHash, expiresAt]
     );
@@ -61,7 +61,7 @@ export class TokenService {
    * Returns userId if valid, null if invalid
    */
   async verifyPasswordResetToken(token: string): Promise<number | null> {
-    const records = databaseService.getMany<TokenRecord>(
+    const records = await databaseService.getMany<TokenRecord>(
       `SELECT * FROM password_reset_tokens
        WHERE used_at IS NULL
        AND expires_at > datetime('now')
@@ -72,7 +72,7 @@ export class TokenService {
       const isValid = await this.verifyToken(token, record.token_hash);
       if (isValid) {
         // Mark token as used
-        databaseService.executeQuery(
+        await databaseService.executeQuery(
           'UPDATE password_reset_tokens SET used_at = datetime(\'now\') WHERE id = ?',
           [record.id]
         );
@@ -92,13 +92,13 @@ export class TokenService {
     const expiresAt = new Date(Date.now() + expiryMs).toISOString();
 
     // Delete any existing unused tokens for this user
-    databaseService.executeQuery(
+    await databaseService.executeQuery(
       'DELETE FROM email_verification_tokens WHERE user_id = ? AND used_at IS NULL',
       [userId]
     );
 
     // Insert new token
-    databaseService.executeQuery(
+    await databaseService.executeQuery(
       'INSERT INTO email_verification_tokens (user_id, token_hash, expires_at) VALUES (?, ?, ?)',
       [userId, tokenHash, expiresAt]
     );
@@ -111,7 +111,7 @@ export class TokenService {
    * Returns userId if valid, null if invalid
    */
   async verifyEmailVerificationToken(token: string): Promise<number | null> {
-    const records = databaseService.getMany<TokenRecord>(
+    const records = await databaseService.getMany<TokenRecord>(
       `SELECT * FROM email_verification_tokens
        WHERE used_at IS NULL
        AND expires_at > datetime('now')
@@ -122,7 +122,7 @@ export class TokenService {
       const isValid = await this.verifyToken(token, record.token_hash);
       if (isValid) {
         // Mark token as used
-        databaseService.executeQuery(
+        await databaseService.executeQuery(
           'UPDATE email_verification_tokens SET used_at = datetime(\'now\') WHERE id = ?',
           [record.id]
         );
@@ -136,11 +136,11 @@ export class TokenService {
   /**
    * Clean up expired tokens (should be run periodically)
    */
-  cleanupExpiredTokens(): void {
-    databaseService.executeQuery(
+  async cleanupExpiredTokens(): Promise<void> {
+    await databaseService.executeQuery(
       'DELETE FROM password_reset_tokens WHERE expires_at < datetime(\'now\')'
     );
-    databaseService.executeQuery(
+    await databaseService.executeQuery(
       'DELETE FROM email_verification_tokens WHERE expires_at < datetime(\'now\')'
     );
   }

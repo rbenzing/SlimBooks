@@ -27,7 +27,7 @@ export class DatabaseHealthService {
   }> {
     try {
       // Test basic database connectivity
-      const testResult = databaseService.getOne<{test: number}>('SELECT 1 as test');
+      const testResult = await databaseService.getOne<{test: number}>('SELECT 1 as test');
       
       if (!testResult || testResult.test !== 1) {
         throw new Error('Database connectivity test failed');
@@ -59,13 +59,13 @@ export class DatabaseHealthService {
       // There is no `templates` table: templates live in two tables, and
       // counting the non-existent one reported zero on every install.
       const stats = {
-        clients: this.getTableCount('clients'),
-        invoices: this.getTableCount('invoices'),
-        templates: this.getTableCount('invoice_design_templates')
-          + this.getTableCount('recurring_invoice_templates'),
-        expenses: this.getTableCount('expenses'),
-        payments: this.getTableCount('payments'),
-        users: this.getTableCount('users')
+        clients: await this.getTableCount('clients'),
+        invoices: await this.getTableCount('invoices'),
+        templates: (await this.getTableCount('invoice_design_templates'))
+          + (await this.getTableCount('recurring_invoice_templates')),
+        expenses: await this.getTableCount('expenses'),
+        payments: await this.getTableCount('payments'),
+        users: await this.getTableCount('users')
       };
 
       return stats;
@@ -78,13 +78,13 @@ export class DatabaseHealthService {
   /**
    * Get record count for a specific table
    */
-  getTableCount(tableName: string): number {
+  async getTableCount(tableName: string): Promise<number> {
     try {
       if (!this.isValidTableName(tableName)) {
         throw new Error('Invalid table name');
       }
 
-      const result = databaseService.getOne<{count: number}>(`SELECT COUNT(*) as count FROM ${tableName}`);
+      const result = await databaseService.getOne<{count: number}>(`SELECT COUNT(*) as count FROM ${tableName}`);
       return result ? result.count : 0;
     } catch (error) {
       console.error(`Error getting count for table ${tableName}:`, error);
@@ -106,7 +106,7 @@ export class DatabaseHealthService {
   }> {
     try {
       // Get all tables (excluding SQLite system tables)
-      const tables = databaseService.getMany<{name: string; type: string}>(`
+      const tables = await databaseService.getMany<{name: string; type: string}>(`
         SELECT name, type
         FROM sqlite_master
         WHERE type='table' AND name NOT LIKE 'sqlite_%'
@@ -120,7 +120,7 @@ export class DatabaseHealthService {
       }> = {};
 
       for (const table of tables) {
-        const columns = this.getTableColumns(table.name);
+        const columns = await this.getTableColumns(table.name);
         tableInfo[table.name] = {
           columns: columns.length,
           columnNames: columns.map(col => col.name),
@@ -142,13 +142,13 @@ export class DatabaseHealthService {
   /**
    * Get column information for a table
    */
-  getTableColumns(tableName: string): TableInfo[] {
+  async getTableColumns(tableName: string): Promise<TableInfo[]> {
     try {
       if (!this.isValidTableName(tableName)) {
         throw new Error('Invalid table name');
       }
 
-      return databaseService.getMany<TableInfo>(`PRAGMA table_info(${tableName})`);
+      return await databaseService.getMany<TableInfo>(`PRAGMA table_info(${tableName})`);
     } catch (error) {
       console.error(`Error getting columns for table ${tableName}:`, error);
       return [];
@@ -168,15 +168,15 @@ export class DatabaseHealthService {
   }> {
     try {
       // Get database page count and page size
-      const pageCount = databaseService.getOne<{page_count: number}>('PRAGMA page_count');
-      const pageSize = databaseService.getOne<{page_size: number}>('PRAGMA page_size');
-      
-      const estimatedSize = pageCount && pageSize ? 
+      const pageCount = await databaseService.getOne<{page_count: number}>('PRAGMA page_count');
+      const pageSize = await databaseService.getOne<{page_size: number}>('PRAGMA page_size');
+
+      const estimatedSize = pageCount && pageSize ?
         (pageCount.page_count * pageSize.page_size) : 0;
 
       // Get database version info
-      const userVersion = databaseService.getOne<{user_version: number}>('PRAGMA user_version');
-      const applicationId = databaseService.getOne<{application_id: number}>('PRAGMA application_id');
+      const userVersion = await databaseService.getOne<{user_version: number}>('PRAGMA user_version');
+      const applicationId = await databaseService.getOne<{application_id: number}>('PRAGMA application_id');
 
       return {
         pageCount: pageCount?.page_count || 0,
@@ -215,14 +215,14 @@ export class DatabaseHealthService {
   /**
    * Check if a table exists
    */
-  tableExists(tableName: string): boolean {
+  async tableExists(tableName: string): Promise<boolean> {
     try {
       if (!this.isValidTableName(tableName)) {
         return false;
       }
 
-      const result = databaseService.getOne<{name: string}>(`
-        SELECT name FROM sqlite_master 
+      const result = await databaseService.getOne<{name: string}>(`
+        SELECT name FROM sqlite_master
         WHERE type='table' AND name=?
       `, [tableName]);
 
@@ -299,7 +299,7 @@ export class DatabaseHealthService {
     timestamp: string;
   }> {
     try {
-      const result = databaseService.getOne<{integrity_check: string}>('PRAGMA integrity_check');
+      const result = await databaseService.getOne<{integrity_check: string}>('PRAGMA integrity_check');
       
       const isHealthy = result && (result.integrity_check === 'ok' || 
                                    (typeof result.integrity_check === 'string' && 
@@ -331,9 +331,9 @@ export class DatabaseHealthService {
   }> {
     try {
       // Get various database settings
-      const journalMode = databaseService.getOne<{journal_mode: string}>('PRAGMA journal_mode');
-      const synchronous = databaseService.getOne<{synchronous: number}>('PRAGMA synchronous');
-      const foreignKeys = databaseService.getOne<{foreign_keys: number}>('PRAGMA foreign_keys');
+      const journalMode = await databaseService.getOne<{journal_mode: string}>('PRAGMA journal_mode');
+      const synchronous = await databaseService.getOne<{synchronous: number}>('PRAGMA synchronous');
+      const foreignKeys = await databaseService.getOne<{foreign_keys: number}>('PRAGMA foreign_keys');
       
       return {
         journalMode: journalMode?.journal_mode || 'unknown',

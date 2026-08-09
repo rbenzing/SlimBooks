@@ -124,15 +124,15 @@ export class StripeService {
   private clientSecretKey = '';
 
   /** Resolved fresh each time so settings changes take effect immediately. */
-  private getCredentials(): StripeCredentials {
-    return settingsService.getStripeCredentials();
+  private async getCredentials(): Promise<StripeCredentials> {
+    return await settingsService.getStripeCredentials();
   }
 
   /**
    * An SDK client, or an explanation of what is missing.
    */
-  private getClient(): Stripe {
-    const { enabled, configured, secretKey } = this.getCredentials();
+  private async getClient(): Promise<Stripe> {
+    const { enabled, configured, secretKey } = await this.getCredentials();
 
     if (!enabled) {
       throw new StripeNotConfiguredError('Stripe is not enabled');
@@ -154,8 +154,8 @@ export class StripeService {
   /**
    * Configuration state for the settings screen.
    */
-  getStatus(): StripeStatus {
-    const credentials = this.getCredentials();
+  async getStatus(): Promise<StripeStatus> {
+    const credentials = await this.getCredentials();
 
     return {
       enabled: credentials.enabled,
@@ -174,7 +174,7 @@ export class StripeService {
   async testConnection(): Promise<StripeConnectionTestResult> {
     let stripe: Stripe;
     try {
-      stripe = this.getClient();
+      stripe = await this.getClient();
     } catch (error) {
       return { success: false, message: (error as Error).message };
     }
@@ -213,8 +213,8 @@ export class StripeService {
       throw new Error('Valid invoice ID is required');
     }
 
-    const stripe = this.getClient();
-    const invoice = databaseService.getOne<Invoice>(
+    const stripe = await this.getClient();
+    const invoice = await databaseService.getOne<Invoice>(
       'SELECT * FROM invoices WHERE id = ? AND deleted_at IS NULL',
       [invoiceId]
     );
@@ -265,7 +265,7 @@ export class StripeService {
       payment_intent_data: { metadata }
     });
 
-    databaseService.executeQuery(`
+    await databaseService.executeQuery(`
       UPDATE invoices
       SET stripe_payment_link_id = ?, stripe_payment_link_url = ?, updated_at = datetime('now')
       WHERE id = ?
@@ -288,10 +288,10 @@ export class StripeService {
       throw new Error('Valid payment link ID is required');
     }
 
-    const stripe = this.getClient();
+    const stripe = await this.getClient();
     await stripe.paymentLinks.update(linkId, { active: false });
 
-    databaseService.executeQuery(`
+    await databaseService.executeQuery(`
       UPDATE invoices
       SET stripe_payment_link_id = NULL, stripe_payment_link_url = NULL, updated_at = datetime('now')
       WHERE stripe_payment_link_id = ?
@@ -307,7 +307,7 @@ export class StripeService {
    * anyone could post a payment into the ledger.
    */
   async handleWebhook(rawBody: Buffer | string, signature: string): Promise<StripeWebhookOutcome> {
-    const { webhookSecret } = this.getCredentials();
+    const { webhookSecret } = await this.getCredentials();
 
     if (!webhookSecret) {
       throw new StripeNotConfiguredError(
@@ -318,13 +318,13 @@ export class StripeService {
       throw new Error('Missing stripe-signature header');
     }
 
-    const stripe = this.getClient();
+    const stripe = await this.getClient();
     const event = stripe.webhooks.constructEvent(rawBody, signature, webhookSecret);
 
     // Stripe retries on every non-2xx and on timeout, and an ephemeral restart
     // mid-processing replays the delivery. The event id is the idempotency key:
     // the insert either claims the event or tells us someone already handled it.
-    const claim = databaseService.executeQuery(
+    const claim = await databaseService.executeQuery(
       'INSERT OR IGNORE INTO stripe_events (event_id, event_type) VALUES (?, ?)',
       [event.id, event.type]
     );
@@ -359,7 +359,7 @@ export class StripeService {
     session: Stripe.Checkout.Session,
     eventType: string
   ): Promise<StripeWebhookOutcome> {
-    const invoice = this.findInvoiceForSession(session);
+    const invoice = await this.findInvoiceForSession(session);
     if (!invoice) {
       return { received: true, type: eventType, handled: false };
     }
@@ -382,7 +382,7 @@ export class StripeService {
       reference: paymentIntentId ?? session.id
     });
 
-    databaseService.executeQuery(`
+    await databaseService.executeQuery(`
       UPDATE invoices
       SET stripe_checkout_session_id = ?,
           stripe_payment_intent_id = COALESCE(?, stripe_payment_intent_id),
@@ -390,7 +390,7 @@ export class StripeService {
       WHERE id = ?
     `, [session.id, paymentIntentId, invoice.id]);
 
-    this.markInvoicePaid(invoice.id);
+    await this.markInvoicePaid(invoice.id);
 
     return {
       received: true,
@@ -412,8 +412,8 @@ export class StripeService {
     paymentIntent: Stripe.PaymentIntent,
     eventType: string
   ): Promise<StripeWebhookOutcome> {
-    const invoice = this.findInvoiceByMetadata(paymentIntent.metadata)
-      ?? this.findInvoiceByColumn('stripe_payment_intent_id', paymentIntent.id);
+    const invoice = await this.findInvoiceByMetadata(paymentIntent.metadata)
+      ?? await this.findInvoiceByColumn('stripe_payment_intent_id', paymentIntent.id);
 
     if (!invoice) {
       return { received: true, type: eventType, handled: false };
@@ -427,13 +427,13 @@ export class StripeService {
       reference: paymentIntent.id
     });
 
-    databaseService.executeQuery(`
+    await databaseService.executeQuery(`
       UPDATE invoices
       SET stripe_payment_intent_id = ?, updated_at = datetime('now')
       WHERE id = ?
     `, [paymentIntent.id, invoice.id]);
 
-    this.markInvoicePaid(invoice.id);
+    await this.markInvoicePaid(invoice.id);
 
     return {
       received: true,
@@ -461,7 +461,7 @@ export class StripeService {
   }): Promise<number | null> {
     const { invoice, amount, stripePaymentId, reference } = args;
 
-    const alreadyRecorded = databaseService.getOne<{ id: number }>(
+    const alreadyRecorded = await databaseService.getOne<{ id: number }>(
       'SELECT id FROM payments WHERE stripe_payment_id = ? AND deleted_at IS NULL',
       [stripePaymentId]
     );
@@ -469,7 +469,7 @@ export class StripeService {
       return null;
     }
 
-    const settledByAnotherEvent = databaseService.getOne<{ id: number }>(
+    const settledByAnotherEvent = await databaseService.getOne<{ id: number }>(
       `SELECT id FROM payments
        WHERE invoice_id = ? AND method = 'stripe' AND status = 'received' AND deleted_at IS NULL`,
       [invoice.id]
@@ -499,8 +499,8 @@ export class StripeService {
    * Mark the invoice paid, leaving an already-paid invoice alone so a redelivered
    * event does not move `paid_date` forward.
    */
-  private markInvoicePaid(invoiceId: number): void {
-    databaseService.executeQuery(`
+  private async markInvoicePaid(invoiceId: number): Promise<void> {
+    await databaseService.executeQuery(`
       UPDATE invoices
       SET status = 'paid', paid_date = COALESCE(paid_date, date('now')), updated_at = datetime('now')
       WHERE id = ? AND status != 'paid'
@@ -510,32 +510,32 @@ export class StripeService {
   /**
    * Find the invoice a checkout belongs to, most reliable route first.
    */
-  private findInvoiceForSession(session: Stripe.Checkout.Session): Invoice | null {
+  private async findInvoiceForSession(session: Stripe.Checkout.Session): Promise<Invoice | null> {
     const paymentLinkId = typeof session.payment_link === 'string'
       ? session.payment_link
       : session.payment_link?.id;
 
-    return this.findInvoiceByMetadata(session.metadata)
-      ?? (paymentLinkId ? this.findInvoiceByColumn('stripe_payment_link_id', paymentLinkId) : null)
-      ?? this.findInvoiceByColumn('stripe_checkout_session_id', session.id);
+    return await this.findInvoiceByMetadata(session.metadata)
+      ?? (paymentLinkId ? await this.findInvoiceByColumn('stripe_payment_link_id', paymentLinkId) : null)
+      ?? await this.findInvoiceByColumn('stripe_checkout_session_id', session.id);
   }
 
-  private findInvoiceByMetadata(metadata: Stripe.Metadata | null | undefined): Invoice | null {
+  private async findInvoiceByMetadata(metadata: Stripe.Metadata | null | undefined): Promise<Invoice | null> {
     const invoiceId = Number(metadata?.invoice_id);
     if (!Number.isInteger(invoiceId) || invoiceId <= 0) {
       return null;
     }
 
-    return databaseService.getOne<Invoice>(
+    return await databaseService.getOne<Invoice>(
       'SELECT * FROM invoices WHERE id = ? AND deleted_at IS NULL',
       [invoiceId]
     );
   }
 
-  private findInvoiceByColumn(column: string, value: string): Invoice | null {
+  private async findInvoiceByColumn(column: string, value: string): Promise<Invoice | null> {
     if (!value) return null;
 
-    return databaseService.getOne<Invoice>(
+    return await databaseService.getOne<Invoice>(
       `SELECT * FROM invoices WHERE ${column} = ? AND deleted_at IS NULL`,
       [value]
     );

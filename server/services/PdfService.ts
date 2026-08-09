@@ -500,8 +500,8 @@ export class PdfService {
 
       // Only log if there's an activity log table
       // This is optional functionality
-      if (databaseService.tableExists('pdf_activity_log')) {
-        databaseService.executeQuery(`
+      if (await databaseService.tableExists('pdf_activity_log')) {
+        await databaseService.executeQuery(`
           INSERT INTO pdf_activity_log (invoice_id, action, metadata, created_at)
           VALUES (?, ?, ?, ?)
         `, [logData.invoice_id, logData.action, logData.metadata, logData.created_at]);

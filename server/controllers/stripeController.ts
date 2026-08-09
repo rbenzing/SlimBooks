@@ -36,7 +36,7 @@ const toHttpError = (error: unknown): never => {
  * Reports whether each credential is present, never what it is.
  */
 export const getStripeStatus = asyncHandler(async (req: Request, res: Response): Promise<void> => {
-  res.json({ success: true, data: stripeService.getStatus() });
+  res.json({ success: true, data: await stripeService.getStatus() });
 });
 
 /**

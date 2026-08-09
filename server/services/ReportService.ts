@@ -63,7 +63,7 @@ export class ReportService {
       throw new Error('Valid report ID is required');
     }
 
-    const report = databaseService.getOne<DatabaseReport>(`
+    const report = await databaseService.getOne<DatabaseReport>(`
       SELECT id, name, type, date_range_start, date_range_end, data, created_at
       FROM reports
       WHERE id = ?
@@ -96,10 +96,10 @@ export class ReportService {
     }
 
     // Get next ID from counter service
-    const nextId = databaseService.getNextSequence('reports');
+    const nextId = await databaseService.getNextSequence('reports');
     const now = new Date().toISOString();
 
-    const result = databaseService.executeQuery(`
+    const result = await databaseService.executeQuery(`
       INSERT INTO reports (id, name, type, date_range_start, date_range_end, data, created_at)
       VALUES (?, ?, ?, ?, ?, ?, ?)
     `, [
@@ -130,7 +130,7 @@ export class ReportService {
       throw new Error('Report data is required');
     }
 
-    const result = databaseService.executeQuery(`
+    const result = await databaseService.executeQuery(`
       UPDATE reports
       SET name = ?, type = ?, date_range_start = ?, date_range_end = ?, data = ?
       WHERE id = ?
@@ -161,7 +161,7 @@ export class ReportService {
       throw new Error('Valid report ID is required');
     }
 
-    const result = databaseService.executeQuery('DELETE FROM reports WHERE id = ?', [id]);
+    const result = await databaseService.executeQuery('DELETE FROM reports WHERE id = ?', [id]);
 
     if (result.changes === 0) {
       throw new Error('Report not found');
@@ -220,7 +220,7 @@ export class ReportService {
    * Get report count
    */
   async getReportCount(): Promise<number> {
-    const result = databaseService.getOne<{count: number}>(
+    const result = await databaseService.getOne<{count: number}>(
       'SELECT COUNT(*) as count FROM reports'
     );
     return result?.count || 0;
@@ -234,7 +234,7 @@ export class ReportService {
       throw new Error('Valid report type is required');
     }
 
-    const result = databaseService.getOne<{count: number}>(
+    const result = await databaseService.getOne<{count: number}>(
       'SELECT COUNT(*) as count FROM reports WHERE type = ?',
       [type]
     );
@@ -252,7 +252,7 @@ export class ReportService {
     breakdownPeriod: 'monthly' | 'quarterly' = 'quarterly'
   ): Promise<ProfitLossReportData> {
     // Get invoices in date range
-    const invoices = databaseService.getMany<InvoiceWithClient>(`
+    const invoices = await databaseService.getMany<InvoiceWithClient>(`
       SELECT i.*, c.name as client_name
       FROM invoices i
       LEFT JOIN clients c ON i.client_id = c.id
@@ -262,7 +262,7 @@ export class ReportService {
     `, [startDate, endDate + 'T23:59:59.999Z']);
 
     // Get expenses in date range
-    const expenses = databaseService.getMany<Expense>(`
+    const expenses = await databaseService.getMany<Expense>(`
       SELECT *
       FROM expenses
       WHERE date >= ? AND date <= ?
@@ -366,7 +366,7 @@ export class ReportService {
    * Generate Expense Report Data
    */
   async generateExpenseData(startDate: string, endDate: string): Promise<ExpenseReportData> {
-    const expenses = databaseService.getMany<Expense>(`
+    const expenses = await databaseService.getMany<Expense>(`
       SELECT *
       FROM expenses
       WHERE date >= ? AND date <= ?
@@ -407,7 +407,7 @@ export class ReportService {
    * Generate Invoice Report Data
    */
   async generateInvoiceData(startDate: string, endDate: string): Promise<InvoiceReportData> {
-    const invoices = databaseService.getMany<InvoiceWithClient>(`
+    const invoices = await databaseService.getMany<InvoiceWithClient>(`
       SELECT i.*, c.name as client_name
       FROM invoices i
       LEFT JOIN clients c ON i.client_id = c.id
@@ -461,7 +461,7 @@ export class ReportService {
    * Generate Client Report Data
    */
   async generateClientData(startDate?: string, endDate?: string): Promise<ClientReportData> {
-    const clients = databaseService.getMany<Client>(`
+    const clients = await databaseService.getMany<Client>(`
       SELECT *
       FROM clients
       WHERE deleted_at IS NULL
@@ -478,7 +478,7 @@ export class ReportService {
       invoiceFilter = 'WHERE i.deleted_at IS NULL';
     }
 
-    const invoices = databaseService.getMany<InvoiceWithClient>(`
+    const invoices = await databaseService.getMany<InvoiceWithClient>(`
       SELECT i.*, c.name as client_name
       FROM invoices i
       LEFT JOIN clients c ON i.client_id = c.id

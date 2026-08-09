@@ -62,10 +62,10 @@ export class RecurringInvoiceProcessorService {
           // used to be two statements, so a process killed between them — which
           // an ephemeral host does on every redeploy — re-created the invoice on
           // the next boot with nothing to reject it.
-          databaseService.withTransaction(() => {
-            this.insertInvoiceRow(row);
+          await databaseService.withTransaction(async () => {
+            await this.insertInvoiceRow(row);
 
-            databaseService.executeQuery(
+            await databaseService.executeQuery(
               'UPDATE recurring_invoice_templates SET next_invoice_date = ?, updated_at = DATETIME(\'now\') WHERE id = ?',
               [nextDate, template.id]
             );
@@ -118,10 +118,10 @@ export class RecurringInvoiceProcessorService {
 
       // Same guarantee as the scheduled path: create and advance together, or
       // neither. A manual run and a scheduled run can otherwise collide.
-      const invoiceId = databaseService.withTransaction(() => {
-        const id = this.insertInvoiceRow(row);
+      const invoiceId = await databaseService.withTransaction(async () => {
+        const id = await this.insertInvoiceRow(row);
 
-        databaseService.executeQuery(
+        await databaseService.executeQuery(
           'UPDATE recurring_invoice_templates SET next_invoice_date = ?, updated_at = DATETIME(\'now\') WHERE id = ?',
           [nextDate, template.id]
         );
@@ -187,9 +187,9 @@ export class RecurringInvoiceProcessorService {
     };
   }
 
-  /** Insert an assembled invoice row. Synchronous, so it can run in a transaction. */
-  private insertInvoiceRow(data: InvoiceCreationData): number {
-    const result = databaseService.executeQuery(
+  /** Insert an assembled invoice row. */
+  private async insertInvoiceRow(data: InvoiceCreationData): Promise<number> {
+    const result = await databaseService.executeQuery(
       `INSERT INTO invoices (
         invoice_number, client_id, recurring_template_id, recurring_period_date,
         amount, tax_amount, total_amount, status, due_date, issue_date,

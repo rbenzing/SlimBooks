@@ -92,8 +92,8 @@ export class SettingsService {
 
     query += ' ORDER BY key';
 
-    const results = databaseService.getMany<{key: string, value: string}>(query, params);
-    
+    const results = await databaseService.getMany<{key: string, value: string}>(query, params);
+
     const settings: Record<string, unknown> = {};
 
     results.forEach(row => {
@@ -115,8 +115,8 @@ export class SettingsService {
       throw new Error('Valid setting key is required');
     }
 
-    const result = databaseService.getOne<{value: string}>('SELECT value FROM settings WHERE key = ?', [key]);
-    
+    const result = await databaseService.getOne<{value: string}>('SELECT value FROM settings WHERE key = ?', [key]);
+
     if (result?.value) {
       try {
         return JSON.parse(result.value);
@@ -140,12 +140,12 @@ export class SettingsService {
     const settingKey = key.includes('.') ? key : `${category}.${key}`;
     
     const jsonValue = typeof value === 'string' ? value : JSON.stringify(value);
-    
-    databaseService.executeQuery(
+
+    await databaseService.executeQuery(
       'INSERT OR REPLACE INTO settings (key, value, category) VALUES (?, ?, ?)',
       [settingKey, jsonValue, category]
     );
-    
+
     return true;
   }
 
@@ -158,20 +158,20 @@ export class SettingsService {
     }
 
     const formatCategory = 'format';
-    const operations = () => {
+    const operations = async () => {
       for (const [key, value] of Object.entries(settings)) {
         if (value === undefined) continue;
-        
+
         const jsonValue = typeof value === 'string' ? value : JSON.stringify(value);
-        
-        databaseService.executeQuery(
-          'INSERT OR REPLACE INTO settings (key, value, category) VALUES (?, ?, ?)', 
+
+        await databaseService.executeQuery(
+          'INSERT OR REPLACE INTO settings (key, value, category) VALUES (?, ?, ?)',
           [key, jsonValue, formatCategory]
         );
       }
     };
 
-    databaseService.executeTransaction(operations);
+    await databaseService.executeTransaction(operations);
     return true;
   }
 
@@ -186,7 +186,7 @@ export class SettingsService {
       throw new Error('Settings object is required');
     }
 
-    const operations = () => {
+    const operations = async () => {
       for (const [key, data] of Object.entries(settings)) {
         if (!data || typeof data !== 'object') {
           throw new Error(`Invalid setting data for key: ${key}`);
@@ -195,15 +195,15 @@ export class SettingsService {
         const { value, category = 'general' } = data;
         const settingKey = key.includes('.') ? key : `${category}.${key}`;
         const jsonValue = typeof value === 'string' ? value : JSON.stringify(value);
-        
-        databaseService.executeQuery(
-          'INSERT OR REPLACE INTO settings (key, value, category) VALUES (?, ?, ?)', 
+
+        await databaseService.executeQuery(
+          'INSERT OR REPLACE INTO settings (key, value, category) VALUES (?, ?, ?)',
           [settingKey, jsonValue, category]
         );
       }
     };
 
-    databaseService.executeTransaction(operations);
+    await databaseService.executeTransaction(operations);
     return true;
   }
 
@@ -220,8 +220,8 @@ export class SettingsService {
    * password and the OAuth client secret. Anything that answers an HTTP
    * request must use `getProjectSettings` or `getPublicProjectSettings`.
    */
-  private resolveProjectSettings(): ProjectSettings {
-    const dbSettings = databaseService.getMany<{key: string, value: string}>(
+  private async resolveProjectSettings(): Promise<ProjectSettings> {
+    const dbSettings = await databaseService.getMany<{key: string, value: string}>(
       'SELECT key, value FROM settings WHERE key LIKE ? OR key LIKE ? OR key LIKE ? OR key LIKE ?',
       ['google_oauth.%', 'stripe.%', 'email.%', 'security.%']
     );
@@ -311,7 +311,7 @@ export class SettingsService {
    */
   async getProjectSettings(): Promise<ProjectSettings> {
     try {
-      const { google_oauth, stripe, email, security } = this.resolveProjectSettings();
+      const { google_oauth, stripe, email, security } = await this.resolveProjectSettings();
 
       return {
         google_oauth: {
@@ -353,7 +353,7 @@ export class SettingsService {
    * or that Stripe exists.
    */
   async getPublicProjectSettings(): Promise<ProjectSettings> {
-    const { google_oauth, security } = this.resolveProjectSettings();
+    const { google_oauth, security } = await this.resolveProjectSettings();
 
     return {
       google_oauth: {
@@ -372,8 +372,8 @@ export class SettingsService {
   /**
    * Stripe credentials for server-side use. Never serialise this.
    */
-  getStripeCredentials(): StripeCredentials {
-    const { stripe } = this.resolveProjectSettings();
+  async getStripeCredentials(): Promise<StripeCredentials> {
+    const { stripe } = await this.resolveProjectSettings();
 
     return {
       enabled: stripe.enabled,
@@ -442,16 +442,16 @@ export class SettingsService {
     const flatSettings = flattenSettings(settings as Record<string, unknown>);
 
     // Use transaction for bulk updates
-    const operations = () => {
+    const operations = async () => {
       for (const setting of flatSettings) {
-        databaseService.executeQuery(
-          'INSERT OR REPLACE INTO settings (key, value, category) VALUES (?, ?, ?)', 
+        await databaseService.executeQuery(
+          'INSERT OR REPLACE INTO settings (key, value, category) VALUES (?, ?, ?)',
           [setting.key, setting.value, 'project']
         );
       }
     };
 
-    databaseService.executeTransaction(operations);
+    await databaseService.executeTransaction(operations);
     return true;
   }
 
@@ -463,8 +463,8 @@ export class SettingsService {
       throw new Error('Setting name is required');
     }
 
-    const setting = databaseService.getOne<{value: string}>(
-      'SELECT value FROM settings WHERE key = ?', 
+    const setting = await databaseService.getOne<{value: string}>(
+      'SELECT value FROM settings WHERE key = ?',
       [`security.${settingName}`]
     );
     
@@ -497,7 +497,7 @@ export class SettingsService {
       throw new Error('Valid setting key is required');
     }
 
-    const result = databaseService.executeQuery('DELETE FROM settings WHERE key = ?', [key]);
+    const result = await databaseService.executeQuery('DELETE FROM settings WHERE key = ?', [key]);
     return result.changes > 0;
   }
 
@@ -509,7 +509,7 @@ export class SettingsService {
       throw new Error('Valid category is required');
     }
 
-    const result = databaseService.executeQuery('DELETE FROM settings WHERE key LIKE ?', [`${category}.%`]);
+    const result = await databaseService.executeQuery('DELETE FROM settings WHERE key LIKE ?', [`${category}.%`]);
     return result.changes;
   }
 
@@ -517,10 +517,10 @@ export class SettingsService {
    * Get all categories (extracted from key prefixes)
    */
   async getCategories(): Promise<string[]> {
-    const results = databaseService.getMany<{key: string}>(
+    const results = await databaseService.getMany<{key: string}>(
       'SELECT DISTINCT key FROM settings WHERE key LIKE "%.%" ORDER BY key'
     );
-    
+
     // Extract categories from keys (everything before the first dot)
     const categories = new Set<string>();
     results.forEach(row => {
@@ -541,7 +541,7 @@ export class SettingsService {
       return false;
     }
 
-    return databaseService.exists('settings', 'key', key);
+    return await databaseService.exists('settings', 'key', key);
   }
 
   /**
@@ -556,7 +556,7 @@ export class SettingsService {
       params.push(`${category}.%`);
     }
 
-    const result = databaseService.getOne<{count: number}>(query, params);
+    const result = await databaseService.getOne<{count: number}>(query, params);
     return result?.count || 0;
   }
 
@@ -572,7 +572,7 @@ export class SettingsService {
       params.push(`${category}.%`);
     }
 
-    databaseService.executeQuery(query, params);
+    await databaseService.executeQuery(query, params);
     return true;
   }
 }

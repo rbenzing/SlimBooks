@@ -142,6 +142,9 @@ export interface TableColumnInfo {
   pk: number;
 }
 
-// SQL parameter types for query safety
-export type SQLParameter = string | number | null | boolean;
+// SQL parameter types for query safety.
+//
+// Buffer is included for stored_objects.data; both drivers bind it natively as
+// a BLOB, and nothing else in the codebase passes one.
+export type SQLParameter = string | number | null | boolean | Buffer;
 export type SQLParams = SQLParameter[];

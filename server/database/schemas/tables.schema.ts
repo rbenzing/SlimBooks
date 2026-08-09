@@ -341,6 +341,28 @@ const stripeEventsSchema: TableSchema = {
   ]
 };
 
+/**
+ * Uploaded objects, for hosts whose filesystem does not survive a redeploy.
+ *
+ * BLOBs are usually the wrong answer for file storage. At the 5 MB cap the
+ * existing multer config already enforces, for a handful of company logos, the
+ * usual objection does not bite — and the logos then travel with the database
+ * backup instead of being a separate thing to remember.
+ *
+ * Only used when STORAGE_DRIVER=database; the table is created either way so
+ * the two backends have the same shape.
+ */
+const storedObjectsSchema: TableSchema = {
+  name: 'stored_objects',
+  columns: [
+    { name: 'key', type: 'TEXT', constraints: ['PRIMARY KEY'] },
+    { name: 'content_type', type: 'TEXT' },
+    { name: 'size', type: 'INTEGER', constraints: ['NOT NULL'] },
+    { name: 'data', type: 'BLOB', constraints: ['NOT NULL'] },
+    { name: 'created_at', type: 'TEXT', constraints: ['NOT NULL DEFAULT (datetime(\'now\'))'] }
+  ]
+};
+
 // Export all schemas — order respects foreign-key dependency graph
 export const tableSchemas: TableSchema[] = [
   usersSchema,
@@ -356,7 +378,8 @@ export const tableSchemas: TableSchema[] = [
   projectSettingsSchema,
   countersSchema,
   schedulerLeasesSchema,
-  stripeEventsSchema
+  stripeEventsSchema,
+  storedObjectsSchema
 ];
 
 /**

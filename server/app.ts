@@ -33,6 +33,7 @@ import {
 // Import routes
 import { createRoutes } from './routes/index.js';
 import webhookRoutes from './routes/webhookRoutes.js';
+import { createUploadsRoute } from './routes/uploadsRoute.js';
 
 import type { Runtime } from './runtime/types.js';
 import { createRuntimeScheduler } from './runtime/index.js';
@@ -114,9 +115,10 @@ export const createApp = async (runtime: Runtime) => {
     });
   });
 
-  // Uploads are written and served through the same resolved root, so the two
-  // can no longer drift apart.
-  app.use('/uploads', express.static(runtime.paths.uploadsDir));
+  // Uploads are written and served through the same provider, so the two can no
+  // longer drift apart — and a database-backed provider works here, which
+  // express.static could never serve.
+  app.use('/uploads', createUploadsRoute(runtime));
   app.use(express.static(runtime.paths.staticDir));
 
   app.use('/', createRoutes(runtime));

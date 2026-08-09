@@ -13,6 +13,7 @@ import { up as migration009 } from './009_add_status_to_expenses.js';
 import { up as migration010 } from './010_add_stripe_payment_link_to_invoices.js';
 import { up as migration011 } from './011_add_recurring_period_date.js';
 import { up as migration012 } from './012_add_runtime_tables.js';
+import { up as migration013 } from './013_add_stored_objects.js';
 
 interface Migration {
   id: string;
@@ -78,6 +79,11 @@ const migrations: Migration[] = [
     id: '012',
     name: 'add_runtime_tables',
     up: migration012
+  },
+  {
+    id: '013',
+    name: 'add_stored_objects',
+    up: migration013
   }
 ];
 

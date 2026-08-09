@@ -164,8 +164,12 @@ describe('buildMysqlBaseline', () => {
   it('records every migration as applied without executing one', async () => {
     await buildMysqlBaseline(fake.db);
 
+    // Pinned rather than derived from the registry: comparing the recorder's
+    // output against the same list it reads from would assert nothing. This
+    // way, adding a migration fails here until someone confirms the baseline
+    // should be recording it as already done.
     expect(fake.inserts.map(insert => insert.params[0])).toEqual([
-      '001', '002', '003', '004', '006', '007', '008', '009', '010', '011', '012'
+      '001', '002', '003', '004', '006', '007', '008', '009', '010', '011', '012', '013'
     ]);
   });
 

@@ -17,8 +17,15 @@ import type { IDatabase } from '../types/database.types.js';
 import { resolveFeatures, type FeatureProbes } from './features.js';
 import { resolveListener } from './listener.js';
 import { resolvePaths } from './paths.js';
-import { resolveDatabase, type DatabaseDriver, type DatabaseSettings } from './database.js';
+import {
+  resolveDatabase,
+  resolveStorageDriver,
+  type DatabaseDriver,
+  type DatabaseSettings
+} from './database.js';
 import { LocalDiskStorage } from './storage.js';
+import { DatabaseStorage } from './databaseStorage.js';
+import { activeDatabase } from '../database/index.js';
 import type { Runtime, RuntimePaths } from './types.js';
 
 /** Where broken path resolution wrote the database before this refactor. */
@@ -174,6 +181,7 @@ export const resolveRuntime = (
 
   const paths = resolvePaths(env, moduleDir);
   const database = resolveDatabase(env, paths);
+  const storageDriver = resolveStorageDriver(env);
   const listener = resolveListener(env, paths.root);
   const features = resolveFeatures(env, probeFeatures(env, database, probes));
 
@@ -185,7 +193,13 @@ export const resolveRuntime = (
     urls: { publicUrl },
     listener,
     features,
-    storage: new LocalDiskStorage(paths.uploadsDir),
+    // The database provider takes an accessor rather than a connection: no
+    // database exists yet at this point, and initializeDatabase later swaps in
+    // the selected driver.
+    storage:
+      storageDriver === 'disk'
+        ? new LocalDiskStorage(paths.uploadsDir)
+        : new DatabaseStorage(() => activeDatabase()),
     pdf: null,
     scheduler: null,
     describe(): string {

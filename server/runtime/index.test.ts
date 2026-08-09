@@ -96,6 +96,31 @@ describe('resolveRuntime - validation', () => {
   });
 });
 
+describe('describe()', () => {
+  it('names the SQLite file when that is the active backend', () => {
+    expect(resolveRuntime(BASE, MODULE_DIR).describe()).toMatch(/database\s+sqlite .*slimbooks\.db/);
+  });
+
+  it('names the MySQL server without its password', () => {
+    // This string is printed at every boot and ends up wherever stdout is
+    // collected, which on a PaaS is a log service the credentials must not reach.
+    const summary = resolveRuntime(
+      {
+        ...BASE,
+        DB_DRIVER: 'mysql',
+        DB_HOST: 'db.internal',
+        DB_NAME: 'books',
+        DB_USER: 'app',
+        DB_PASSWORD: 'hunter2'
+      },
+      MODULE_DIR
+    ).describe();
+
+    expect(summary).toContain('mysql app@db.internal:3306/books');
+    expect(summary).not.toContain('hunter2');
+  });
+});
+
 describe('assertNoLegacyData', () => {
   const paths = {
     root: REPO_ROOT,
@@ -137,5 +162,23 @@ describe('assertNoLegacyData', () => {
       candidate === paths.dbFile || candidate === join(paths.uploadsDir, 'logos');
 
     expect(() => assertNoLegacyData(paths, configuredPresent)).not.toThrow();
+  });
+
+  it('ignores a missing SQLite file under MySQL, where none is expected', () => {
+    // The resolved file never exists on a MySQL install, so keeping this check
+    // active would refuse to start a perfectly healthy one — and strand the
+    // operator over a file the process no longer reads.
+    const onlyLegacy = (candidate: string): boolean => candidate.includes(join('server', 'data'));
+
+    expect(() => assertNoLegacyData(paths, onlyLegacy, 'mysql')).not.toThrow();
+  });
+
+  it('still checks stranded uploads under MySQL, since logos may be on disk', () => {
+    // STORAGE_DRIVER is independent of DB_DRIVER: a MySQL install can still
+    // serve its logos from the filesystem.
+    const logosLegacy = (candidate: string): boolean =>
+      candidate.includes(join('server', 'public', 'uploads'));
+
+    expect(() => assertNoLegacyData(paths, logosLegacy, 'mysql')).toThrow(/uploads/i);
   });
 });

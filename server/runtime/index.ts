@@ -17,6 +17,7 @@ import type { IDatabase } from '../types/database.types.js';
 import { resolveFeatures, type FeatureProbes } from './features.js';
 import { resolveListener } from './listener.js';
 import { resolvePaths } from './paths.js';
+import { resolveDatabase, type DatabaseDriver } from './database.js';
 import { LocalDiskStorage } from './storage.js';
 import type { Runtime, RuntimePaths } from './types.js';
 
@@ -49,9 +50,14 @@ const LEGACY_UPLOAD_SUBPATHS = [
  */
 export const assertNoLegacyData = (
   paths: RuntimePaths,
-  fileExists: (candidate: string) => boolean = existsSync
+  fileExists: (candidate: string) => boolean = existsSync,
+  driver: DatabaseDriver = 'sqlite'
 ): void => {
-  if (!fileExists(paths.dbFile)) {
+  // Under MySQL the resolved SQLite file is never expected to exist, so the
+  // check below would fire on every boot of a perfectly healthy install — and
+  // an operator who has migrated to MySQL is not stranded by a file this
+  // process no longer reads.
+  if (driver === 'sqlite' && !fileExists(paths.dbFile)) {
     const stranded = LEGACY_DB_SUBPATHS.map(sub => join(paths.root, sub)).filter(fileExists);
 
     if (stranded.length > 0) {
@@ -105,6 +111,18 @@ const probeFeatures = (env: RawEnv, overrides: Partial<FeatureProbes>): FeatureP
   return { ...defaults, ...overrides };
 };
 
+/**
+ * One line naming the active database.
+ *
+ * Never includes the password. This string is printed at every boot and ends up
+ * in whatever collects stdout, which on a PaaS is a log service the database
+ * credentials should not reach.
+ */
+const describeDatabase = (database: Runtime['database']): string =>
+  database.driver === 'sqlite'
+    ? `sqlite ${database.file}`
+    : `mysql ${database.user}@${database.host}:${database.port}/${database.database}`;
+
 export const describeRuntime = (runtime: Runtime): string => {
   const { paths, listener, features, urls } = runtime;
 
@@ -122,7 +140,7 @@ export const describeRuntime = (runtime: Runtime): string => {
     `data      ${paths.dataDir}`,
     `uploads   ${paths.uploadsDir}`,
     `static    ${paths.staticDir}`,
-    `database  ${paths.dbFile}`,
+    `database  ${describeDatabase(runtime.database)}`,
     `public    ${urls.publicUrl}`,
     `listen    ${target} (tls: ${listener.tls}, trust proxy: ${listener.trustProxyHops})`,
     `features  ${enabled.length > 0 ? enabled : 'none'}`
@@ -147,6 +165,7 @@ export const resolveRuntime = (
   assertNoRemovedVars(env);
 
   const paths = resolvePaths(env, moduleDir);
+  const database = resolveDatabase(env, paths);
   const listener = resolveListener(env, paths.root);
   const features = resolveFeatures(env, probeFeatures(env, probes));
 
@@ -154,6 +173,7 @@ export const resolveRuntime = (
 
   const runtime: Runtime = {
     paths,
+    database,
     urls: { publicUrl },
     listener,
     features,

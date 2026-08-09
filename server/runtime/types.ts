@@ -57,9 +57,12 @@ export interface PathEnv {
 import type { StorageProvider } from './storage.js';
 import type { PdfProvider } from './pdf.js';
 import type { Scheduler } from './scheduler.js';
+import type { DatabaseSettings } from './database.js';
 
 export interface Runtime {
   paths: RuntimePaths;
+  /** Which backend to open, and how. A config object, never a live connection. */
+  database: DatabaseSettings;
   urls: { publicUrl: string };
   listener: ListenerConfig;
   features: FeatureSet;

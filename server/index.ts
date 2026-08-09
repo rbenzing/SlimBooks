@@ -22,7 +22,7 @@ async function main(): Promise<void> {
     const pdfAvailable = await isChromiumAvailable();
     const runtime = resolveRuntime(process.env, moduleDir, { pdf: pdfAvailable });
 
-    assertNoLegacyData(runtime.paths);
+    assertNoLegacyData(runtime.paths, undefined, runtime.database.driver);
 
     console.log('Slimbooks runtime resolved:');
     console.log(runtime.describe());

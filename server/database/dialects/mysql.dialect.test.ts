@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { mysqlDialect } from './mysql.dialect.js';
+import { sqliteDialect } from './sqlite.dialect.js';
 
 const flat = (sql: string): string => sql.replace(/\s+/g, ' ').trim();
 
@@ -106,6 +107,40 @@ describe('mysqlDialect', () => {
 
     expect(built.sql).toContain('VALUES(`v`)');
     expect(built.sql).not.toContain(' AS new');
+  });
+
+  it('builds relative-date cutoffs, formatted to match the stored shape', () => {
+    // The compared columns are TEXT on both backends, so a raw DATE_SUB would
+    // compare a MySQL datetime against a string in a different format.
+    expect(mysqlDialect.nowMinus(7, 'day')).toBe(
+      "DATE_FORMAT(DATE_SUB(UTC_TIMESTAMP(), INTERVAL 7 DAY),'%Y-%m-%d %H:%i:%s')"
+    );
+    expect(mysqlDialect.todayMinus(12, 'month')).toBe(
+      "DATE_FORMAT(DATE_SUB(UTC_TIMESTAMP(), INTERVAL 12 MONTH),'%Y-%m-%d')"
+    );
+  });
+
+  it('rejects an interval count that is not a whole number', () => {
+    // INTERVAL ? DAY is a syntax error in MySQL, so the count is interpolated
+    // and must be validated rather than trusted.
+    expect(() => mysqlDialect.nowMinus(1.5, 'day')).toThrow(/whole number/);
+    expect(() => mysqlDialect.nowMinus(-3, 'day')).toThrow(/whole number/);
+    expect(() => mysqlDialect.todayMinus(Number.NaN, 'month')).toThrow(/whole number/);
+  });
+
+  it('replaces strftime, which MySQL does not have at all', () => {
+    expect(mysqlDialect.formatMonth('date')).toBe("DATE_FORMAT(date, '%Y-%m')");
+    expect(mysqlDialect.formatYear('date')).toBe("DATE_FORMAT(date, '%Y')");
+  });
+
+  it('uses the same format mask as SQLite, so both bucket a row identically', () => {
+    // Both render 2026-08-09 as "2026-08". A monthly report grouped on one
+    // backend must produce the same keys as the other, because the frontend
+    // indexes the payload by them.
+    const mask = (sql: string): string => /'([^']+)'/.exec(sql)?.[1] ?? '';
+
+    expect(mask(mysqlDialect.formatMonth('date'))).toBe(mask(sqliteDialect.formatMonth('date')));
+    expect(mask(mysqlDialect.formatYear('date'))).toBe(mask(sqliteDialect.formatYear('date')));
   });
 
   it('has neither partial indexes nor self-updating triggers', () => {

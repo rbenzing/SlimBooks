@@ -80,9 +80,10 @@ export class AuthService {
 
     if (success) {
       // Reset failed attempts on successful login
+      const now = databaseService.dialect.now();
       await databaseService.executeQuery(`
         UPDATE users
-        SET failed_login_attempts = 0, account_locked_until = NULL, last_login = datetime('now'), updated_at = datetime('now')
+        SET failed_login_attempts = 0, account_locked_until = NULL, last_login = ${now}, updated_at = ${now}
         WHERE id = ?
       `, [userId]);
       return true;
@@ -106,7 +107,7 @@ export class AuthService {
 
     await databaseService.executeQuery(`
       UPDATE users
-      SET failed_login_attempts = ?, account_locked_until = ?, updated_at = datetime('now')
+      SET failed_login_attempts = ?, account_locked_until = ?, updated_at = ${databaseService.dialect.now()}
       WHERE id = ?
     `, [newAttempts, lockedUntil, userId]);
 

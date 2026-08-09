@@ -64,7 +64,7 @@ export class TokenService {
     const records = await databaseService.getMany<TokenRecord>(
       `SELECT * FROM password_reset_tokens
        WHERE used_at IS NULL
-       AND expires_at > datetime('now')
+       AND expires_at > ${databaseService.dialect.now()}
        ORDER BY created_at DESC`
     );
 
@@ -73,7 +73,7 @@ export class TokenService {
       if (isValid) {
         // Mark token as used
         await databaseService.executeQuery(
-          'UPDATE password_reset_tokens SET used_at = datetime(\'now\') WHERE id = ?',
+          `UPDATE password_reset_tokens SET used_at = ${databaseService.dialect.now()} WHERE id = ?`,
           [record.id]
         );
         return record.user_id;
@@ -114,7 +114,7 @@ export class TokenService {
     const records = await databaseService.getMany<TokenRecord>(
       `SELECT * FROM email_verification_tokens
        WHERE used_at IS NULL
-       AND expires_at > datetime('now')
+       AND expires_at > ${databaseService.dialect.now()}
        ORDER BY created_at DESC`
     );
 
@@ -123,7 +123,7 @@ export class TokenService {
       if (isValid) {
         // Mark token as used
         await databaseService.executeQuery(
-          'UPDATE email_verification_tokens SET used_at = datetime(\'now\') WHERE id = ?',
+          `UPDATE email_verification_tokens SET used_at = ${databaseService.dialect.now()} WHERE id = ?`,
           [record.id]
         );
         return record.user_id;
@@ -137,11 +137,12 @@ export class TokenService {
    * Clean up expired tokens (should be run periodically)
    */
   async cleanupExpiredTokens(): Promise<void> {
+    const now = databaseService.dialect.now();
     await databaseService.executeQuery(
-      'DELETE FROM password_reset_tokens WHERE expires_at < datetime(\'now\')'
+      `DELETE FROM password_reset_tokens WHERE expires_at < ${now}`
     );
     await databaseService.executeQuery(
-      'DELETE FROM email_verification_tokens WHERE expires_at < datetime(\'now\')'
+      `DELETE FROM email_verification_tokens WHERE expires_at < ${now}`
     );
   }
 }

@@ -246,8 +246,9 @@ export class UserService {
       throw new Error('Valid attempts count is required');
     }
 
+    const now = databaseService.dialect.now();
     const changes = await databaseService.executeQuery(
-      "UPDATE users SET failed_login_attempts = ?, account_locked_until = ?, updated_at = datetime('now') WHERE id = ?",
+      `UPDATE users SET failed_login_attempts = ?, account_locked_until = ?, updated_at = ${now} WHERE id = ?`,
       [attempts, lockedUntil, userId]
     );
 
@@ -262,8 +263,9 @@ export class UserService {
       throw new Error('Valid user ID is required');
     }
 
+    const now = databaseService.dialect.now();
     const changes = await databaseService.executeQuery(
-      "UPDATE users SET last_login = datetime('now'), updated_at = datetime('now') WHERE id = ?",
+      `UPDATE users SET last_login = ${now}, updated_at = ${now} WHERE id = ?`,
       [userId]
     );
 
@@ -278,8 +280,9 @@ export class UserService {
       throw new Error('Valid user ID is required');
     }
 
+    const now = databaseService.dialect.now();
     const changes = await databaseService.executeQuery(
-      "UPDATE users SET email_verified = 1, email_verified_at = datetime('now'), updated_at = datetime('now') WHERE id = ?",
+      `UPDATE users SET email_verified = 1, email_verified_at = ${now}, updated_at = ${now} WHERE id = ?`,
       [userId]
     );
 
@@ -337,12 +340,13 @@ export class UserService {
    */
   async getLockedUsers(options: ServiceOptions = {}): Promise<UserPublic[]> {
     const { limit = 100, offset = 0 } = options;
+    const now = databaseService.dialect.now();
 
     return databaseService.getMany<UserPublic>(`
       SELECT id, name, email, username, role, email_verified,
              last_login, failed_login_attempts, account_locked_until, created_at, updated_at
       FROM users
-      WHERE account_locked_until IS NOT NULL AND account_locked_until > datetime('now')
+      WHERE account_locked_until IS NOT NULL AND account_locked_until > ${now}
       ORDER BY account_locked_until DESC
       LIMIT ? OFFSET ?
     `, [limit, offset]);
@@ -356,8 +360,9 @@ export class UserService {
       throw new Error('Valid user ID is required');
     }
 
+    const now = databaseService.dialect.now();
     const changes = await databaseService.executeQuery(
-      "UPDATE users SET failed_login_attempts = 0, account_locked_until = NULL, updated_at = datetime('now') WHERE id = ?",
+      `UPDATE users SET failed_login_attempts = 0, account_locked_until = NULL, updated_at = ${now} WHERE id = ?`,
       [userId]
     );
 
@@ -407,6 +412,7 @@ export class UserService {
     locked: number;
     recentLogins: number;
   }> {
+    const now = databaseService.dialect.now();
     const [totalResult, adminsResult, regularResult, verifiedResult, lockedResult, recentLoginsResult] = await Promise.all([
       databaseService.getOne<{count: number}>(
         'SELECT COUNT(*) as count FROM users'
@@ -421,10 +427,10 @@ export class UserService {
         'SELECT COUNT(*) as count FROM users WHERE email_verified = 1'
       ),
       databaseService.getOne<{count: number}>(
-        "SELECT COUNT(*) as count FROM users WHERE account_locked_until IS NOT NULL AND account_locked_until > datetime('now')"
+        `SELECT COUNT(*) as count FROM users WHERE account_locked_until IS NOT NULL AND account_locked_until > ${now}`
       ),
       databaseService.getOne<{count: number}>(
-        "SELECT COUNT(*) as count FROM users WHERE last_login > datetime('now', '-7 days')"
+        `SELECT COUNT(*) as count FROM users WHERE last_login > ${databaseService.dialect.nowMinus(7, 'day')}`
       )
     ]);
 

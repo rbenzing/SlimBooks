@@ -3,6 +3,7 @@
 
 import { databaseService } from '../core/DatabaseService.js';
 import { type Client, type ServiceOptions } from '../types/index.js';
+import { sqlTimestampDaysAgo } from '../utils/sqlTime.util.js';
 
 /**
  * Client Service
@@ -344,18 +345,26 @@ export class ClientService {
   async getClientsWithRecentActivity(days: number = 30, options: ServiceOptions = {}): Promise<Client[]> {
     const { limit = 50, offset = 0 } = options;
 
-    // Bind the window rather than splicing it into the SQL: the statement text
-    // stays constant (so it caches) and no caller can reach the query string.
-    const windowDays = Number.isFinite(days) ? Math.abs(Math.trunc(days)) : 30;
+    // Bind the cutoff rather than splicing the window into the SQL: the
+    // statement text stays constant (so it caches) and no caller can reach the
+    // query string.
+    //
+    // The window used to be bound as a SQLite modifier ('-30 days') consumed by
+    // datetime('now', ?). MySQL cannot express that at all — INTERVAL takes no
+    // placeholder — so the cutoff is computed here and bound as a timestamp.
+    // sqlTimestampDaysAgo renders the same YYYY-MM-DD HH:MM:SS shape
+    // datetime('now', …) did, so the comparison is unchanged, and both
+    // properties this used to have are preserved on both backends.
+    const cutoff = sqlTimestampDaysAgo(days);
 
     return databaseService.getMany<Client>(`
       SELECT DISTINCT c.* FROM clients c
       INNER JOIN invoices i ON c.id = i.client_id
-      WHERE i.created_at > datetime('now', ?)
+      WHERE i.created_at > ?
         AND c.deleted_at IS NULL
       ORDER BY c.name ASC
       LIMIT ? OFFSET ?
-    `, [`-${windowDays} days`, limit, offset]);
+    `, [cutoff, limit, offset]);
   }
 
   /**

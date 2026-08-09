@@ -216,9 +216,9 @@ export class CounterService {
   async initializeStandardCounters(): Promise<boolean> {
     const operations = async () => {
       for (const counterName of this.validCounters) {
-        // Use INSERT OR IGNORE to avoid errors if counter already exists
+        // Use an ignore-on-conflict insert to avoid errors if counter already exists
         await databaseService.executeQuery(
-          'INSERT OR IGNORE INTO counters (name, value) VALUES (?, ?)',
+          databaseService.dialect.insertIgnore('counters', ['name', 'value']),
           [counterName, 0]
         );
       }

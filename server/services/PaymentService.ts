@@ -327,15 +327,21 @@ export class PaymentService {
   }> {
     const { year, month } = filters;
     
+    // SQLite's strftime has no MySQL counterpart, and the two spell relative
+    // dates differently. Both come from the dialect so the monthly buckets carry
+    // identical keys on either backend — the frontend indexes the payload by them.
+    const monthOf = databaseService.dialect.formatMonth('date');
+    const lastYear = databaseService.dialect.todayMinus(12, 'month');
+
     let dateFilter = '';
     const params: (string | number | null | boolean)[] = [];
-    
+
     if (year) {
       if (month) {
-        dateFilter = "WHERE strftime('%Y-%m', date) = ?";
+        dateFilter = `WHERE ${monthOf} = ?`;
         params.push(`${year}-${month.padStart(2, '0')}`);
       } else {
-        dateFilter = "WHERE strftime('%Y', date) = ?";
+        dateFilter = `WHERE ${databaseService.dialect.formatYear('date')} = ?`;
         params.push(year);
       }
     }
@@ -386,12 +392,12 @@ export class PaymentService {
         total_amount: number;
       }>(`
         SELECT
-          strftime('%Y-%m', date) as month,
+          ${monthOf} as month,
           COUNT(*) as count,
           SUM(amount) as total_amount
         FROM payments
-        WHERE date >= date('now', '-12 months')
-        GROUP BY strftime('%Y-%m', date)
+        WHERE date >= ${lastYear}
+        GROUP BY ${monthOf}
         ORDER BY month ASC
       `)
     ]);
@@ -586,7 +592,7 @@ export class PaymentService {
 
     const result = await databaseService.executeQuery(`
       UPDATE payments
-      SET status = ?, updated_at = datetime('now')
+      SET status = ?, updated_at = ${databaseService.dialect.now()}
       WHERE id = ?
     `, [status, id]);
 

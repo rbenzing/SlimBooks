@@ -468,10 +468,9 @@ const indexIsBuildable = async (db: IDatabase, sql: string): Promise<boolean> =>
   const target = parseIndexTarget(sql);
   if (target === null) return false;
 
-  const info = await db.getMany<{ name: string }>(`PRAGMA table_info(${target.table})`);
-  if (info.length === 0) return false;
+  const present = new Set(await db.dialect.columnsOf(db, target.table));
+  if (present.size === 0) return false;
 
-  const present = new Set(info.map(column => column.name));
   return target.columns.every(column => present.has(column));
 };
 

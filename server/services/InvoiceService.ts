@@ -522,7 +522,7 @@ export class InvoiceService {
 
     const result = await databaseService.executeQuery(`
       UPDATE invoices
-      SET status = ?, updated_at = datetime('now')
+      SET status = ?, updated_at = ${databaseService.dialect.now()}
       WHERE id = ?
     `, [status, id]);
 
@@ -541,7 +541,7 @@ export class InvoiceService {
 
     const result = await databaseService.executeQuery(`
       UPDATE invoices
-      SET status = 'sent', email_status = 'sent', email_sent_at = ?, updated_at = datetime('now')
+      SET status = 'sent', email_status = 'sent', email_sent_at = ?, updated_at = ${databaseService.dialect.now()}
       WHERE id = ?
     `, [sentAt, id]);
 
@@ -556,7 +556,7 @@ export class InvoiceService {
       SELECT i.*, c.name as client_name, c.email as client_email
       FROM invoices i
       LEFT JOIN clients c ON i.client_id = c.id
-      WHERE i.status IN ('sent', 'overdue') AND i.due_date < date('now')
+      WHERE i.status IN ('sent', 'overdue') AND i.due_date < ${databaseService.dialect.today()}
       ORDER BY i.due_date ASC
     `);
   }

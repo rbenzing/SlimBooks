@@ -382,6 +382,12 @@ export class ExpenseService {
       baseCondition = ' WHERE ' + conditions.join(' AND ');
     }
 
+    // SQLite's strftime has no MySQL counterpart, and the two spell relative
+    // dates differently. Both come from the dialect so the monthly buckets carry
+    // identical keys on either backend — the frontend indexes the payload by them.
+    const monthOf = databaseService.dialect.formatMonth('date');
+    const lastYear = databaseService.dialect.todayMinus(12, 'month');
+
     // Get basic stats, category breakdown, and monthly trend concurrently (independent reads)
     const [basicStats, categoryData, monthlyTrend] = await Promise.all([
       databaseService.getOne<{
@@ -409,12 +415,12 @@ export class ExpenseService {
       `, params),
       databaseService.getMany<{month: string; count: number; amount: number}>(`
         SELECT
-          strftime('%Y-%m', date) as month,
+          ${monthOf} as month,
           COUNT(*) as count,
           SUM(amount) as amount
         FROM expenses
-        WHERE date >= date('now', '-12 months')${baseCondition ? ' AND ' + baseCondition.substring(7) : ''}
-        GROUP BY strftime('%Y-%m', date)
+        WHERE date >= ${lastYear}${baseCondition ? ' AND ' + baseCondition.substring(7) : ''}
+        GROUP BY ${monthOf}
         ORDER BY month DESC
         LIMIT 12
       `, params)

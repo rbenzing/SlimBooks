@@ -142,7 +142,7 @@ export class SettingsService {
     const jsonValue = typeof value === 'string' ? value : JSON.stringify(value);
 
     await databaseService.executeQuery(
-      'INSERT OR REPLACE INTO settings (`key`, value, category) VALUES (?, ?, ?)',
+      databaseService.dialect.insertOrReplace('settings', ['key', 'value', 'category']),
       [settingKey, jsonValue, category]
     );
 
@@ -165,7 +165,7 @@ export class SettingsService {
         const jsonValue = typeof value === 'string' ? value : JSON.stringify(value);
 
         await databaseService.executeQuery(
-          'INSERT OR REPLACE INTO settings (`key`, value, category) VALUES (?, ?, ?)',
+          databaseService.dialect.insertOrReplace('settings', ['key', 'value', 'category']),
           [key, jsonValue, formatCategory]
         );
       }
@@ -197,7 +197,7 @@ export class SettingsService {
         const jsonValue = typeof value === 'string' ? value : JSON.stringify(value);
 
         await databaseService.executeQuery(
-          'INSERT OR REPLACE INTO settings (`key`, value, category) VALUES (?, ?, ?)',
+          databaseService.dialect.insertOrReplace('settings', ['key', 'value', 'category']),
           [settingKey, jsonValue, category]
         );
       }
@@ -445,7 +445,7 @@ export class SettingsService {
     const operations = async () => {
       for (const setting of flatSettings) {
         await databaseService.executeQuery(
-          'INSERT OR REPLACE INTO settings (`key`, value, category) VALUES (?, ?, ?)',
+          databaseService.dialect.insertOrReplace('settings', ['key', 'value', 'category']),
           [setting.key, setting.value, 'project']
         );
       }

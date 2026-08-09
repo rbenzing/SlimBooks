@@ -9,6 +9,9 @@ import type { IDatabase, SQLParameter } from '../types/database.types.js';
 
 export type DialectName = 'sqlite' | 'mysql';
 
+/** The calendar units the report queries actually use. */
+export type DateUnit = 'day' | 'month' | 'year';
+
 /** A statement and the parameters that go with it, since the two co-vary. */
 export interface ConditionalUpsert {
   sql: string;
@@ -51,6 +54,32 @@ export interface SqlDialect {
 
   /** Expression yielding `YYYY-MM-DD` in UTC. */
   today(): string;
+
+  /**
+   * Expression yielding a UTC timestamp `count` units in the past.
+   *
+   * The count is interpolated rather than bound, because MySQL cannot take an
+   * INTERVAL quantity as a placeholder. Implementations must therefore reject a
+   * count that is not a non-negative integer — `getClientsWithRecentActivity`
+   * takes its window from a request parameter.
+   */
+  nowMinus(count: number, unit: DateUnit): string;
+
+  /** Expression yielding a UTC date `count` units in the past. */
+  todayMinus(count: number, unit: DateUnit): string;
+
+  /**
+   * Expression rendering a date column as `YYYY-MM`, for grouping by month.
+   *
+   * SQLite says `strftime('%Y-%m', date)`; MySQL has no `strftime` at all and
+   * spells it `DATE_FORMAT(date, '%Y-%m')`. Five report queries depend on this,
+   * and report payloads are where a shape mismatch crashes the UI rather than
+   * erroring cleanly.
+   */
+  formatMonth(column: string): string;
+
+  /** Expression rendering a date column as `YYYY`, for grouping by year. */
+  formatYear(column: string): string;
 
   /** Insert, ignoring a duplicate-key collision. */
   insertIgnore(table: string, columns: string[]): string;

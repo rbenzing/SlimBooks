@@ -67,12 +67,22 @@ describe('every read is a prepared statement', () => {
     expect(sql).not.toMatch(/'-\d+ days'/);
   });
 
+  /**
+   * The window used to be bound as a SQLite modifier ('-90 days') consumed by
+   * `datetime('now', ?)`. MySQL cannot bind an INTERVAL quantity, so the cutoff
+   * is now computed and bound as a timestamp. These tests assert the same two
+   * properties the old ones did — the value is bound, and the statement text
+   * does not vary with it — against the mechanism that works on both backends.
+   */
+  const windowParamOf = (call: number): string =>
+    (db.getMany.mock.calls[call][1] as unknown[])[0] as string;
+
   it('binds the activity window instead of splicing it in', async () => {
     await clientService.getClientsWithRecentActivity(90);
 
-    const [sql, params] = db.getMany.mock.calls[0];
-    expect(flattenSql(sql as string)).toMatch(/datetime\('now', \?\)/);
-    expect(params).toContain('-90 days');
+    const [sql] = db.getMany.mock.calls[0];
+    expect(flattenSql(sql as string)).toMatch(/i\.created_at > \?/);
+    expect(windowParamOf(0)).toMatch(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/);
   });
 
   it('builds the same SQL text whatever the window', async () => {
@@ -83,22 +93,35 @@ describe('every read is a prepared statement', () => {
     expect(first).toBe(second);
   });
 
+  it('binds a cutoff that actually moves with the window', async () => {
+    // Guards the guard: a constant statement text would also be satisfied by a
+    // cutoff that ignored its argument entirely.
+    await clientService.getClientsWithRecentActivity(7);
+    await clientService.getClientsWithRecentActivity(365);
+
+    expect(windowParamOf(0) > windowParamOf(1)).toBe(true);
+  });
+
   it('coerces a fractional window to whole days', async () => {
     await clientService.getClientsWithRecentActivity(30.7);
+    await clientService.getClientsWithRecentActivity(30);
 
-    expect(db.getMany.mock.calls[0][1]).toContain('-30 days');
+    // Same day, so the two cutoffs agree to the minute even if the clock ticked.
+    expect(windowParamOf(0).slice(0, 16)).toBe(windowParamOf(1).slice(0, 16));
   });
 
   it('falls back to the default window for a nonsense value', async () => {
     await clientService.getClientsWithRecentActivity(NaN);
+    await clientService.getClientsWithRecentActivity(30);
 
-    expect(db.getMany.mock.calls[0][1]).toContain('-30 days');
+    expect(windowParamOf(0).slice(0, 16)).toBe(windowParamOf(1).slice(0, 16));
   });
 
   it('refuses a negative window that would look into the future', async () => {
     await clientService.getClientsWithRecentActivity(-30);
+    await clientService.getClientsWithRecentActivity(30);
 
-    expect(db.getMany.mock.calls[0][1]).toContain('-30 days');
+    expect(windowParamOf(0).slice(0, 16)).toBe(windowParamOf(1).slice(0, 16));
   });
 });
 

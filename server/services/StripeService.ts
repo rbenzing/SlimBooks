@@ -265,9 +265,10 @@ export class StripeService {
       payment_intent_data: { metadata }
     });
 
+    const now = databaseService.dialect.now();
     await databaseService.executeQuery(`
       UPDATE invoices
-      SET stripe_payment_link_id = ?, stripe_payment_link_url = ?, updated_at = datetime('now')
+      SET stripe_payment_link_id = ?, stripe_payment_link_url = ?, updated_at = ${now}
       WHERE id = ?
     `, [paymentLink.id, paymentLink.url, invoice.id]);
 
@@ -291,9 +292,10 @@ export class StripeService {
     const stripe = await this.getClient();
     await stripe.paymentLinks.update(linkId, { active: false });
 
+    const now = databaseService.dialect.now();
     await databaseService.executeQuery(`
       UPDATE invoices
-      SET stripe_payment_link_id = NULL, stripe_payment_link_url = NULL, updated_at = datetime('now')
+      SET stripe_payment_link_id = NULL, stripe_payment_link_url = NULL, updated_at = ${now}
       WHERE stripe_payment_link_id = ?
     `, [linkId]);
   }
@@ -325,7 +327,7 @@ export class StripeService {
     // mid-processing replays the delivery. The event id is the idempotency key:
     // the insert either claims the event or tells us someone already handled it.
     const claim = await databaseService.executeQuery(
-      'INSERT OR IGNORE INTO stripe_events (event_id, event_type) VALUES (?, ?)',
+      databaseService.dialect.insertIgnore('stripe_events', ['event_id', 'event_type']),
       [event.id, event.type]
     );
 
@@ -382,11 +384,12 @@ export class StripeService {
       reference: paymentIntentId ?? session.id
     });
 
+    const now = databaseService.dialect.now();
     await databaseService.executeQuery(`
       UPDATE invoices
       SET stripe_checkout_session_id = ?,
           stripe_payment_intent_id = COALESCE(?, stripe_payment_intent_id),
-          updated_at = datetime('now')
+          updated_at = ${now}
       WHERE id = ?
     `, [session.id, paymentIntentId, invoice.id]);
 
@@ -427,9 +430,10 @@ export class StripeService {
       reference: paymentIntent.id
     });
 
+    const now = databaseService.dialect.now();
     await databaseService.executeQuery(`
       UPDATE invoices
-      SET stripe_payment_intent_id = ?, updated_at = datetime('now')
+      SET stripe_payment_intent_id = ?, updated_at = ${now}
       WHERE id = ?
     `, [paymentIntent.id, invoice.id]);
 
@@ -500,9 +504,11 @@ export class StripeService {
    * event does not move `paid_date` forward.
    */
   private async markInvoicePaid(invoiceId: number): Promise<void> {
+    const today = databaseService.dialect.today();
+    const now = databaseService.dialect.now();
     await databaseService.executeQuery(`
       UPDATE invoices
-      SET status = 'paid', paid_date = COALESCE(paid_date, date('now')), updated_at = datetime('now')
+      SET status = 'paid', paid_date = COALESCE(paid_date, ${today}), updated_at = ${now}
       WHERE id = ? AND status != 'paid'
     `, [invoiceId]);
   }

@@ -108,9 +108,10 @@ export class DatabaseService {
    */
   public async softDelete(table: string, id: number): Promise<boolean> {
     validateTableName(table);
+    const now = this.dialect.now();
     try {
       const result = await this.executeQuery(
-        `UPDATE ${table} SET deleted_at = datetime('now'), updated_at = datetime('now') WHERE id = ?`,
+        `UPDATE ${table} SET deleted_at = ${now}, updated_at = ${now} WHERE id = ?`,
         [id]
       );
       return result.changes > 0;

@@ -48,19 +48,23 @@ export const acquireLease = async (
 ): Promise<boolean> => {
   const expiresAt = plusMs(now, ttlMs);
 
-  // One statement, so two instances racing cannot both observe "unheld".
-  // SQLite serialises writers, and the WHERE clause on the conflict path only
-  // matches a lease that has lapsed or that this owner already holds.
-  const result = await db.executeQuery(
-    `INSERT INTO scheduler_leases (job_name, owner, acquired_at, expires_at)
-     VALUES (?, ?, ?, ?)
-     ON CONFLICT (job_name) DO UPDATE SET
-       owner = excluded.owner,
-       acquired_at = excluded.acquired_at,
-       expires_at = excluded.expires_at
-     WHERE scheduler_leases.expires_at <= ? OR scheduler_leases.owner = ?`,
-    [jobName, owner, now, expiresAt, now, owner]
-  );
+  // One statement, so two instances racing cannot both observe "unheld". The
+  // condition matches only a lease that has lapsed or that this owner already
+  // holds. `expires_at` is named as the guard column because the condition
+  // reads it and the update writes it — MySQL evaluates assignments in order
+  // and would otherwise test the value it just wrote.
+  const { sql, params } = db.dialect.conditionalUpsert({
+    table: 'scheduler_leases',
+    columns: ['job_name', 'owner', 'acquired_at', 'expires_at'],
+    values: [jobName, owner, now, expiresAt],
+    conflictColumn: 'job_name',
+    updateColumns: ['owner', 'acquired_at', 'expires_at'],
+    conflictGuardColumn: 'expires_at',
+    condition: 'scheduler_leases.expires_at <= ? OR scheduler_leases.owner = ?',
+    conditionParams: [now, owner]
+  });
+
+  const result = await db.executeQuery(sql, params);
 
   return result.changes > 0;
 };

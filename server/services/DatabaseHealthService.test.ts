@@ -110,29 +110,29 @@ describe('isValidTableName', () => {
 });
 
 describe('getTableCount', () => {
-  it('counts rows in a valid table', () => {
+  it('counts rows in a valid table', async () => {
     db.getOne.mockReturnValue({ count: 12 });
 
-    expect(health.getTableCount('clients')).toBe(12);
+    expect(await health.getTableCount('clients')).toBe(12);
     expect(flattenSql(db.getOne.mock.calls[0][0] as string))
       .toBe('SELECT COUNT(*) as count FROM clients');
   });
 
-  it('refuses to build a statement from an unvalidated name', () => {
-    expect(health.getTableCount('users; DROP TABLE users')).toBe(0);
+  it('refuses to build a statement from an unvalidated name', async () => {
+    expect(await health.getTableCount('users; DROP TABLE users')).toBe(0);
     expect(db.getOne).not.toHaveBeenCalled();
   });
 
-  it('reports zero for a table that does not exist rather than throwing', () => {
+  it('reports zero for a table that does not exist rather than throwing', async () => {
     db.getOne.mockImplementation(() => { throw new Error('no such table'); });
 
-    expect(health.getTableCount('missing_table')).toBe(0);
+    expect(await health.getTableCount('missing_table')).toBe(0);
   });
 
-  it('reports zero when the count comes back empty', () => {
+  it('reports zero when the count comes back empty', async () => {
     db.getOne.mockReturnValue(undefined);
 
-    expect(health.getTableCount('clients')).toBe(0);
+    expect(await health.getTableCount('clients')).toBe(0);
   });
 });
 
@@ -231,48 +231,48 @@ describe('getDatabaseSchema', () => {
 });
 
 describe('getTableColumns', () => {
-  it('reads column details for a valid table', () => {
+  it('reads column details for a valid table', async () => {
     db.getMany.mockReturnValue([{ cid: 0, name: 'id', type: 'INTEGER', notnull: 1, dflt_value: null, pk: 1 }]);
 
-    expect(health.getTableColumns('clients')).toHaveLength(1);
+    expect(await health.getTableColumns('clients')).toHaveLength(1);
     expect(flattenSql(db.getMany.mock.calls[0][0] as string)).toBe('PRAGMA table_info(clients)');
   });
 
-  it('refuses to build a PRAGMA from an unvalidated name', () => {
-    expect(health.getTableColumns('clients); DROP TABLE clients--')).toEqual([]);
+  it('refuses to build a PRAGMA from an unvalidated name', async () => {
+    expect(await health.getTableColumns('clients); DROP TABLE clients--')).toEqual([]);
     expect(db.getMany).not.toHaveBeenCalled();
   });
 
-  it('returns an empty list for a table that does not exist', () => {
+  it('returns an empty list for a table that does not exist', async () => {
     db.getMany.mockImplementation(() => { throw new Error('no such table'); });
 
-    expect(health.getTableColumns('missing')).toEqual([]);
+    expect(await health.getTableColumns('missing')).toEqual([]);
   });
 });
 
 describe('tableExists', () => {
-  it('binds the name rather than interpolating it', () => {
+  it('binds the name rather than interpolating it', async () => {
     db.getOne.mockReturnValue({ name: 'clients' });
 
-    expect(health.tableExists('clients')).toBe(true);
+    expect(await health.tableExists('clients')).toBe(true);
     expect(db.getOne.mock.calls[0][1]).toEqual(['clients']);
   });
 
-  it('answers false for a table that is absent', () => {
+  it('answers false for a table that is absent', async () => {
     db.getOne.mockReturnValue(undefined);
 
-    expect(health.tableExists('missing')).toBe(false);
+    expect(await health.tableExists('missing')).toBe(false);
   });
 
-  it('answers false for an invalid name without querying', () => {
-    expect(health.tableExists('bad name')).toBe(false);
+  it('answers false for an invalid name without querying', async () => {
+    expect(await health.tableExists('bad name')).toBe(false);
     expect(db.getOne).not.toHaveBeenCalled();
   });
 
-  it('answers false rather than throwing on a query error', () => {
+  it('answers false rather than throwing on a query error', async () => {
     db.getOne.mockImplementation(() => { throw new Error('locked'); });
 
-    expect(health.tableExists('clients')).toBe(false);
+    expect(await health.tableExists('clients')).toBe(false);
   });
 });
 

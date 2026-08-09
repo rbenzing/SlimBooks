@@ -162,8 +162,8 @@ describe.each(flows)('$kind tokens', ({ table, create, verify }) => {
 });
 
 describe('cleanupExpiredTokens', () => {
-  it('purges both token tables', () => {
-    tokenService.cleanupExpiredTokens();
+  it('purges both token tables', async () => {
+    await tokenService.cleanupExpiredTokens();
 
     const statements = db.queries.map(q => flattenSql(q.sql));
     expect(statements).toEqual([
@@ -172,8 +172,8 @@ describe('cleanupExpiredTokens', () => {
     ]);
   });
 
-  it('only removes rows that have already expired', () => {
-    tokenService.cleanupExpiredTokens();
+  it('only removes rows that have already expired', async () => {
+    await tokenService.cleanupExpiredTokens();
 
     for (const { sql } of db.queries) {
       expect(flattenSql(sql)).toMatch(/expires_at < datetime\('now'\)/);

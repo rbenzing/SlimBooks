@@ -412,7 +412,7 @@ describe('stripe credentials', () => {
       { key: 'stripe.webhook_secret', value: JSON.stringify('whsec_stored') }
     ]);
 
-    expect(settingsService.getStripeCredentials()).toMatchObject({
+    expect(await settingsService.getStripeCredentials()).toMatchObject({
       enabled: true,
       configured: true,
       secretKey: 'sk_test_stored',
@@ -426,7 +426,7 @@ describe('stripe credentials', () => {
     process.env.STRIPE_SECRET_KEY = 'sk_test_env';
     process.env.STRIPE_PUBLISHABLE_KEY = 'pk_test_env';
 
-    expect(settingsService.getStripeCredentials()).toMatchObject({
+    expect(await settingsService.getStripeCredentials()).toMatchObject({
       configured: true,
       secretKey: 'sk_test_env'
     });
@@ -440,7 +440,7 @@ describe('stripe credentials', () => {
     ]);
     process.env.STRIPE_SECRET_KEY = 'sk_test_env';
 
-    expect(settingsService.getStripeCredentials().secretKey).toBe('sk_test_stored');
+    expect((await settingsService.getStripeCredentials()).secretKey).toBe('sk_test_stored');
   });
 
   it('infers test mode from the key rather than trusting a stale toggle', async () => {
@@ -448,7 +448,7 @@ describe('stripe credentials', () => {
       { key: 'stripe.secret_key', value: JSON.stringify('sk_live_real') }
     ]);
 
-    expect(settingsService.getStripeCredentials().testMode).toBe(false);
+    expect((await settingsService.getStripeCredentials()).testMode).toBe(false);
   });
 
   it('treats a test key as test mode', async () => {
@@ -456,7 +456,7 @@ describe('stripe credentials', () => {
       { key: 'stripe.secret_key', value: JSON.stringify('sk_test_x') }
     ]);
 
-    expect(settingsService.getStripeCredentials().testMode).toBe(true);
+    expect((await settingsService.getStripeCredentials()).testMode).toBe(true);
   });
 
   it('honours an explicit test-mode setting over the inference', async () => {
@@ -465,7 +465,7 @@ describe('stripe credentials', () => {
       { key: 'stripe.test_mode', value: 'true' }
     ]);
 
-    expect(settingsService.getStripeCredentials().testMode).toBe(true);
+    expect((await settingsService.getStripeCredentials()).testMode).toBe(true);
   });
 
   it('reports unconfigured when only half the pair is present', async () => {
@@ -474,7 +474,7 @@ describe('stripe credentials', () => {
     ]);
     delete process.env.STRIPE_SECRET_KEY;
 
-    expect(settingsService.getStripeCredentials().configured).toBe(false);
+    expect((await settingsService.getStripeCredentials()).configured).toBe(false);
   });
 });
 

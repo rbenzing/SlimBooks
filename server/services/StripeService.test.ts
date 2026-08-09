@@ -118,20 +118,20 @@ describe('currency amounts', () => {
 });
 
 describe('getStatus', () => {
-  it('reports configuration without disclosing any credential', () => {
-    const status = stripeService.getStatus();
+  it('reports configuration without disclosing any credential', async () => {
+    const status = await stripeService.getStatus();
 
     expect(JSON.stringify(status)).not.toMatch(/sk_test_key|whsec_test/);
   });
 
-  it('reports the publishable key, which belongs in the browser', () => {
-    expect(stripeService.getStatus().publishableKey).toBe('pk_test_key');
+  it('reports the publishable key, which belongs in the browser', async () => {
+    expect((await stripeService.getStatus()).publishableKey).toBe('pk_test_key');
   });
 
-  it('reports the webhook as unconfigured when no secret is stored', () => {
+  it('reports the webhook as unconfigured when no secret is stored', async () => {
     getStripeCredentials.mockReturnValue(configured({ webhookSecret: '' }));
 
-    expect(stripeService.getStatus().webhookConfigured).toBe(false);
+    expect((await stripeService.getStatus()).webhookConfigured).toBe(false);
   });
 });
 

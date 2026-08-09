@@ -32,7 +32,7 @@ export class CounterService {
     }
 
     // Get current counter value
-    const counterResult = databaseService.getOne<{value: number}>(
+    const counterResult = await databaseService.getOne<{value: number}>(
       'SELECT value FROM counters WHERE name = ?',
       [counterName]
     );
@@ -40,7 +40,7 @@ export class CounterService {
     if (!counterResult) {
       // An UPDATE against a missing row changes nothing, so every caller would
       // keep receiving 1. Create the counter at the value being issued.
-      databaseService.executeQuery(
+      await databaseService.executeQuery(
         'INSERT INTO counters (name, value) VALUES (?, ?)',
         [counterName, 1]
       );
@@ -50,7 +50,7 @@ export class CounterService {
     const nextId = counterResult.value + 1;
 
     // Update counter in database
-    databaseService.executeQuery(
+    await databaseService.executeQuery(
       'UPDATE counters SET value = ? WHERE name = ?',
       [nextId, counterName]
     );
@@ -66,11 +66,11 @@ export class CounterService {
       throw new Error('Counter name is required');
     }
 
-    const counterResult = databaseService.getOne<{value: number}>(
-      'SELECT value FROM counters WHERE name = ?', 
+    const counterResult = await databaseService.getOne<{value: number}>(
+      'SELECT value FROM counters WHERE name = ?',
       [counterName]
     );
-    
+
     if (!counterResult) {
       return null;
     }
@@ -98,15 +98,15 @@ export class CounterService {
       throw new Error(`Invalid counter name. Valid counters: ${this.validCounters.join(', ')}`);
     }
 
-    const result = databaseService.executeQuery(
-      'UPDATE counters SET value = ? WHERE name = ?', 
+    const result = await databaseService.executeQuery(
+      'UPDATE counters SET value = ? WHERE name = ?',
       [value, counterName]
     );
-    
+
     if (result.changes === 0) {
       throw new Error('Counter not found');
     }
-    
+
     return true;
   }
 
@@ -134,11 +134,11 @@ export class CounterService {
     }
 
     // Create new counter
-    databaseService.executeQuery(
-      'INSERT INTO counters (name, value) VALUES (?, ?)', 
+    await databaseService.executeQuery(
+      'INSERT INTO counters (name, value) VALUES (?, ?)',
       [counterName, initialValue]
     );
-    
+
     return true;
   }
 
@@ -150,17 +150,17 @@ export class CounterService {
       return false;
     }
 
-    return databaseService.exists('counters', 'name', counterName);
+    return await databaseService.exists('counters', 'name', counterName);
   }
 
   /**
    * Get all counters
    */
   async getAllCounters(): Promise<Counter[]> {
-    const results = databaseService.getMany<{name: string; value: number}>(
+    const results = await databaseService.getMany<{name: string; value: number}>(
       'SELECT name, value FROM counters ORDER BY name'
     );
-    
+
     return results.map(row => ({
       name: row.name,
       value: row.value
@@ -198,15 +198,15 @@ export class CounterService {
       throw new Error(`Invalid counter name. Valid counters: ${this.validCounters.join(', ')}`);
     }
 
-    const result = databaseService.executeQuery(
-      'UPDATE counters SET value = ? WHERE name = ?', 
+    const result = await databaseService.executeQuery(
+      'UPDATE counters SET value = ? WHERE name = ?',
       [value, counterName]
     );
-    
+
     if (result.changes === 0) {
       throw new Error('Counter not found');
     }
-    
+
     return true;
   }
 
@@ -214,17 +214,17 @@ export class CounterService {
    * Initialize all standard counters if they don't exist
    */
   async initializeStandardCounters(): Promise<boolean> {
-    const operations = () => {
+    const operations = async () => {
       for (const counterName of this.validCounters) {
         // Use INSERT OR IGNORE to avoid errors if counter already exists
-        databaseService.executeQuery(
-          'INSERT OR IGNORE INTO counters (name, value) VALUES (?, ?)', 
+        await databaseService.executeQuery(
+          'INSERT OR IGNORE INTO counters (name, value) VALUES (?, ?)',
           [counterName, 0]
         );
       }
     };
 
-    databaseService.executeTransaction(operations);
+    await databaseService.executeTransaction(operations);
     return true;
   }
 }

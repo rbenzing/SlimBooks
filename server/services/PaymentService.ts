@@ -60,15 +60,15 @@ export class PaymentService {
     query += ' ORDER BY date DESC, created_at DESC LIMIT ? OFFSET ?';
     params.push(limit, offset);
     
-    const payments = databaseService.getMany<Payment>(query, params);
-    
+    const payments = await databaseService.getMany<Payment>(query, params);
+
     // Get total count for pagination
     let countQuery = 'SELECT COUNT(*) as count FROM payments';
     if (conditions.length > 0) {
       countQuery += ' WHERE ' + conditions.join(' AND ');
     }
-    
-    const totalResult = databaseService.getOne<{count: number}>(countQuery, params.slice(0, -2));
+
+    const totalResult = await databaseService.getOne<{count: number}>(countQuery, params.slice(0, -2));
     const total = totalResult?.count || 0;
     
     return {
@@ -130,13 +130,13 @@ export class PaymentService {
     }
 
     // Validate invoice exists if invoice_id provided
-    if (paymentData.invoice_id && !databaseService.exists('invoices', 'id', paymentData.invoice_id)) {
+    if (paymentData.invoice_id && !(await databaseService.exists('invoices', 'id', paymentData.invoice_id))) {
       throw new Error('Specified invoice does not exist');
     }
 
     // Get next payment ID
-    const nextId = databaseService.getNextSequence('payments');
-    
+    const nextId = await databaseService.getNextSequence('payments');
+
     // Prepare payment data
     const now = new Date().toISOString();
     const paymentRecord = {
@@ -158,7 +158,7 @@ export class PaymentService {
     };
 
     // Create payment
-    databaseService.executeQuery(`
+    await databaseService.executeQuery(`
       INSERT INTO payments (
         id, date, client_name, invoice_id, amount, method, reference,
         description, status, stripe_payment_id, created_at, updated_at
@@ -213,7 +213,7 @@ export class PaymentService {
     }
 
     // Validate invoice exists if invoice_id provided
-    if (paymentData.invoice_id && !databaseService.exists('invoices', 'id', paymentData.invoice_id)) {
+    if (paymentData.invoice_id && !(await databaseService.exists('invoices', 'id', paymentData.invoice_id))) {
       throw new Error('Specified invoice does not exist');
     }
 
@@ -234,7 +234,7 @@ export class PaymentService {
       throw new Error('No valid fields to update');
     }
 
-    const success = databaseService.updateRecord('payments', id, updateData);
+    const success = await databaseService.updateRecord('payments', id, updateData);
     return success ? 1 : 0;
   }
 
@@ -252,7 +252,7 @@ export class PaymentService {
       throw new Error('Payment not found');
     }
 
-    const success = databaseService.deleteById('payments', id);
+    const success = await databaseService.deleteById('payments', id);
     return success ? 1 : 0;
   }
 
@@ -277,18 +277,18 @@ export class PaymentService {
 
     // Validate all payment IDs exist
     const placeholders = paymentIds.map(() => '?').join(',');
-    const existingPayments = databaseService.getMany<{id: number}>(
-      `SELECT id FROM payments WHERE id IN (${placeholders})`, 
+    const existingPayments = await databaseService.getMany<{id: number}>(
+      `SELECT id FROM payments WHERE id IN (${placeholders})`,
       paymentIds
     );
-    
+
     if (existingPayments.length !== paymentIds.length) {
       throw new Error('One or more payment IDs not found');
     }
 
     // Delete all payments
-    const result = databaseService.executeQuery(
-      `DELETE FROM payments WHERE id IN (${placeholders})`, 
+    const result = await databaseService.executeQuery(
+      `DELETE FROM payments WHERE id IN (${placeholders})`,
       paymentIds
     );
 
@@ -340,62 +340,61 @@ export class PaymentService {
       }
     }
     
-    const summaryStats = databaseService.getOne<{
-      total_payments: number;
-      total_amount: number;
-      average_amount: number;
-      received_count: number;
-      pending_count: number;
-      failed_count: number;
-      refunded_count: number;
-      received_amount: number;
-      pending_amount: number;
-    }>(`
-      SELECT 
-        COUNT(*) as total_payments,
-        SUM(amount) as total_amount,
-        AVG(amount) as average_amount,
-        COUNT(CASE WHEN status = 'received' THEN 1 END) as received_count,
-        COUNT(CASE WHEN status = 'pending' THEN 1 END) as pending_count,
-        COUNT(CASE WHEN status = 'failed' THEN 1 END) as failed_count,
-        COUNT(CASE WHEN status = 'refunded' THEN 1 END) as refunded_count,
-        SUM(CASE WHEN status = 'received' THEN amount ELSE 0 END) as received_amount,
-        SUM(CASE WHEN status = 'pending' THEN amount ELSE 0 END) as pending_amount
-      FROM payments ${dateFilter}
-    `, params);
-    
-    // Get method breakdown
-    const methodStats = databaseService.getMany<{
-      method: PaymentMethod;
-      count: number;
-      total_amount: number;
-      average_amount: number;
-    }>(`
-      SELECT 
-        method,
-        COUNT(*) as count,
-        SUM(amount) as total_amount,
-        AVG(amount) as average_amount
-      FROM payments ${dateFilter}
-      GROUP BY method
-      ORDER BY total_amount DESC
-    `, params);
-    
-    // Get monthly trends (last 12 months)
-    const monthlyTrends = databaseService.getMany<{
-      month: string;
-      count: number;
-      total_amount: number;
-    }>(`
-      SELECT 
-        strftime('%Y-%m', date) as month,
-        COUNT(*) as count,
-        SUM(amount) as total_amount
-      FROM payments
-      WHERE date >= date('now', '-12 months')
-      GROUP BY strftime('%Y-%m', date)
-      ORDER BY month ASC
-    `);
+    // Independent reads: summary, method breakdown, and monthly trends
+    const [summaryStats, methodStats, monthlyTrends] = await Promise.all([
+      databaseService.getOne<{
+        total_payments: number;
+        total_amount: number;
+        average_amount: number;
+        received_count: number;
+        pending_count: number;
+        failed_count: number;
+        refunded_count: number;
+        received_amount: number;
+        pending_amount: number;
+      }>(`
+        SELECT
+          COUNT(*) as total_payments,
+          SUM(amount) as total_amount,
+          AVG(amount) as average_amount,
+          COUNT(CASE WHEN status = 'received' THEN 1 END) as received_count,
+          COUNT(CASE WHEN status = 'pending' THEN 1 END) as pending_count,
+          COUNT(CASE WHEN status = 'failed' THEN 1 END) as failed_count,
+          COUNT(CASE WHEN status = 'refunded' THEN 1 END) as refunded_count,
+          SUM(CASE WHEN status = 'received' THEN amount ELSE 0 END) as received_amount,
+          SUM(CASE WHEN status = 'pending' THEN amount ELSE 0 END) as pending_amount
+        FROM payments ${dateFilter}
+      `, params),
+      databaseService.getMany<{
+        method: PaymentMethod;
+        count: number;
+        total_amount: number;
+        average_amount: number;
+      }>(`
+        SELECT
+          method,
+          COUNT(*) as count,
+          SUM(amount) as total_amount,
+          AVG(amount) as average_amount
+        FROM payments ${dateFilter}
+        GROUP BY method
+        ORDER BY total_amount DESC
+      `, params),
+      databaseService.getMany<{
+        month: string;
+        count: number;
+        total_amount: number;
+      }>(`
+        SELECT
+          strftime('%Y-%m', date) as month,
+          COUNT(*) as count,
+          SUM(amount) as total_amount
+        FROM payments
+        WHERE date >= date('now', '-12 months')
+        GROUP BY strftime('%Y-%m', date)
+        ORDER BY month ASC
+      `)
+    ]);
 
     return {
       summary: summaryStats || {
@@ -475,25 +474,26 @@ export class PaymentService {
 
     const { limit = 100, offset = 0 } = options;
 
-    const payments = databaseService.getMany<Payment>(`
-      SELECT * FROM payments
-      WHERE date BETWEEN ? AND ?
-      ORDER BY date DESC, created_at DESC
-      LIMIT ? OFFSET ?
-    `, [startDate, endDate, limit, offset]);
-
-    const summaryResult = databaseService.getOne<{
-      count: number;
-      total_amount: number;
-      average_amount: number;
-    }>(`
-      SELECT 
-        COUNT(*) as count,
-        SUM(amount) as total_amount,
-        AVG(amount) as average_amount
-      FROM payments
-      WHERE date BETWEEN ? AND ?
-    `, [startDate, endDate]);
+    const [payments, summaryResult] = await Promise.all([
+      databaseService.getMany<Payment>(`
+        SELECT * FROM payments
+        WHERE date BETWEEN ? AND ?
+        ORDER BY date DESC, created_at DESC
+        LIMIT ? OFFSET ?
+      `, [startDate, endDate, limit, offset]),
+      databaseService.getOne<{
+        count: number;
+        total_amount: number;
+        average_amount: number;
+      }>(`
+        SELECT
+          COUNT(*) as count,
+          SUM(amount) as total_amount,
+          AVG(amount) as average_amount
+        FROM payments
+        WHERE date BETWEEN ? AND ?
+      `, [startDate, endDate])
+    ]);
 
     const summary = summaryResult || {
       count: 0,
@@ -561,7 +561,7 @@ export class PaymentService {
       query += ' WHERE ' + conditions.join(' AND ');
     }
     
-    const result = databaseService.getOne<{total: number}>(query, params);
+    const result = await databaseService.getOne<{total: number}>(query, params);
     return result?.total || 0;
   }
 
@@ -579,13 +579,13 @@ export class PaymentService {
     }
 
     // Check if payment exists
-    const paymentExists = databaseService.exists('payments', 'id', id);
+    const paymentExists = await databaseService.exists('payments', 'id', id);
     if (!paymentExists) {
       throw new Error('Payment not found');
     }
 
-    const result = databaseService.executeQuery(`
-      UPDATE payments 
+    const result = await databaseService.executeQuery(`
+      UPDATE payments
       SET status = ?, updated_at = datetime('now')
       WHERE id = ?
     `, [status, id]);
@@ -649,11 +649,11 @@ export class PaymentService {
     const { limit = 50, offset = 0 } = options;
     const searchPattern = `%${searchTerm.trim()}%`;
 
-    const payments = databaseService.getMany<Payment>(`
-      SELECT * FROM payments 
+    const payments = await databaseService.getMany<Payment>(`
+      SELECT * FROM payments
       WHERE (reference LIKE ? OR description LIKE ? OR client_name LIKE ?)
-      ORDER BY 
-        CASE 
+      ORDER BY
+        CASE
           WHEN reference = ? THEN 1
           WHEN client_name = ? THEN 2
           ELSE 3
@@ -666,8 +666,8 @@ export class PaymentService {
       limit, offset
     ]);
 
-    const totalResult = databaseService.getOne<{count: number}>(`
-      SELECT COUNT(*) as count FROM payments 
+    const totalResult = await databaseService.getOne<{count: number}>(`
+      SELECT COUNT(*) as count FROM payments
       WHERE reference LIKE ? OR description LIKE ? OR client_name LIKE ?
     `, [searchPattern, searchPattern, searchPattern]);
 

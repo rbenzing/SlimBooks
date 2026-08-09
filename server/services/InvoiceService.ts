@@ -57,15 +57,15 @@ export class InvoiceService {
     query += ' ORDER BY i.created_at DESC LIMIT ? OFFSET ?';
     params.push(limit, offset);
     
-    const invoices = databaseService.getMany<InvoiceWithClient>(query, params);
-    
+    const invoices = await databaseService.getMany<InvoiceWithClient>(query, params);
+
     // Get total count for pagination
     let countQuery = 'SELECT COUNT(*) as count FROM invoices i';
     if (conditions.length > 0) {
       countQuery += ' WHERE ' + conditions.join(' AND ');
     }
-    
-    const totalResult = databaseService.getOne<{count: number}>(countQuery, params.slice(0, -2));
+
+    const totalResult = await databaseService.getOne<{count: number}>(countQuery, params.slice(0, -2));
     const total = totalResult?.count || 0;
     
     return {
@@ -125,18 +125,18 @@ export class InvoiceService {
         throw new Error('Invalid or expired invoice link');
       }
 
-      // Get company settings for public display
-      const companySettings = databaseService.getOne<{value: string}>(`
-        SELECT value FROM settings WHERE key = ? AND category = ?
-      `, ['company_settings', 'company']);
-
-      const currencySettings = databaseService.getOne<{value: string}>(`
-        SELECT value FROM settings WHERE key = ? AND category = ?
-      `, ['currency_settings', 'currency']);
-
-      const invoiceTemplate = databaseService.getOne<{value: string}>(`
-        SELECT value FROM settings WHERE key = ? AND category = ?
-      `, ['invoice_template', 'appearance']);
+      // Get company settings for public display (independent reads)
+      const [companySettings, currencySettings, invoiceTemplate] = await Promise.all([
+        databaseService.getOne<{value: string}>(`
+          SELECT value FROM settings WHERE key = ? AND category = ?
+        `, ['company_settings', 'company']),
+        databaseService.getOne<{value: string}>(`
+          SELECT value FROM settings WHERE key = ? AND category = ?
+        `, ['currency_settings', 'currency']),
+        databaseService.getOne<{value: string}>(`
+          SELECT value FROM settings WHERE key = ? AND category = ?
+        `, ['invoice_template', 'appearance'])
+      ]);
 
       // Include settings in the response for public display
       return {
@@ -164,7 +164,7 @@ export class InvoiceService {
     }
 
     // Verify invoice exists
-    const invoice = databaseService.getOne<{id: number; invoice_number: string}>(`
+    const invoice = await databaseService.getOne<{id: number; invoice_number: string}>(`
       SELECT i.id, i.invoice_number
       FROM invoices i
       WHERE i.id = ?
@@ -239,7 +239,7 @@ export class InvoiceService {
     }
 
     // Check if client exists
-    const clientExists = databaseService.exists('clients', 'id', invoiceData.client_id);
+    const clientExists = await databaseService.exists('clients', 'id', invoiceData.client_id);
     if (!clientExists) {
       throw new Error('Client not found');
     }
@@ -250,14 +250,14 @@ export class InvoiceService {
       invoiceNumber = await invoiceNumberService.generateInvoiceNumber();
     } else {
       // Check if provided invoice number already exists
-      const invoiceExists = databaseService.exists('invoices', 'invoice_number', invoiceNumber);
+      const invoiceExists = await databaseService.exists('invoices', 'invoice_number', invoiceNumber);
       if (invoiceExists) {
         throw new Error('Invoice number already exists');
       }
     }
 
     // Get next invoice ID
-    const nextId = databaseService.getNextSequence('invoices');
+    const nextId = await databaseService.getNextSequence('invoices');
     
     // Prepare invoice data
     const now = new Date().toISOString();
@@ -297,7 +297,7 @@ export class InvoiceService {
     };
 
     // Create invoice
-    databaseService.executeQuery(`
+    await databaseService.executeQuery(`
       INSERT INTO invoices (
         id, invoice_number, client_id, design_template_id, recurring_template_id, amount, tax_amount, total_amount,
         status, due_date, issue_date, description, items, notes, payment_terms,
@@ -379,8 +379,8 @@ export class InvoiceService {
 
     // If invoice number is being updated, check for duplicates
     if (invoiceData.invoice_number) {
-      const numberExists = databaseService.getOne<{id: number}>(
-        'SELECT id FROM invoices WHERE invoice_number = ? AND id != ?', 
+      const numberExists = await databaseService.getOne<{id: number}>(
+        'SELECT id FROM invoices WHERE invoice_number = ? AND id != ?',
         [invoiceData.invoice_number, id]
       );
       if (numberExists) {
@@ -389,7 +389,7 @@ export class InvoiceService {
     }
 
     // If client_id is being updated, check if client exists
-    if (invoiceData.client_id && !databaseService.exists('clients', 'id', invoiceData.client_id)) {
+    if (invoiceData.client_id && !(await databaseService.exists('clients', 'id', invoiceData.client_id))) {
       throw new Error('Client not found');
     }
 
@@ -414,7 +414,7 @@ export class InvoiceService {
       throw new Error('No valid fields to update');
     }
 
-    const success = databaseService.updateRecord('invoices', id, updateData);
+    const success = await databaseService.updateRecord('invoices', id, updateData);
     return success ? 1 : 0;
   }
 
@@ -427,11 +427,11 @@ export class InvoiceService {
     }
 
     // Check if invoice exists and get status
-    const invoice = databaseService.getOne<{id: number; status: InvoiceStatus}>(
-      'SELECT id, status FROM invoices WHERE id = ?', 
+    const invoice = await databaseService.getOne<{id: number; status: InvoiceStatus}>(
+      'SELECT id, status FROM invoices WHERE id = ?',
       [id]
     );
-    
+
     if (!invoice) {
       throw new Error('Invoice not found');
     }
@@ -441,7 +441,7 @@ export class InvoiceService {
       throw new Error('Cannot delete paid invoices');
     }
 
-    const success = databaseService.deleteById('invoices', id);
+    const success = await databaseService.deleteById('invoices', id);
     return success ? 1 : 0;
   }
 
@@ -460,7 +460,7 @@ export class InvoiceService {
     overdue_count: number;
     draft_count: number;
   }> {
-    const stats = databaseService.getOne<{
+    const stats = await databaseService.getOne<{
       total_invoices: number;
       total_paid: number;
       total_pending: number;
@@ -514,13 +514,13 @@ export class InvoiceService {
     }
 
     // Check if invoice exists
-    const invoiceExists = databaseService.exists('invoices', 'id', id);
+    const invoiceExists = await databaseService.exists('invoices', 'id', id);
     if (!invoiceExists) {
       throw new Error('Invoice not found');
     }
 
-    const result = databaseService.executeQuery(`
-      UPDATE invoices 
+    const result = await databaseService.executeQuery(`
+      UPDATE invoices
       SET status = ?, updated_at = datetime('now')
       WHERE id = ?
     `, [status, id]);
@@ -537,9 +537,9 @@ export class InvoiceService {
     }
 
     const sentAt = emailSentAt || new Date().toISOString();
-    
-    const result = databaseService.executeQuery(`
-      UPDATE invoices 
+
+    const result = await databaseService.executeQuery(`
+      UPDATE invoices
       SET status = 'sent', email_status = 'sent', email_sent_at = ?, updated_at = datetime('now')
       WHERE id = ?
     `, [sentAt, id]);
@@ -617,8 +617,8 @@ export class InvoiceService {
     }
 
     if (excludeId) {
-      const result = databaseService.getOne<{id: number}>(
-        'SELECT id FROM invoices WHERE invoice_number = ? AND id != ?', 
+      const result = await databaseService.getOne<{id: number}>(
+        'SELECT id FROM invoices WHERE invoice_number = ? AND id != ?',
         [invoiceNumber, excludeId]
       );
       return !!result;

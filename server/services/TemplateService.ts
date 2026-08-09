@@ -69,12 +69,12 @@ export class TemplateService {
 
     // If this is set as default, make sure no other template is default
     if (templateData.is_default) {
-      databaseService.executeQuery(
+      await databaseService.executeQuery(
         'UPDATE invoice_design_templates SET is_default = 0 WHERE is_default = 1'
       );
     }
 
-    const result = databaseService.executeQuery(
+    const result = await databaseService.executeQuery(
       'INSERT INTO invoice_design_templates (name, content, is_default, variables, created_at, updated_at) VALUES (?, ?, ?, ?, DATETIME(\'now\'), DATETIME(\'now\'))',
       [
         templateData.name,
@@ -107,7 +107,7 @@ export class TemplateService {
 
     // If this is set as default, make sure no other template is default
     if (templateData.is_default) {
-      databaseService.executeQuery(
+      await databaseService.executeQuery(
         'UPDATE invoice_design_templates SET is_default = 0 WHERE is_default = 1 AND id != ?',
         [id]
       );
@@ -139,7 +139,7 @@ export class TemplateService {
     updates.push('updated_at = DATETIME(\'now\')');
     values.push(id);
 
-    const result = databaseService.executeQuery(
+    const result = await databaseService.executeQuery(
       `UPDATE invoice_design_templates SET ${updates.join(', ')} WHERE id = ?`,
       values
     );
@@ -156,7 +156,7 @@ export class TemplateService {
     }
 
     // Check if template is in use by any invoices
-    const inUse = databaseService.getOne<{ count: number }>(
+    const inUse = await databaseService.getOne<{ count: number }>(
       'SELECT COUNT(*) as count FROM invoices WHERE design_template_id = ?',
       [id]
     );
@@ -165,7 +165,7 @@ export class TemplateService {
       throw new Error('Template is currently in use by invoices and cannot be deleted');
     }
 
-    const result = databaseService.executeQuery(
+    const result = await databaseService.executeQuery(
       'DELETE FROM invoice_design_templates WHERE id = ?',
       [id]
     );
@@ -196,20 +196,20 @@ export class TemplateService {
       throw new Error('Template not found');
     }
 
-    const operations = () => {
+    const operations = async () => {
       // Remove default from all templates
-      databaseService.executeQuery(
+      await databaseService.executeQuery(
         'UPDATE invoice_design_templates SET is_default = 0 WHERE is_default = 1'
       );
 
       // Set new default
-      databaseService.executeQuery(
+      await databaseService.executeQuery(
         'UPDATE invoice_design_templates SET is_default = 1, updated_at = DATETIME(\'now\') WHERE id = ?',
         [id]
       );
     };
 
-    databaseService.executeTransaction(operations);
+    await databaseService.executeTransaction(operations);
     return true;
   }
 }

@@ -63,16 +63,16 @@ export class ExpenseService {
     query += ' ORDER BY date DESC, created_at DESC LIMIT ? OFFSET ?';
     params.push(limit, offset);
     
-    const expenses = databaseService.getMany<Expense>(query, params);
-    
+    const expenses = await databaseService.getMany<Expense>(query, params);
+
     // Get total count for pagination
     let countQuery = 'SELECT COUNT(*) as total FROM expenses';
     if (conditions.length > 0) {
       countQuery += ' WHERE ' + conditions.join(' AND ');
     }
-    
-    const totalResult = databaseService.getOne<{total: number}>(
-      countQuery, 
+
+    const totalResult = await databaseService.getOne<{total: number}>(
+      countQuery,
       params.slice(0, -2) // Remove limit and offset for count
     );
     
@@ -141,7 +141,7 @@ export class ExpenseService {
     }
 
     // Get next expense ID
-    const nextId = databaseService.getNextSequence('expenses');
+    const nextId = await databaseService.getNextSequence('expenses');
     
     // Prepare expense data
     const now = new Date().toISOString();
@@ -163,7 +163,7 @@ export class ExpenseService {
     };
 
     // Create expense
-    databaseService.executeQuery(`
+    await databaseService.executeQuery(`
       INSERT INTO expenses (
         id, amount, description, category, date, vendor, status, notes, receipt_url,
         is_billable, client_id, project, created_at, updated_at
@@ -249,7 +249,7 @@ export class ExpenseService {
       throw new Error('No valid fields to update');
     }
 
-    const success = databaseService.updateRecord('expenses', id, updateData);
+    const success = await databaseService.updateRecord('expenses', id, updateData);
     return success ? 1 : 0;
   }
 
@@ -267,7 +267,7 @@ export class ExpenseService {
       throw new Error('Expense not found');
     }
 
-    const success = databaseService.deleteById('expenses', id);
+    const success = await databaseService.deleteById('expenses', id);
     return success ? 1 : 0;
   }
 
@@ -382,32 +382,43 @@ export class ExpenseService {
       baseCondition = ' WHERE ' + conditions.join(' AND ');
     }
 
-    // Get basic stats
-    const basicStats = databaseService.getOne<{
-      total: number;
-      totalAmount: number;
-      billableAmount: number;
-      nonBillableAmount: number;
-    }>(`
-      SELECT 
-        COUNT(*) as total,
-        SUM(amount) as totalAmount,
-        SUM(CASE WHEN is_billable = 1 THEN amount ELSE 0 END) as billableAmount,
-        SUM(CASE WHEN is_billable = 0 THEN amount ELSE 0 END) as nonBillableAmount
-      FROM expenses${baseCondition}
-    `, params);
-
-    // Get category breakdown
-    const categoryData = databaseService.getMany<{category: string; count: number; amount: number}>(`
-      SELECT 
-        category,
-        COUNT(*) as count,
-        SUM(amount) as amount
-      FROM expenses${baseCondition}
-        ${baseCondition ? ' AND' : ' WHERE'} category IS NOT NULL
-      GROUP BY category
-      ORDER BY amount DESC
-    `, params);
+    // Get basic stats, category breakdown, and monthly trend concurrently (independent reads)
+    const [basicStats, categoryData, monthlyTrend] = await Promise.all([
+      databaseService.getOne<{
+        total: number;
+        totalAmount: number;
+        billableAmount: number;
+        nonBillableAmount: number;
+      }>(`
+        SELECT
+          COUNT(*) as total,
+          SUM(amount) as totalAmount,
+          SUM(CASE WHEN is_billable = 1 THEN amount ELSE 0 END) as billableAmount,
+          SUM(CASE WHEN is_billable = 0 THEN amount ELSE 0 END) as nonBillableAmount
+        FROM expenses${baseCondition}
+      `, params),
+      databaseService.getMany<{category: string; count: number; amount: number}>(`
+        SELECT
+          category,
+          COUNT(*) as count,
+          SUM(amount) as amount
+        FROM expenses${baseCondition}
+          ${baseCondition ? ' AND' : ' WHERE'} category IS NOT NULL
+        GROUP BY category
+        ORDER BY amount DESC
+      `, params),
+      databaseService.getMany<{month: string; count: number; amount: number}>(`
+        SELECT
+          strftime('%Y-%m', date) as month,
+          COUNT(*) as count,
+          SUM(amount) as amount
+        FROM expenses
+        WHERE date >= date('now', '-12 months')${baseCondition ? ' AND ' + baseCondition.substring(7) : ''}
+        GROUP BY strftime('%Y-%m', date)
+        ORDER BY month DESC
+        LIMIT 12
+      `, params)
+    ]);
 
     const byCategory: Record<string, {count: number; amount: number}> = {};
     categoryData.forEach(row => {
@@ -418,19 +429,6 @@ export class ExpenseService {
         };
       }
     });
-
-    // Get monthly trend (last 12 months)
-    const monthlyTrend = databaseService.getMany<{month: string; count: number; amount: number}>(`
-      SELECT 
-        strftime('%Y-%m', date) as month,
-        COUNT(*) as count,
-        SUM(amount) as amount
-      FROM expenses 
-      WHERE date >= date('now', '-12 months')${baseCondition ? ' AND ' + baseCondition.substring(7) : ''}
-      GROUP BY strftime('%Y-%m', date)
-      ORDER BY month DESC
-      LIMIT 12
-    `, params);
 
     return {
       total: basicStats?.total || 0,

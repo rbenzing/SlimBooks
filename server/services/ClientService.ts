@@ -68,8 +68,8 @@ export class ClientService {
 
     // Check if client with same email already exists (if email provided)
     if (clientData.email) {
-      const existingClient = databaseService.getOne<{id: number}>(
-        'SELECT id FROM clients WHERE email = ?', 
+      const existingClient = await databaseService.getOne<{id: number}>(
+        'SELECT id FROM clients WHERE email = ?',
         [clientData.email]
       );
       if (existingClient) {
@@ -78,7 +78,7 @@ export class ClientService {
     }
 
     // Get next client ID
-    const nextId = databaseService.getNextSequence('clients');
+    const nextId = await databaseService.getNextSequence('clients');
     
     // Prepare client data
     const now = new Date().toISOString();
@@ -102,7 +102,7 @@ export class ClientService {
     };
 
     // Create client
-    databaseService.executeQuery(`
+    await databaseService.executeQuery(`
       INSERT INTO clients (
         id, name, first_name, last_name, email, phone, company, address, city, state,
         zipCode, country, stripe_customer_id, created_at, updated_at
@@ -155,8 +155,8 @@ export class ClientService {
 
       // Check email uniqueness if email is being changed
       if (clientData.email !== existingClient.email) {
-        const emailExists = databaseService.getOne<{id: number}>(
-          'SELECT id FROM clients WHERE email = ? AND id != ?', 
+        const emailExists = await databaseService.getOne<{id: number}>(
+          'SELECT id FROM clients WHERE email = ? AND id != ?',
           [clientData.email, id]
         );
         if (emailExists) {
@@ -184,7 +184,7 @@ export class ClientService {
       throw new Error('No valid fields to update');
     }
 
-    const success = databaseService.updateRecord('clients', id, updateData);
+    const success = await databaseService.updateRecord('clients', id, updateData);
     return success ? 1 : 0;
   }
 
@@ -203,7 +203,7 @@ export class ClientService {
     }
 
     // Check if client has associated invoices
-    const invoiceCount = databaseService.getOne<{count: number}>(
+    const invoiceCount = await databaseService.getOne<{count: number}>(
       'SELECT COUNT(*) as count FROM invoices WHERE client_id = ?',
       [id]
     );
@@ -214,7 +214,7 @@ export class ClientService {
 
     // Use setting-based delete (checks data.clients_soft_delete_enabled setting)
     // Default is hard delete if setting doesn't exist
-    const success = databaseService.deleteWithSetting('clients', id, 'clients');
+    const success = await databaseService.deleteWithSetting('clients', id, 'clients');
     return success ? 1 : 0;
   }
 
@@ -301,23 +301,23 @@ export class ClientService {
     withPhone: number;
     byCountry: Record<string, number>;
   }> {
-    const total = databaseService.getOne<{count: number}>(
+    const total = (await databaseService.getOne<{count: number}>(
       'SELECT COUNT(*) as count FROM clients WHERE deleted_at IS NULL'
-    )?.count || 0;
+    ))?.count || 0;
 
     const active = total; // All clients are considered active now
     const inactive = 0;
 
-    const withEmail = databaseService.getOne<{count: number}>(
+    const withEmail = (await databaseService.getOne<{count: number}>(
       'SELECT COUNT(*) as count FROM clients WHERE email IS NOT NULL AND deleted_at IS NULL'
-    )?.count || 0;
+    ))?.count || 0;
 
-    const withPhone = databaseService.getOne<{count: number}>(
+    const withPhone = (await databaseService.getOne<{count: number}>(
       'SELECT COUNT(*) as count FROM clients WHERE phone IS NOT NULL AND deleted_at IS NULL'
-    )?.count || 0;
+    ))?.count || 0;
 
     // Get country distribution
-    const countryData = databaseService.getMany<{country: string; count: number}>(
+    const countryData = await databaseService.getMany<{country: string; count: number}>(
       'SELECT country, COUNT(*) as count FROM clients WHERE country IS NOT NULL AND deleted_at IS NULL GROUP BY country ORDER BY count DESC'
     );
 
@@ -378,8 +378,8 @@ export class ClientService {
     }
 
     if (excludeId) {
-      const client = databaseService.getOne<{id: number}>(
-        'SELECT id FROM clients WHERE email = ? AND id != ?', 
+      const client = await databaseService.getOne<{id: number}>(
+        'SELECT id FROM clients WHERE email = ? AND id != ?',
         [email, excludeId]
       );
       return !!client;

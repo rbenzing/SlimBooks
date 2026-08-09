@@ -103,16 +103,16 @@ export class UserService {
     }
 
     // Check if user already exists
-    if (databaseService.exists('users', 'email', email)) {
+    if (await databaseService.exists('users', 'email', email)) {
       throw new Error('User with this email already exists');
     }
 
     // Get next user ID from counter
-    const nextId = databaseService.getNextSequence('users');
-    
+    const nextId = await databaseService.getNextSequence('users');
+
     // Create user
     const now = new Date().toISOString();
-    databaseService.executeQuery(`
+    await databaseService.executeQuery(`
       INSERT INTO users (
         id, name, email, username, password_hash, role, email_verified,
         google_id, last_login, failed_login_attempts, account_locked_until, created_at, updated_at
@@ -184,8 +184,8 @@ export class UserService {
 
       // Check email uniqueness if email is being changed
       if (updateData.email !== existingUser.email) {
-        const emailExists = databaseService.getOne<{id: number}>(
-          'SELECT id FROM users WHERE email = ? AND id != ?', 
+        const emailExists = await databaseService.getOne<{id: number}>(
+          'SELECT id FROM users WHERE email = ? AND id != ?',
           [updateData.email, id]
         );
         if (emailExists) {
@@ -199,7 +199,7 @@ export class UserService {
       updateData.email_verified = updateData.email_verified ? 1 : 0;
     }
 
-    const success = databaseService.updateRecord('users', id, updateData);
+    const success = await databaseService.updateRecord('users', id, updateData);
     return success ? 1 : 0;
   }
 
@@ -218,15 +218,15 @@ export class UserService {
     }
 
     // Don't allow deletion of the last admin
-    const adminCount = databaseService.getOne<{count: number}>(
+    const adminCount = await databaseService.getOne<{count: number}>(
       "SELECT COUNT(*) as count FROM users WHERE role = 'admin'"
     );
-    
+
     if (existingUser.role === 'admin' && (adminCount?.count || 0) <= 1) {
       throw new Error('Cannot delete the last administrator');
     }
 
-    const success = databaseService.deleteById('users', id);
+    const success = await databaseService.deleteById('users', id);
     return success ? 1 : 0;
   }
 
@@ -234,19 +234,19 @@ export class UserService {
    * Update user login attempts
    */
   async updateUserLoginAttempts(
-    userId: number, 
-    attempts: number, 
+    userId: number,
+    attempts: number,
     lockedUntil: string | null = null
   ): Promise<boolean> {
     if (!userId || typeof userId !== 'number') {
       throw new Error('Valid user ID is required');
     }
-    
+
     if (typeof attempts !== 'number' || attempts < 0) {
       throw new Error('Valid attempts count is required');
     }
 
-    const changes = databaseService.executeQuery(
+    const changes = await databaseService.executeQuery(
       "UPDATE users SET failed_login_attempts = ?, account_locked_until = ?, updated_at = datetime('now') WHERE id = ?",
       [attempts, lockedUntil, userId]
     );
@@ -262,7 +262,7 @@ export class UserService {
       throw new Error('Valid user ID is required');
     }
 
-    const changes = databaseService.executeQuery(
+    const changes = await databaseService.executeQuery(
       "UPDATE users SET last_login = datetime('now'), updated_at = datetime('now') WHERE id = ?",
       [userId]
     );
@@ -278,7 +278,7 @@ export class UserService {
       throw new Error('Valid user ID is required');
     }
 
-    const changes = databaseService.executeQuery(
+    const changes = await databaseService.executeQuery(
       "UPDATE users SET email_verified = 1, email_verified_at = datetime('now'), updated_at = datetime('now') WHERE id = ?",
       [userId]
     );
@@ -306,8 +306,8 @@ export class UserService {
     }
 
     if (excludeId) {
-      const user = databaseService.getOne<{id: number}>(
-        'SELECT id FROM users WHERE email = ? AND id != ?', 
+      const user = await databaseService.getOne<{id: number}>(
+        'SELECT id FROM users WHERE email = ? AND id != ?',
         [email, excludeId]
       );
       return !!user;
@@ -356,7 +356,7 @@ export class UserService {
       throw new Error('Valid user ID is required');
     }
 
-    const changes = databaseService.executeQuery(
+    const changes = await databaseService.executeQuery(
       "UPDATE users SET failed_login_attempts = 0, account_locked_until = NULL, updated_at = datetime('now') WHERE id = ?",
       [userId]
     );
@@ -407,29 +407,33 @@ export class UserService {
     locked: number;
     recentLogins: number;
   }> {
-    const total = databaseService.getOne<{count: number}>(
-      'SELECT COUNT(*) as count FROM users'
-    )?.count || 0;
+    const [totalResult, adminsResult, regularResult, verifiedResult, lockedResult, recentLoginsResult] = await Promise.all([
+      databaseService.getOne<{count: number}>(
+        'SELECT COUNT(*) as count FROM users'
+      ),
+      databaseService.getOne<{count: number}>(
+        "SELECT COUNT(*) as count FROM users WHERE role = 'admin'"
+      ),
+      databaseService.getOne<{count: number}>(
+        "SELECT COUNT(*) as count FROM users WHERE role = 'user'"
+      ),
+      databaseService.getOne<{count: number}>(
+        'SELECT COUNT(*) as count FROM users WHERE email_verified = 1'
+      ),
+      databaseService.getOne<{count: number}>(
+        "SELECT COUNT(*) as count FROM users WHERE account_locked_until IS NOT NULL AND account_locked_until > datetime('now')"
+      ),
+      databaseService.getOne<{count: number}>(
+        "SELECT COUNT(*) as count FROM users WHERE last_login > datetime('now', '-7 days')"
+      )
+    ]);
 
-    const admins = databaseService.getOne<{count: number}>(
-      "SELECT COUNT(*) as count FROM users WHERE role = 'admin'"
-    )?.count || 0;
-
-    const regular = databaseService.getOne<{count: number}>(
-      "SELECT COUNT(*) as count FROM users WHERE role = 'user'"
-    )?.count || 0;
-
-    const verified = databaseService.getOne<{count: number}>(
-      'SELECT COUNT(*) as count FROM users WHERE email_verified = 1'
-    )?.count || 0;
-
-    const locked = databaseService.getOne<{count: number}>(
-      "SELECT COUNT(*) as count FROM users WHERE account_locked_until IS NOT NULL AND account_locked_until > datetime('now')"
-    )?.count || 0;
-
-    const recentLogins = databaseService.getOne<{count: number}>(
-      "SELECT COUNT(*) as count FROM users WHERE last_login > datetime('now', '-7 days')"
-    )?.count || 0;
+    const total = totalResult?.count || 0;
+    const admins = adminsResult?.count || 0;
+    const regular = regularResult?.count || 0;
+    const verified = verifiedResult?.count || 0;
+    const locked = lockedResult?.count || 0;
+    const recentLogins = recentLoginsResult?.count || 0;
 
     return {
       total,

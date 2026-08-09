@@ -363,7 +363,7 @@ export const tableSchemas: TableSchema[] = [
  * Performance indexes — the arterial roads of the data city.
  * SQLite does not auto-index FKs; without these the CASCADE and JOIN physics collapse under load.
  */
-const indexes = [
+export const indexes = [
   // clients
   'CREATE INDEX IF NOT EXISTS idx_clients_email ON clients (email)',
   'CREATE INDEX IF NOT EXISTS idx_clients_is_active ON clients (is_active)',
@@ -435,7 +435,7 @@ const indexes = [
  * Triggers the schema declares. Migration 004 creates this one; it is repeated
  * here for the same reason the indexes above are.
  */
-const triggers = [
+export const triggers = [
   `CREATE TRIGGER IF NOT EXISTS update_expenses_timestamp
      AFTER UPDATE ON expenses
      FOR EACH ROW

@@ -258,6 +258,9 @@ const settingsSchema: TableSchema = {
     { name: 'type', type: 'TEXT', constraints: ["DEFAULT 'string'"] },
     { name: 'description', type: 'TEXT' },
     { name: 'is_public', type: 'INTEGER', constraints: ['DEFAULT 0'] },
+    // Added by migration 002; declared here so a fresh database matches an
+    // upgraded one.
+    { name: 'category', type: 'TEXT' },
     { name: 'created_at', type: 'TEXT', constraints: ['NOT NULL DEFAULT (datetime(\'now\'))'] },
     { name: 'updated_at', type: 'TEXT', constraints: ['NOT NULL DEFAULT (datetime(\'now\'))'] }
   ]
@@ -403,8 +406,74 @@ const indexes = [
   // reports / counters
   'CREATE INDEX IF NOT EXISTS idx_reports_type ON reports (type)',
   'CREATE INDEX IF NOT EXISTS idx_reports_deleted_at ON reports (deleted_at)',
-  'CREATE INDEX IF NOT EXISTS idx_counters_name ON counters (name)'
+  'CREATE INDEX IF NOT EXISTS idx_counters_name ON counters (name)',
+
+  // Indexes that migrations 006-011 add. They are declared here too so this
+  // file describes the true final shape — which a fresh database, and any
+  // future non-SQLite backend built from this file alone, must reach directly.
+  // createTables() skips any whose columns are not present yet, so an existing
+  // database still picks them up from its migration rather than crashing.
+  'CREATE INDEX IF NOT EXISTS idx_users_deleted_at ON users (deleted_at)',
+  'CREATE INDEX IF NOT EXISTS idx_clients_first_last ON clients (first_name, last_name)',
+  'CREATE INDEX IF NOT EXISTS idx_expenses_status ON expenses (status)',
+  'CREATE INDEX IF NOT EXISTS idx_expenses_vendor ON expenses (vendor)',
+  'CREATE INDEX IF NOT EXISTS idx_expenses_is_billable ON expenses (is_billable)',
+  'CREATE INDEX IF NOT EXISTS idx_expenses_date_category ON expenses (date, category)',
+  'CREATE INDEX IF NOT EXISTS idx_invoices_issue_date ON invoices (issue_date)',
+  'CREATE INDEX IF NOT EXISTS idx_invoices_stripe_id ON invoices (stripe_invoice_id)',
+  'CREATE INDEX IF NOT EXISTS idx_invoices_date_range ON invoices (issue_date, due_date)',
+  'CREATE INDEX IF NOT EXISTS idx_invoices_stripe_checkout_session ON invoices (stripe_checkout_session_id)',
+  'CREATE INDEX IF NOT EXISTS idx_payments_client_name ON payments (client_name)',
+  'CREATE INDEX IF NOT EXISTS idx_payments_stripe_payment_id ON payments (stripe_payment_id)',
+  // Unique, and partial: manual invoices carry no template and must not collide.
+  `CREATE UNIQUE INDEX IF NOT EXISTS idx_invoices_recurring_period
+     ON invoices (recurring_template_id, recurring_period_date)
+     WHERE recurring_template_id IS NOT NULL`
 ];
+
+/**
+ * Triggers the schema declares. Migration 004 creates this one; it is repeated
+ * here for the same reason the indexes above are.
+ */
+const triggers = [
+  `CREATE TRIGGER IF NOT EXISTS update_expenses_timestamp
+     AFTER UPDATE ON expenses
+     FOR EACH ROW
+   BEGIN
+     UPDATE expenses SET updated_at = datetime('now') WHERE id = NEW.id;
+   END`
+];
+
+/** Pulls the table and column names out of a CREATE INDEX statement. */
+const parseIndexTarget = (sql: string): { table: string; columns: string[] } | null => {
+  const match = /ON\s+(\w+)\s*\(([^)]+)\)/i.exec(sql);
+
+  if (!match?.[1] || !match[2]) return null;
+
+  return {
+    table: match[1],
+    // Strip any WHERE-clause remnant and per-column direction keywords.
+    columns: match[2].split(',').map(column => column.trim().split(/\s+/)[0] ?? '')
+  };
+};
+
+/**
+ * Whether every column an index covers exists on its table right now.
+ *
+ * Returns false rather than throwing for an unparseable statement or a missing
+ * table — the point is that a not-yet-ready index is skipped quietly, and the
+ * migration that adds the column creates its own index anyway.
+ */
+const indexIsBuildable = async (db: IDatabase, sql: string): Promise<boolean> => {
+  const target = parseIndexTarget(sql);
+  if (target === null) return false;
+
+  const info = await db.getMany<{ name: string }>(`PRAGMA table_info(${target.table})`);
+  if (info.length === 0) return false;
+
+  const present = new Set(info.map(column => column.name));
+  return target.columns.every(column => present.has(column));
+};
 
 /**
  * Create all database tables + performance indexes + better-sqlite3 pragmas
@@ -432,8 +501,22 @@ export const createTables = async (db: IDatabase): Promise<void> => {
     await db.executeQuery(createTableSQL);
   }
 
-  // Lay the arterial roads
+  // Lay the arterial roads.
+  //
+  // Skipped when a column the index covers does not exist yet. createTables()
+  // runs BEFORE runMigrations(), so on an existing database an index over a
+  // migration-added column would fail with "no such column" and take the whole
+  // boot down. Declaring the full final shape here and skipping what is not
+  // ready yet means a fresh database gets every index immediately, an upgrading
+  // database gets it on the next boot after its migration lands, and the two
+  // converge — without the schema file having to lie about the target shape.
   for (const sql of indexes) {
+    if (await indexIsBuildable(db, sql)) {
+      await db.executeQuery(sql);
+    }
+  }
+
+  for (const sql of triggers) {
     await db.executeQuery(sql);
   }
 

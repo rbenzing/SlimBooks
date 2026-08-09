@@ -89,12 +89,24 @@ describe('schema drift', () => {
    * as already applied. If a migration would have changed something, that
    * database is wrong from the moment it is created.
    */
-  const snapshot = async (): Promise<string> => {
-    const rows = await db.getMany<{ sql: string | null }>(
-      "SELECT sql FROM sqlite_master WHERE sql IS NOT NULL ORDER BY type, name"
+  /**
+   * Structural snapshot: one normalised statement per entry, sorted.
+   *
+   * Whitespace is collapsed because the comparison is about structure, not
+   * formatting — an index declared across three lines in the schema file and on
+   * one line in a migration is the same index, and a test that failed on that
+   * would be noise. `migrations` and `boot_locks` are excluded: the runner and
+   * the boot lock create them, not the schema.
+   */
+  const snapshot = async (): Promise<string[]> => {
+    const rows = await db.getMany<{ name: string; sql: string | null }>(
+      "SELECT name, sql FROM sqlite_master WHERE sql IS NOT NULL ORDER BY type, name"
     );
 
-    return rows.map(row => row.sql).join('\n');
+    return rows
+      .filter(row => row.name !== 'migrations' && row.name !== 'boot_locks')
+      .map(row => (row.sql ?? '').replace(/\s+/g, ' ').trim())
+      .sort();
   };
 
   it('leaves a freshly created schema untouched', async () => {
@@ -108,10 +120,11 @@ describe('schema drift', () => {
     await runMigrations(db);
     const after = await snapshot();
 
-    // The migrations table itself is created by the runner, so ignore it.
-    const withoutMigrationsTable = (sql: string): string =>
-      sql.split('\n').filter(line => !line.includes('CREATE TABLE migrations')).join('\n');
+    // Reported as a set difference rather than a string diff, so a failure names
+    // the exact objects that drifted instead of printing two walls of DDL.
+    const added = after.filter(sql => !before.includes(sql));
+    const removed = before.filter(sql => !after.includes(sql));
 
-    expect(withoutMigrationsTable(after)).toBe(withoutMigrationsTable(before));
+    expect({ added, removed }).toEqual({ added: [], removed: [] });
   });
 });

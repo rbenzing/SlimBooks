@@ -30,6 +30,8 @@ export interface SchedulerOptions {
   initialDelayMs: number;
 }
 
+import { claimExclusive } from '../database/claim.util.js';
+
 const plusMs = (iso: string, milliseconds: number): string =>
   new Date(new Date(iso).getTime() + milliseconds).toISOString();
 
@@ -48,25 +50,19 @@ export const acquireLease = async (
 ): Promise<boolean> => {
   const expiresAt = plusMs(now, ttlMs);
 
-  // One statement, so two instances racing cannot both observe "unheld". The
-  // condition matches only a lease that has lapsed or that this owner already
-  // holds. `expires_at` is named as the guard column because the condition
-  // reads it and the update writes it — MySQL evaluates assignments in order
-  // and would otherwise test the value it just wrote.
-  const { sql, params } = db.dialect.conditionalUpsert({
+  // Takeover is permitted only when the lease has lapsed or this owner already
+  // holds it. claimExclusive expresses that with statements both engines
+  // document identically; see claim.util.ts for why it is not a single upsert.
+  return claimExclusive(db, {
     table: 'scheduler_leases',
-    columns: ['job_name', 'owner', 'acquired_at', 'expires_at'],
-    values: [jobName, owner, now, expiresAt],
-    conflictColumn: 'job_name',
-    updateColumns: ['owner', 'acquired_at', 'expires_at'],
-    conflictGuardColumn: 'expires_at',
-    condition: 'scheduler_leases.expires_at <= ? OR scheduler_leases.owner = ?',
-    conditionParams: [now, owner]
+    keyColumn: 'job_name',
+    keyValue: jobName,
+    ownerColumn: 'owner',
+    owner,
+    values: { owner, acquired_at: now, expires_at: expiresAt },
+    takeoverCondition: 'expires_at <= ? OR owner = ?',
+    takeoverParams: [now, owner]
   });
-
-  const result = await db.executeQuery(sql, params);
-
-  return result.changes > 0;
 };
 
 /** Release a claim early. A release from a non-holder is ignored. */

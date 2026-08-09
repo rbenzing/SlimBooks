@@ -7,6 +7,7 @@ import { createTables } from './schemas/tables.schema.js';
 import { initializeAllSeeds } from './seeds/initial.seed.js';
 import { getDatabaseConfig } from './config/sqlite.config.js';
 import { runMigrations } from './migrations/index.js';
+import { claimExclusive } from './claim.util.js';
 import type { IDatabase } from '../types/database.types.js';
 
 /**
@@ -58,23 +59,20 @@ const acquireBootLock = async (owner: string): Promise<boolean> => {
     const now = new Date();
     const expiresAt = new Date(now.getTime() + BOOT_LOCK_TTL_MS).toISOString();
 
-    // One statement, so two instances racing cannot both observe "unheld".
-    // `expires_at` is the guard column: the condition reads it and the update
-    // writes it, and MySQL evaluates assignments left to right.
-    const { sql, params } = db.dialect.conditionalUpsert({
+    // Only expiry releases this lock — there is no "I already hold it" branch,
+    // because each boot takes a fresh owner id.
+    const claimed = await claimExclusive(db, {
       table: 'boot_locks',
-      columns: ['name', 'owner', 'expires_at'],
-      values: ['schema', owner, expiresAt],
-      conflictColumn: 'name',
-      updateColumns: ['owner', 'expires_at'],
-      conflictGuardColumn: 'expires_at',
-      condition: 'boot_locks.expires_at <= ?',
-      conditionParams: [now.toISOString()]
+      keyColumn: 'name',
+      keyValue: 'schema',
+      ownerColumn: 'owner',
+      owner,
+      values: { owner, expires_at: expiresAt },
+      takeoverCondition: 'expires_at <= ?',
+      takeoverParams: [now.toISOString()]
     });
 
-    const result = await db.executeQuery(sql, params);
-
-    if (result.changes > 0) return true;
+    if (claimed) return true;
 
     await sleep(BOOT_LOCK_POLL_MS);
   } while (Date.now() < deadline);

@@ -43,7 +43,7 @@ export class InvoiceNumberService {
   private async getInvoiceNumberSettings(): Promise<{ prefix: string }> {
     try {
       const settings = await databaseService.getOne<{ value: string }>(
-        'SELECT value FROM settings WHERE key = ? AND category = ?',
+        'SELECT value FROM settings WHERE `key` = ? AND category = ?',
         ['invoice_number_settings', 'general']
       );
 

@@ -130,7 +130,7 @@ export class DatabaseService {
     // Check if soft delete is enabled for this table
     const settingKey = `data.${tableName || table}_soft_delete_enabled`;
     const setting = await this.getOne<{ value: string }>(
-      'SELECT value FROM settings WHERE key = ?',
+      'SELECT value FROM settings WHERE `key` = ?',
       [settingKey]
     );
 
@@ -155,7 +155,9 @@ export class DatabaseService {
     keys.push('updated_at');
     values.push(new Date().toISOString());
 
-    const setClause = keys.map(key => `${key} = ?`).join(', ');
+    // Every identifier is quoted, because these builders take arbitrary column
+    // names and `settings.key` is one of them — a reserved word in MySQL.
+    const setClause = keys.map(column => `\`${column}\` = ?`).join(', ');
     const query = `UPDATE ${table} SET ${setClause} WHERE id = ?`;
 
     values.push(id);
@@ -178,7 +180,8 @@ export class DatabaseService {
     values.push(now, now);
 
     const placeholders = keys.map(() => '?').join(', ');
-    const query = `INSERT INTO ${table} (${keys.join(', ')}) VALUES (${placeholders})`;
+    const columnList = keys.map(column => `\`${column}\``).join(', ');
+    const query = `INSERT INTO ${table} (${columnList}) VALUES (${placeholders})`;
 
     const result = await this.executeQuery(query, values);
     return result.lastInsertRowid;
@@ -235,7 +238,7 @@ export class DatabaseService {
    */
   public async exists(table: string, column: string, value: unknown): Promise<boolean> {
     validateTableName(table);
-    const result = await this.getOne(`SELECT 1 FROM ${table} WHERE ${column} = ?`, [value]);
+    const result = await this.getOne(`SELECT 1 FROM ${table} WHERE \`${column}\` = ?`, [value]);
     return result !== null;
   }
 

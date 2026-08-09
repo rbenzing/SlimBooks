@@ -9,6 +9,13 @@ import { type PublicInvoiceDisplay, type PublicInvoiceTokenPayload } from '../ty
 import { invoiceNumberService } from './InvoiceNumberService.js';
 
 /**
+ * `key` is a reserved word in MySQL, so the column is backticked — a quoting
+ * form SQLite also accepts. One constant rather than three copies of the same
+ * statement, which is how two of them would eventually drift apart.
+ */
+const SETTING_BY_KEY = 'SELECT value FROM settings WHERE `key` = ? AND category = ?';
+
+/**
  * Invoice Service
  * Manages invoice-related operations with proper validation and security
  */
@@ -127,15 +134,9 @@ export class InvoiceService {
 
       // Get company settings for public display (independent reads)
       const [companySettings, currencySettings, invoiceTemplate] = await Promise.all([
-        databaseService.getOne<{value: string}>(`
-          SELECT value FROM settings WHERE key = ? AND category = ?
-        `, ['company_settings', 'company']),
-        databaseService.getOne<{value: string}>(`
-          SELECT value FROM settings WHERE key = ? AND category = ?
-        `, ['currency_settings', 'currency']),
-        databaseService.getOne<{value: string}>(`
-          SELECT value FROM settings WHERE key = ? AND category = ?
-        `, ['invoice_template', 'appearance'])
+        databaseService.getOne<{value: string}>(SETTING_BY_KEY, ['company_settings', 'company']),
+        databaseService.getOne<{value: string}>(SETTING_BY_KEY, ['currency_settings', 'currency']),
+        databaseService.getOne<{value: string}>(SETTING_BY_KEY, ['invoice_template', 'appearance'])
       ]);
 
       // Include settings in the response for public display

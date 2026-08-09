@@ -81,16 +81,16 @@ export class SettingsService {
    * Get all settings by category (using key prefix since table doesn't have category column)
    */
   async getAllSettings(category?: string): Promise<Record<string, unknown>> {
-    let query = 'SELECT key, value FROM settings';
+    let query = 'SELECT `key`, value FROM settings';
     const params: (string | number)[] = [];
 
     if (category) {
       // Use key prefix to simulate category filtering
-      query += ' WHERE key LIKE ?';
+      query += ' WHERE `key` LIKE ?';
       params.push(`${category}.%`);
     }
 
-    query += ' ORDER BY key';
+    query += ' ORDER BY `key`';
 
     const results = await databaseService.getMany<{key: string, value: string}>(query, params);
 
@@ -115,7 +115,7 @@ export class SettingsService {
       throw new Error('Valid setting key is required');
     }
 
-    const result = await databaseService.getOne<{value: string}>('SELECT value FROM settings WHERE key = ?', [key]);
+    const result = await databaseService.getOne<{value: string}>('SELECT value FROM settings WHERE `key` = ?', [key]);
 
     if (result?.value) {
       try {
@@ -142,7 +142,7 @@ export class SettingsService {
     const jsonValue = typeof value === 'string' ? value : JSON.stringify(value);
 
     await databaseService.executeQuery(
-      'INSERT OR REPLACE INTO settings (key, value, category) VALUES (?, ?, ?)',
+      'INSERT OR REPLACE INTO settings (`key`, value, category) VALUES (?, ?, ?)',
       [settingKey, jsonValue, category]
     );
 
@@ -165,7 +165,7 @@ export class SettingsService {
         const jsonValue = typeof value === 'string' ? value : JSON.stringify(value);
 
         await databaseService.executeQuery(
-          'INSERT OR REPLACE INTO settings (key, value, category) VALUES (?, ?, ?)',
+          'INSERT OR REPLACE INTO settings (`key`, value, category) VALUES (?, ?, ?)',
           [key, jsonValue, formatCategory]
         );
       }
@@ -197,7 +197,7 @@ export class SettingsService {
         const jsonValue = typeof value === 'string' ? value : JSON.stringify(value);
 
         await databaseService.executeQuery(
-          'INSERT OR REPLACE INTO settings (key, value, category) VALUES (?, ?, ?)',
+          'INSERT OR REPLACE INTO settings (`key`, value, category) VALUES (?, ?, ?)',
           [settingKey, jsonValue, category]
         );
       }
@@ -222,7 +222,7 @@ export class SettingsService {
    */
   private async resolveProjectSettings(): Promise<ProjectSettings> {
     const dbSettings = await databaseService.getMany<{key: string, value: string}>(
-      'SELECT key, value FROM settings WHERE key LIKE ? OR key LIKE ? OR key LIKE ? OR key LIKE ?',
+      'SELECT `key`, value FROM settings WHERE `key` LIKE ? OR `key` LIKE ? OR `key` LIKE ? OR `key` LIKE ?',
       ['google_oauth.%', 'stripe.%', 'email.%', 'security.%']
     );
 
@@ -445,7 +445,7 @@ export class SettingsService {
     const operations = async () => {
       for (const setting of flatSettings) {
         await databaseService.executeQuery(
-          'INSERT OR REPLACE INTO settings (key, value, category) VALUES (?, ?, ?)',
+          'INSERT OR REPLACE INTO settings (`key`, value, category) VALUES (?, ?, ?)',
           [setting.key, setting.value, 'project']
         );
       }
@@ -464,7 +464,7 @@ export class SettingsService {
     }
 
     const setting = await databaseService.getOne<{value: string}>(
-      'SELECT value FROM settings WHERE key = ?',
+      'SELECT value FROM settings WHERE `key` = ?',
       [`security.${settingName}`]
     );
     
@@ -497,7 +497,7 @@ export class SettingsService {
       throw new Error('Valid setting key is required');
     }
 
-    const result = await databaseService.executeQuery('DELETE FROM settings WHERE key = ?', [key]);
+    const result = await databaseService.executeQuery('DELETE FROM settings WHERE `key` = ?', [key]);
     return result.changes > 0;
   }
 
@@ -509,7 +509,7 @@ export class SettingsService {
       throw new Error('Valid category is required');
     }
 
-    const result = await databaseService.executeQuery('DELETE FROM settings WHERE key LIKE ?', [`${category}.%`]);
+    const result = await databaseService.executeQuery('DELETE FROM settings WHERE `key` LIKE ?', [`${category}.%`]);
     return result.changes;
   }
 
@@ -517,8 +517,12 @@ export class SettingsService {
    * Get all categories (extracted from key prefixes)
    */
   async getCategories(): Promise<string[]> {
+    // The pattern is a bound parameter, not a literal: MySQL reads "%.%" as an
+    // identifier rather than a string under its default sql_mode, so the
+    // double-quoted form would fail there while working on SQLite.
     const results = await databaseService.getMany<{key: string}>(
-      'SELECT DISTINCT key FROM settings WHERE key LIKE "%.%" ORDER BY key'
+      'SELECT DISTINCT `key` FROM settings WHERE `key` LIKE ? ORDER BY `key`',
+      ['%.%']
     );
 
     // Extract categories from keys (everything before the first dot)
@@ -552,7 +556,7 @@ export class SettingsService {
     const params: (string | number | null | boolean)[] = [];
 
     if (category) {
-      query += ' WHERE key LIKE ?';
+      query += ' WHERE `key` LIKE ?';
       params.push(`${category}.%`);
     }
 
@@ -568,7 +572,7 @@ export class SettingsService {
     const params: (string | number | null | boolean)[] = [];
 
     if (category) {
-      query += ' WHERE key LIKE ?';
+      query += ' WHERE `key` LIKE ?';
       params.push(`${category}.%`);
     }
 

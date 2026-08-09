@@ -265,7 +265,10 @@ export const seedData = async (db: IDatabase, seed: SeedData): Promise<void> => 
 
   const columns = Object.keys(firstRow);
   const placeholders = columns.map(() => '?').join(', ');
-  const query = `INSERT INTO ${seed.table} (${columns.join(', ')}) VALUES (${placeholders})`;
+  // Identifiers are quoted because the seed data names arbitrary columns, and
+  // `settings.key` is a reserved word in MySQL. SQLite accepts backticks too.
+  const columnList = columns.map(column => `\`${column}\``).join(', ');
+  const query = `INSERT INTO ${seed.table} (${columnList}) VALUES (${placeholders})`;
 
   for (const row of seed.data) {
     const values = columns.map(col => row[col]);

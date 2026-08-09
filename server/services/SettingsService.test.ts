@@ -540,7 +540,7 @@ describe('deletes and counts', () => {
   it('resets one category without touching the rest', async () => {
     await settingsService.resetSettings('format');
 
-    expect(db.queries[0].sql).toMatch(/WHERE key LIKE \?/);
+    expect(db.queries[0].sql).toMatch(/WHERE `key` LIKE \?/);
     expect(db.queries[0].params).toEqual(['format.%']);
   });
 

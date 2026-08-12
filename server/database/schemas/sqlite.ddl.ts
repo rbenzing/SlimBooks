@@ -16,10 +16,10 @@ import type { ColumnDefinition, ColumnType, TableSchema } from '../../types/data
  * The physical type SQLite gets.
  *
  * Every result is one of the six a STRICT table permits
- * (`INT INTEGER REAL TEXT BLOB ANY`), so turning STRICT on is a one-word change
- * rather than a retyping exercise. `NUMERIC` is the only logical type without a
- * STRICT equivalent; nothing in the schema uses it, and it maps to REAL rather
- * than being left to SQLite's affinity rules.
+ * (`INT INTEGER REAL TEXT BLOB ANY`), which is what lets `renderCreateTable`
+ * stamp STRICT below. `NUMERIC` is the only logical type without a STRICT
+ * equivalent; nothing in the schema uses it, and it maps to REAL rather than
+ * being left to SQLite's affinity rules.
  */
 export const sqliteColumnType = (column: ColumnDefinition): string => {
   const mapping: Record<ColumnType, string> = {
@@ -34,6 +34,23 @@ export const sqliteColumnType = (column: ColumnDefinition): string => {
   return mapping[column.type];
 };
 
+/**
+ * STRICT is the half of the epoch-timestamp change that makes the other half
+ * true.
+ *
+ * An INTEGER column in an ordinary SQLite table still accepts text: affinity
+ * converts what looks numeric and stores the rest verbatim. So a stray
+ * `'2026-08-12T13:54:13Z'` written to `created_at` would sit in the column as
+ * text, next to integers, compared against them by SQLite's type ordering —
+ * which is the two-shapes-in-one-column bug this whole change removes, wearing a
+ * different hat. STRICT makes that write an error at the point it happens.
+ *
+ * Not every table can have it. `migrations` and `boot_locks` are declared once
+ * for both engines, in `VARCHAR`/`BIGINT` that MySQL needs and STRICT rejects;
+ * they hold a lock row and a migration ledger, no customer data, and splitting
+ * their DDL per dialect would cost more than it buys. Migration 015 skips them
+ * for the same reason.
+ */
 export const renderCreateTable = (schema: TableSchema): string => {
   const columns = schema.columns.map(column => {
     const constraints = (column.constraints ?? []).join(' ').trim();
@@ -46,6 +63,6 @@ export const renderCreateTable = (schema: TableSchema): string => {
   return (
     `CREATE TABLE IF NOT EXISTS ${schema.name} (` +
     [...columns, ...constraints].join(', ') +
-    ')'
+    ') STRICT'
   );
 };

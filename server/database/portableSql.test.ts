@@ -146,6 +146,42 @@ describe('portable SQL', () => {
     expect(offenders).toEqual([]);
   });
 
+  it('turns no calendar day into an instant by string surgery', async () => {
+    // A third standing guard, over the boundary between the two kinds of value.
+    //
+    // Reports are asked for in days and every column they filter holds epoch
+    // milliseconds. Four sites bridged that with `endDate + 'T23:59:59.999Z'`,
+    // which was right while the columns were text and became a silent
+    // wrong-answer bug when they became integers: SQLite orders every number
+    // below every string, so the report came back empty; MySQL read the string
+    // as the number 2026, so the lower bound matched every row and the upper
+    // bound none. Neither engine complained, and the unit tests passed —
+    // they asserted the broken bound.
+    //
+    // utcDayStart()/utcDayEnd() own that conversion now, and this forbids
+    // rebuilding it by hand. utcTime.util.ts is where the literals belong.
+    const DAY_ROOTS = [...ROOTS, 'server/database', 'server/runtime', 'server/utils'];
+    const SURGERY = /['"`]T(?:23:59:59|00:00:00)/;
+    const files = (await Promise.all(DAY_ROOTS.map(walk))).flat();
+    const offenders: string[] = [];
+
+    for (const file of files) {
+      if (file.endsWith(join('server', 'utils', 'utcTime.util.ts'))) continue;
+
+      const source = await readFile(file, 'utf8');
+      const sourceLines = source.split('\n');
+
+      sourceLines.forEach((rawLine, index) => {
+        if (isComment(rawLine)) return;
+        if (!SURGERY.test(rawLine)) return;
+
+        offenders.push(`${file}:${index + 1}  use utcDayStart() / utcDayEnd()\n    ${rawLine.trim()}`);
+      });
+    }
+
+    expect(offenders).toEqual([]);
+  });
+
   it('catches the two forms that evaded the original grep', () => {
     // Guards the guard. Both of these shipped, and both were invisible to a
     // case-sensitive grep for the unescaped spelling.

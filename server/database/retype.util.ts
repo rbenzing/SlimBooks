@@ -22,6 +22,28 @@ export interface ColumnRetype {
   conversion: string;
 }
 
+export interface RetypeOptions {
+  /**
+   * Rebuild the table as STRICT (SQLite only).
+   *
+   * An INTEGER column in an ordinary table still accepts text — affinity
+   * converts what it can and stores the rest as-is — so "there is no second way
+   * to write a number" is a convention until STRICT enforces it.
+   *
+   * Ignored on MySQL, where the column type is already the constraint. Skipped,
+   * with a warning, on a table carrying a column type STRICT does not permit;
+   * see `strictLegal`.
+   */
+  strict?: boolean;
+}
+
+/** The only type names a STRICT table accepts. */
+const STRICT_TYPES = new Set(['INT', 'INTEGER', 'REAL', 'TEXT', 'BLOB', 'ANY']);
+
+/** Whether a CREATE TABLE already declares the table STRICT. */
+export const isStrict = (sql: string): boolean =>
+  /\bSTRICT\b/i.test(sql.slice(sql.lastIndexOf(')')));
+
 /** Whether the column is already the type we are converting to. */
 const alreadyRetyped = (declared: string, definition: string): boolean => {
   const target = definition.trim().split(/\s+/)[0]?.toUpperCase() ?? '';
@@ -97,7 +119,8 @@ const declaredColumn = (definition: string): string | null => {
 export const rewriteCreateTable = (
   sql: string,
   newName: string,
-  retypes: readonly ColumnRetype[]
+  retypes: readonly ColumnRetype[],
+  strict = false
 ): string => {
   const open = sql.indexOf('(');
   const close = sql.lastIndexOf(')');
@@ -118,7 +141,53 @@ export const rewriteCreateTable = (
     return retype ? `\n  ${column} ${retype.definition}` : definition;
   });
 
-  return `CREATE TABLE ${newName} (${rewritten.join(',')}${sql.slice(close)}`;
+  // Everything from the closing paren on is the table-options list. STRICT joins
+  // it rather than replacing it, so a table that is also WITHOUT ROWID keeps
+  // both — the two are comma-separated, and appending without the comma is a
+  // syntax error.
+  const options = sql.slice(close).trimEnd();
+  const stamped =
+    strict && !isStrict(options)
+      ? `${options}${options.length > 1 ? ',' : ''} STRICT`
+      : options;
+
+  return `CREATE TABLE ${newName} (${rewritten.join(',')}${stamped}`;
+};
+
+/**
+ * Whether every column would be legal in a STRICT table.
+ *
+ * STRICT accepts six type names and nothing else, so a column declared
+ * `DATETIME`, `VARCHAR(190)`, or with no type at all makes the CREATE TABLE a
+ * syntax error rather than a slower path. Every table this application builds is
+ * within the six — see sqlite.ddl.ts — but an install carrying a column from
+ * somewhere else should keep working rather than fail its boot over a property
+ * it does not need. Same judgement as migration 015's null check: report the
+ * anomaly, decline the constraint, let the customer start.
+ *
+ * Columns being retyped are exempt: their new definition supplies the type.
+ */
+const strictLegal = (
+  table: string,
+  columns: readonly SqliteColumn[],
+  pending: readonly ColumnRetype[]
+): boolean => {
+  const offenders = columns
+    .filter(column => !pending.some(retype => retype.column === column.name))
+    .filter(column => !STRICT_TYPES.has(column.type.trim().toUpperCase()));
+
+  if (offenders.length === 0) return true;
+
+  const listed = offenders
+    .map(column => `${column.name} ${column.type.trim().length > 0 ? column.type : '(untyped)'}`)
+    .join(', ');
+
+  console.warn(
+    `  ! ${table} has ${offenders.length} column(s) STRICT does not accept (${listed}); ` +
+      'leaving the table unstrict rather than failing the boot'
+  );
+
+  return false;
 };
 
 /**
@@ -138,7 +207,8 @@ export const rewriteCreateTable = (
 const retypeSqlite = async (
   db: IDatabase,
   table: string,
-  retypes: readonly ColumnRetype[]
+  retypes: readonly ColumnRetype[],
+  strict: boolean
 ): Promise<boolean> => {
   const columns = await db.getMany<SqliteColumn>(`PRAGMA table_info(${table})`);
   if (columns.length === 0) return false;
@@ -148,13 +218,20 @@ const retypeSqlite = async (
     return existing !== undefined && !alreadyRetyped(existing.type, retype.definition);
   });
 
-  if (pending.length === 0) return false;
-
   const original = await db.getOne<{ sql: string }>(
     "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = ?",
     [table]
   );
   if (!original?.sql) return false;
+
+  // STRICT is a table property, not a column one, so it needs the same rebuild —
+  // and a table whose columns are already the right type still needs it. Both
+  // questions are asked before deciding there is nothing to do, or an upgrade
+  // that converted the types on an earlier run would never become strict.
+  const applyStrict =
+    strict && !isStrict(original.sql) && strictLegal(table, columns, pending);
+
+  if (pending.length === 0 && !applyStrict) return false;
 
   // Indexes do not survive DROP TABLE — verified, and easy to miss because
   // nothing fails, queries just quietly stop using them. Captured now,
@@ -166,7 +243,7 @@ const retypeSqlite = async (
   );
 
   const temporary = `${table}__retype`;
-  const ddl = rewriteCreateTable(original.sql, temporary, pending);
+  const ddl = rewriteCreateTable(original.sql, temporary, pending, applyStrict);
 
   const selected = columns
     .map(column => {
@@ -269,11 +346,15 @@ const retypeMysql = async (
 export const retypeColumns = async (
   db: IDatabase,
   table: string,
-  retypes: readonly ColumnRetype[]
+  retypes: readonly ColumnRetype[],
+  options: RetypeOptions = {}
 ): Promise<boolean> => {
   if (!(await db.tableExists(table))) return false;
 
+  // `strict` has no MySQL half and does not need one: a MySQL column rejects
+  // what does not fit it, and strictness there is a server sql_mode rather than
+  // a table property.
   return db.dialect.name === 'sqlite'
-    ? retypeSqlite(db, table, retypes)
+    ? retypeSqlite(db, table, retypes, options.strict === true)
     : retypeMysql(db, table, retypes);
 };

@@ -315,7 +315,7 @@ export const updateInvoiceStatus = asyncHandler(async (req: Request<{ id: string
 /**
  * Mark invoice as sent
  */
-export const markInvoiceAsSent = asyncHandler(async (req: Request<{ id: string }, Record<string, unknown>, { email_sent_at?: string }>, res: Response): Promise<void> => {
+export const markInvoiceAsSent = asyncHandler(async (req: Request<{ id: string }, Record<string, unknown>, { email_sent_at?: string | number }>, res: Response): Promise<void> => {
   const { id } = req.params;
   const { email_sent_at } = req.body;
   const invoiceId = parseInt(id, 10);

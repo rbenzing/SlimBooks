@@ -76,14 +76,27 @@ export const up = async (db: IDatabase): Promise<void> => {
     const designTemplateCount = await db.getOne<{ count: number }>("SELECT COUNT(*) as count FROM invoice_design_templates");
     if (!designTemplateCount || designTemplateCount.count === 0) {
       console.log('Adding default invoice design template...');
+      // The timestamps come from the dialect, not from `datetime('now')`.
+      //
+      // This is the one statement in 003 that still executes on a database
+      // built today: the CREATE TABLEs above are IF NOT EXISTS and createTables()
+      // has already made both tables, but a fresh install has no design template
+      // yet, so this INSERT runs. Its columns are INTEGER now, and a STRICT
+      // table refuses the text — which is how this was found, on the boot of a
+      // brand-new database, after the whole unit suite had gone green.
+      //
+      // Editing shipped migration history is normally wrong. It is right here
+      // because this changes nothing for any database that already ran it: 003
+      // is recorded as applied, so the only rows this can still write are the
+      // ones on installs that do not exist yet.
       await db.executeQuery(`
         INSERT INTO invoice_design_templates (name, content, is_default, created_at, updated_at)
         VALUES (
-          'Default Template', 
+          'Default Template',
           '<html><body><h1>Invoice #{invoice_number}</h1><p>Client: {client_name}</p><p>Amount: {amount}</p></body></html>',
           1,
-          datetime('now'),
-          datetime('now')
+          ${db.dialect.now()},
+          ${db.dialect.now()}
         )
       `);
     }

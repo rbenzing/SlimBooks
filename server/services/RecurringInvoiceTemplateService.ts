@@ -26,8 +26,8 @@ interface RecurringInvoiceTemplate {
   shipping_amount: number;
   shipping_rate_id?: string;
   notes?: string;
-  created_at: string;
-  updated_at: string;
+  created_at: number;
+  updated_at: number;
 }
 
 /**

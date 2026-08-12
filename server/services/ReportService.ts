@@ -3,7 +3,7 @@
 
 import { databaseService } from '../core/DatabaseService.js';
 import { buildPeriodBuckets, periodKeyFor } from '../utils/reportPeriods.util.js';
-import { utcNow } from '../utils/utcTime.util.js';
+import { utcDayEnd, utcDayStart, utcNow } from '../utils/utcTime.util.js';
 import {
   type Client,
   type Expense,
@@ -30,7 +30,8 @@ export interface DatabaseReport {
   date_range_start: string;
   date_range_end: string;
   data: string | null;
-  created_at: string;
+  /** Epoch milliseconds; `date_range_*` above are calendar days. */
+  created_at: number;
 }
 
 /**
@@ -39,6 +40,24 @@ export interface DatabaseReport {
 export interface ParsedReport extends Omit<DatabaseReport, 'data'> {
   data: unknown;
 }
+
+/**
+ * The instant bounds of a report's day range.
+ *
+ * A report is asked for in calendar days — `2026-01-01` to `2026-01-31` — and
+ * every column it filters holds epoch milliseconds. Binding the days directly
+ * is not an error in either engine, it is a wrong-answer bug: SQLite orders all
+ * numbers below all text, so `created_at >= '2026-01-01'` matches nothing;
+ * MySQL coerces the string to 2026, so it matches everything. See `utcDayStart`.
+ *
+ * An unparseable edge widens to that end of time rather than throwing, so a
+ * malformed range shows too much and is noticed, instead of showing nothing and
+ * reading as a month with no invoices.
+ */
+const instantRange = (startDate: string, endDate: string): [number, number] => [
+  utcDayStart(startDate) ?? 0,
+  utcDayEnd(endDate) ?? Number.MAX_SAFE_INTEGER
+];
 
 /**
  * Report Management Service
@@ -214,7 +233,7 @@ export class ReportService {
       FROM reports
       WHERE created_at >= ? AND created_at <= ?
       ORDER BY created_at DESC
-    `, [startDate, endDate]);
+    `, instantRange(startDate, endDate));
   }
 
   /**
@@ -260,7 +279,7 @@ export class ReportService {
       WHERE i.created_at >= ? AND i.created_at <= ?
       AND i.deleted_at IS NULL
       ORDER BY i.created_at DESC
-    `, [startDate, endDate + 'T23:59:59.999Z']);
+    `, instantRange(startDate, endDate));
 
     // Get expenses in date range
     const expenses = await databaseService.getMany<Expense>(`
@@ -415,7 +434,7 @@ export class ReportService {
       WHERE i.created_at >= ? AND i.created_at <= ?
       AND i.deleted_at IS NULL
       ORDER BY i.created_at DESC
-    `, [startDate, endDate + 'T23:59:59.999Z']);
+    `, instantRange(startDate, endDate));
 
     const toNumber = (value: unknown): number => {
       if (value === null || value === undefined) return 0;
@@ -470,11 +489,11 @@ export class ReportService {
     `);
 
     let invoiceFilter = '';
-    const params: string[] = [];
+    const params: number[] = [];
 
     if (startDate && endDate) {
       invoiceFilter = 'WHERE i.created_at >= ? AND i.created_at <= ? AND i.deleted_at IS NULL';
-      params.push(startDate, endDate + 'T23:59:59.999Z');
+      params.push(...instantRange(startDate, endDate));
     } else {
       invoiceFilter = 'WHERE i.deleted_at IS NULL';
     }

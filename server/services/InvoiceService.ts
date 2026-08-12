@@ -533,7 +533,7 @@ export class InvoiceService {
   /**
    * Mark invoice as sent
    */
-  async markInvoiceAsSent(id: number, emailSentAt?: string): Promise<number> {
+  async markInvoiceAsSent(id: number, emailSentAt?: string | number): Promise<number> {
     if (!id || typeof id !== 'number') {
       throw new Error('Valid invoice ID is required');
     }

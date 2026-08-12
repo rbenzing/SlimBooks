@@ -77,6 +77,62 @@ export const isEpochMillis = (value: unknown): boolean =>
 
 const CALENDAR_DAY = /^(\d{4}-\d{2}-\d{2})$/;
 
+/**
+ * The leading `YYYY-MM-DD` of a day or a timestamp, if it names a real day.
+ *
+ * `Date.parse('2026-02-30T00:00:00Z')` does not fail — V8 rolls the date
+ * forward and hands back 2 March. A range edge that quietly moved to another
+ * month would put invoices in the wrong report and nothing would say so, hence
+ * the round-trip check.
+ */
+const leadingDay = (value: string): string | null => {
+  const match = /^(\d{4}-\d{2}-\d{2})/.exec(value.trim());
+  if (!match) return null;
+
+  const day = match[1]!;
+  const parsed = Date.parse(`${day}T00:00:00.000Z`);
+
+  if (Number.isNaN(parsed)) return null;
+
+  return new Date(parsed).toISOString().slice(0, 10) === day ? day : null;
+};
+
+/**
+ * The instant bounds of a calendar day, for querying a timestamp column.
+ *
+ * A report range is a pair of days — the user picked `2026-01-01` to
+ * `2026-01-31` — and every column it filters on is now epoch milliseconds.
+ * Comparing the two directly is not a type error in either engine, it is a
+ * wrong-answer bug: SQLite orders every number below every string, so
+ * `created_at >= '2026-01-01'` is false for every row; MySQL coerces the string
+ * to the number 2026, so the same predicate is true for every row. Neither
+ * reports a problem. Convert the edges instead.
+ *
+ * The end bound is the last millisecond of its day, so the range includes the
+ * day the user named rather than stopping at its midnight.
+ *
+ * A malformed or impossible day (`2026-02-30`) yields null; callers decide
+ * whether that is an empty result or an error.
+ */
+export const utcDayStart = (day: string): number | null => {
+  const part = typeof day === 'string' ? leadingDay(day) : null;
+  if (part === null) return null;
+
+  const parsed = Date.parse(`${part}T00:00:00.000Z`);
+
+  return Number.isNaN(parsed) ? null : parsed;
+};
+
+/** The last instant of a calendar day; see `utcDayStart`. */
+export const utcDayEnd = (day: string): number | null => {
+  const part = typeof day === 'string' ? leadingDay(day) : null;
+  if (part === null) return null;
+
+  const parsed = Date.parse(`${part}T23:59:59.999Z`);
+
+  return Number.isNaN(parsed) ? null : parsed;
+};
+
 /** `2026-08-12T13:54:13`, with or without fractional seconds and a `Z`. */
 const ISO_LIKE = /^(\d{4}-\d{2}-\d{2})[T ](\d{2}:\d{2}:\d{2})(?:\.\d+)?Z?$/;
 

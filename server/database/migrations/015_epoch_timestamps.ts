@@ -20,6 +20,13 @@
 //
 // The rebuild/retype mechanics are in retype.util.ts, which is deliberately not
 // timestamp-specific — the currency-precision change needs the same machinery.
+//
+// SQLite tables come out STRICT, which rides along here rather than in a
+// migration of its own because it is the enforcement half of the same idea and
+// because a second migration would rebuild all nineteen tables a second time to
+// change one keyword. An INTEGER column in an ordinary table still accepts text;
+// STRICT is what makes "there is no second way to write a number" true rather
+// than merely intended. Two tables opt out — see DUAL_DIALECT_DDL.
 
 import type { IDatabase } from '../../types/database.types.js';
 import { retypeColumns, type ColumnRetype } from '../retype.util.js';
@@ -75,6 +82,19 @@ const NOT_NULL = new Set([
  * null created_at.
  */
 const DEFAULTED = new Set(['created_at', 'updated_at', 'processed_at', 'applied_at']);
+
+/**
+ * Tables whose DDL is one statement serving both engines, and which therefore
+ * cannot be STRICT.
+ *
+ * `migrations` and `boot_locks` are declared in `VARCHAR`/`BIGINT` — the
+ * spellings MySQL needs for an indexed key column, which SQLite accepts as
+ * affinities but STRICT rejects as type names. Making them strict would mean
+ * two dialect-specific statements apiece. They hold a lock row and a migration
+ * ledger; no customer data passes through either, so the trade is not worth
+ * taking. Every table that holds data is strict.
+ */
+const DUAL_DIALECT_DDL = new Set(['migrations', 'boot_locks']);
 
 /**
  * `scheduler_leases.expires_at` and `boot_locks.expires_at` are NOT NULL but
@@ -145,7 +165,7 @@ export const up = async (db: IDatabase): Promise<void> => {
       });
     }
 
-    if (await retypeColumns(db, table, retypes)) {
+    if (await retypeColumns(db, table, retypes, { strict: !DUAL_DIALECT_DDL.has(table) })) {
       changed++;
       console.log(`  ✓ ${table}`);
     }

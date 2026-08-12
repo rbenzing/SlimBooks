@@ -134,7 +134,7 @@ describe.each(backends)('migration 015 on $name', backend => {
     ['spaced', '2026-08-12 23:00:00', Date.parse('2026-08-12T23:00:00Z')]
   ];
 
-  const retype = () =>
+  const retype = (options: { strict?: boolean } = {}) =>
     retypeColumns(db, 'retype_parent', [
       {
         column: 'created_at',
@@ -150,7 +150,7 @@ describe.each(backends)('migration 015 on $name', backend => {
           db.dialect.name === 'sqlite' ? 'deleted_at' : '`deleted_at`'
         )
       }
-    ]);
+    ], options);
 
   const rows = () =>
     db.getMany<{ name: string; created_at: number; deleted_at: number | null }>(
@@ -272,6 +272,67 @@ describe.each(backends)('migration 015 on $name', backend => {
     );
 
     await retype();
+
+    const byName = new Map((await rows()).map(row => [row.name, row.created_at]));
+    for (const [name, , expected] of LEGACY) {
+      expect(Number(byName.get(name))).toBe(expected);
+    }
+  });
+
+  it('rebuilds the table as STRICT when asked', async () => {
+    if (db.dialect.name !== 'sqlite') return;
+
+    await retype({ strict: true });
+
+    const table = await db.getOne<{ sql: string }>(
+      "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'retype_parent'"
+    );
+    expect(table?.sql.slice(table.sql.lastIndexOf(')'))).toMatch(/\bSTRICT\b/);
+
+    // And it means it: text into the integer column is now an error rather than
+    // a silently different type sitting in the same column.
+    await expect(
+      db.executeQuery('UPDATE retype_parent SET created_at = ?', ['2026-08-12T13:54:13Z'])
+    ).rejects.toThrow(/cannot store TEXT value/i);
+  });
+
+  it('makes a table strict even when its columns need no conversion', async () => {
+    if (db.dialect.name !== 'sqlite') return;
+
+    // STRICT is a table property; an upgrade that converted the types on an
+    // earlier run would never become strict if the two questions were asked as
+    // one.
+    await retype({ strict: false });
+    expect(await retype({ strict: true })).toBe(true);
+
+    const table = await db.getOne<{ sql: string }>(
+      "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'retype_parent'"
+    );
+    expect(table?.sql.slice(table.sql.lastIndexOf(')'))).toMatch(/\bSTRICT\b/);
+  });
+
+  it('is idempotent about STRICT too', async () => {
+    if (db.dialect.name !== 'sqlite') return;
+
+    await retype({ strict: true });
+
+    expect(await retype({ strict: true })).toBe(false);
+  });
+
+  it('declines STRICT rather than failing a boot it cannot make strict', async () => {
+    if (db.dialect.name !== 'sqlite') return;
+
+    // A column type outside the six STRICT permits makes the CREATE TABLE a
+    // syntax error, not a slower path. An install carrying one should keep
+    // working — and should still get its timestamps converted.
+    await db.executeQuery('ALTER TABLE retype_parent ADD COLUMN legacy VARCHAR(190)');
+
+    expect(await retype({ strict: true })).toBe(true);
+
+    const table = await db.getOne<{ sql: string }>(
+      "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'retype_parent'"
+    );
+    expect(table?.sql.slice(table.sql.lastIndexOf(')'))).not.toMatch(/\bSTRICT\b/);
 
     const byName = new Map((await rows()).map(row => [row.name, row.created_at]));
     for (const [name, , expected] of LEGACY) {

@@ -5,6 +5,8 @@ import {
   normalizeUtcTimestamp,
   toEpochMillis,
   utcCalendarDay,
+  utcDayEnd,
+  utcDayStart,
   utcNow,
   utcTimestamp,
   utcTimestampDaysAgo,
@@ -125,6 +127,55 @@ describe('isEpochMillis', () => {
     expect(isEpochMillis('2026-08-09T14:30:05Z')).toBe(false);
     expect(isEpochMillis(Number.NaN)).toBe(false);
     expect(isEpochMillis(undefined)).toBe(false);
+  });
+});
+
+describe('utcDayStart and utcDayEnd', () => {
+  it('bound a day at its first and last millisecond', () => {
+    expect(utcDayStart('2026-08-09')).toBe(Date.parse('2026-08-09T00:00:00.000Z'));
+    expect(utcDayEnd('2026-08-09')).toBe(Date.parse('2026-08-09T23:59:59.999Z'));
+  });
+
+  it('includes the whole of the end day', () => {
+    // The reason the end bound is not midnight: a report for 1–31 January that
+    // stopped at 31 January 00:00 would drop that day's invoices.
+    const lastInstantOfTheDay = Date.parse('2026-01-31T18:42:07.500Z');
+
+    expect(utcDayEnd('2026-01-31')).toBeGreaterThan(lastInstantOfTheDay);
+    expect(utcDayEnd('2026-01-31')).toBeLessThan(Date.parse('2026-02-01T00:00:00.000Z'));
+  });
+
+  it('spans exactly one day, with no gap to the next', () => {
+    expect(utcDayEnd('2026-08-09')! + 1).toBe(utcDayStart('2026-08-10'));
+  });
+
+  it('narrows a full timestamp to its day', () => {
+    expect(utcDayStart('2026-08-09T14:30:05.123Z')).toBe(utcDayStart('2026-08-09'));
+    expect(utcDayEnd('2026-08-09T14:30:05.123Z')).toBe(utcDayEnd('2026-08-09'));
+  });
+
+  it('reads the day in UTC, not the host timezone', () => {
+    // The suite runs in whatever zone the machine is in, and a report boundary
+    // that moved with it would put the same invoice in different months on two
+    // hosts.
+    expect(new Date(utcDayStart('2026-08-09')!).toISOString()).toBe('2026-08-09T00:00:00.000Z');
+  });
+
+  it('rejects a day that does not exist', () => {
+    expect(utcDayStart('2026-02-30')).toBeNull();
+    expect(utcDayEnd('2026-02-30')).toBeNull();
+  });
+
+  it('rejects anything that is not a day', () => {
+    for (const value of ['', 'yesterday', '08/09/2026', '2026-8-9']) {
+      expect(utcDayStart(value)).toBeNull();
+      expect(utcDayEnd(value)).toBeNull();
+    }
+  });
+
+  it('survives a non-string without throwing', () => {
+    expect(utcDayStart(null as unknown as string)).toBeNull();
+    expect(utcDayEnd(undefined as unknown as string)).toBeNull();
   });
 });
 

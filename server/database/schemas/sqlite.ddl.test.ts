@@ -77,4 +77,44 @@ describe('renderCreateTable', () => {
 
     expect(sql).not.toMatch(/,\s*\)$/);
   });
+
+  it('declares every table STRICT', () => {
+    for (const schema of tableSchemas) {
+      expect(renderCreateTable(schema)).toMatch(/\)\s*STRICT$/);
+    }
+  });
+
+  it('makes SQLite refuse text in a timestamp column', () => {
+    // The property STRICT exists for. Without it an INTEGER column still takes
+    // text — affinity converts what it can and stores the rest verbatim — so a
+    // stray ISO string would sit in `created_at` beside the integers, compared
+    // against them by type ordering. That is the two-shapes-in-one-column bug
+    // this whole change removes, and only STRICT closes the last door on it.
+    const sqlite = new Database(':memory:');
+    sqlite.exec(renderCreateTable(tableFor('clients')));
+    sqlite.prepare("INSERT INTO clients (name) VALUES ('Acme')").run();
+
+    expect(() =>
+      sqlite
+        .prepare("UPDATE clients SET created_at = '2026-08-12T13:54:13Z' WHERE name = 'Acme'")
+        .run()
+    ).toThrow(/cannot store TEXT value/i);
+  });
+
+  it('still accepts a number sent as a string', () => {
+    // STRICT converts before it refuses, so a client posting {"amount": "100.50"}
+    // is stored as 100.5 rather than rejected. Worth pinning: if it refused, the
+    // change would have needed a converting sanitiser on every numeric field in
+    // the API, and `isFloat()` validates without converting.
+    const sqlite = new Database(':memory:');
+    sqlite.exec(renderCreateTable(tableFor('clients')));
+
+    expect(() =>
+      sqlite.prepare("INSERT INTO clients (name, created_at) VALUES ('Acme', '1786496400000')").run()
+    ).not.toThrow();
+
+    const row = sqlite.prepare("SELECT created_at FROM clients WHERE name = 'Acme'").get();
+
+    expect(typeof (row as { created_at: unknown }).created_at).toBe('number');
+  });
 });

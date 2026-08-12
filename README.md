@@ -174,10 +174,17 @@ be configured entirely from Settings instead if you prefer.
 
 ### Database
 
-- **SQLite**: Lightweight, serverless database perfect for self-hosting
-- **Versioned Schema**: Migrations run automatically on server start
-- **Data Portability**: Single file database — copy `data/slimbooks.db` to back it up
-- **No External Dependencies**: Everything runs locally
+- **SQLite by default**: lightweight, serverless, perfect for self-hosting
+- **MySQL or MariaDB optional**: set `DB_DRIVER=mysql`. Required on hosts whose
+  filesystem is wiped on redeploy — Hostinger's Node cloud among them — where a
+  SQLite install loses its data on every deploy
+- **Versioned Schema**: migrations run automatically on server start
+- **Data Portability**: copy `data/slimbooks.db` to back up SQLite, or use
+  `npm run db:export` / `npm run db:import` to move between backends
+- **No External Dependencies**: with the defaults, everything runs locally
+
+See [docs/database-backends.md](docs/database-backends.md) for requirements, the
+differences at runtime, and the steps to move an existing install to MySQL.
 
 ## 🔄 Recurring Invoice System
 

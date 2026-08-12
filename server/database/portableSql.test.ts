@@ -111,6 +111,41 @@ describe('portable SQL', () => {
     expect(offenders).toEqual([]);
   });
 
+  it('writes no timestamp column with toISOString()', async () => {
+    // A second standing guard, over the format rather than the dialect.
+    //
+    // `new Date().toISOString()` renders `2026-08-12T13:54:13.241Z`, four
+    // characters longer than what the column defaults and the dialect produce.
+    // Both shapes lived in the same TEXT columns for a long time, and because
+    // the comparison is lexicographic, a window query spanning them returned
+    // the wrong rows — silently, and only sometimes.
+    //
+    // Narrowed to lines that also name a timestamp column, because
+    // `toISOString()` is perfectly correct in an API envelope or a log line and
+    // a blanket ban would be noise people learn to suppress.
+    // Wider than ROOTS: the seed and the scheduler write timestamp columns too,
+    // and both are outside the dialect scan's reach.
+    const TIMESTAMP_ROOTS = [...ROOTS, 'server/database', 'server/runtime'];
+    const COLUMN = /\b\w*(_at|last_login)\b/;
+    const files = (await Promise.all(TIMESTAMP_ROOTS.map(walk))).flat();
+    const offenders: string[] = [];
+
+    for (const file of files) {
+      const source = await readFile(file, 'utf8');
+      const sourceLines = source.split('\n');
+
+      sourceLines.forEach((rawLine, index) => {
+        if (isComment(rawLine)) return;
+        if (!/\btoISOString\s*\(\)/.test(rawLine)) return;
+        if (!COLUMN.test(rawLine)) return;
+
+        offenders.push(`${file}:${index + 1}  use utcNow() / utcTimestamp()\n    ${rawLine.trim()}`);
+      });
+    }
+
+    expect(offenders).toEqual([]);
+  });
+
   it('catches the two forms that evaded the original grep', () => {
     // Guards the guard. Both of these shipped, and both were invisible to a
     // case-sensitive grep for the unescaped spelling.

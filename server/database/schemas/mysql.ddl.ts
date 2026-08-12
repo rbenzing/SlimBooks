@@ -7,12 +7,18 @@
 // without a database.
 
 import type { ColumnDefinition, TableSchema } from '../../types/database.types.js';
+import { mysqlDialect } from '../dialects/mysql.dialect.js';
+import { sqliteDialect } from '../dialects/sqlite.dialect.js';
 import { indexes, tableSchemas } from './tables.schema.js';
 
 const quote = (identifier: string): string => `\`${identifier}\``;
 
-const MYSQL_NOW = "DATE_FORMAT(UTC_TIMESTAMP(),'%Y-%m-%d %H:%i:%s')";
-const MYSQL_TODAY = "DATE_FORMAT(UTC_TIMESTAMP(),'%Y-%m-%d')";
+// Both sides of the translation come from the dialects, so a change to the
+// stored timestamp shape lands on both backends or on neither.
+const SQLITE_NOW = sqliteDialect.now();
+const SQLITE_TODAY = sqliteDialect.today();
+const MYSQL_NOW = mysqlDialect.now();
+const MYSQL_TODAY = mysqlDialect.today();
 
 /**
  * utf8mb4 is 4 bytes per character, so VARCHAR(255) is 1020 bytes — two of them
@@ -102,17 +108,22 @@ const needsExpressionDefault = (type: string): boolean =>
  * against a real server, because as text the statement looks perfectly ordinary.
  */
 const translateConstraints = (constraints: readonly string[], type: string): string => {
+  // Split/join rather than a regex: the SQLite spellings come from the dialect
+  // and contain `(`, `'` and `%`, so building a pattern from them would need
+  // escaping that the next edit to the dialect would silently invalidate.
   const translated = constraints
     .join(' ')
     .replace(/PRIMARY KEY AUTOINCREMENT/i, 'AUTO_INCREMENT PRIMARY KEY')
-    .replace(/datetime\('now'\)/gi, MYSQL_NOW)
-    .replace(/date\('now'\)/gi, MYSQL_TODAY)
+    .split(SQLITE_NOW)
+    .join(MYSQL_NOW)
+    .split(SQLITE_TODAY)
+    .join(MYSQL_TODAY)
     .trim();
 
   if (!needsExpressionDefault(type)) return translated;
 
   // Skips a default that is already an expression — the timestamp defaults
-  // arrive as `DEFAULT (datetime('now'))` and come out already wrapped.
+  // arrive parenthesised and come out already wrapped.
   return translated.replace(/\bDEFAULT\s+(?!\()('[^']*'|\S+)/i, 'DEFAULT ($1)');
 };
 

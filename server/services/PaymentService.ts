@@ -3,6 +3,7 @@
 
 import { databaseService } from '../core/DatabaseService.js';
 import { type Payment, type ServiceOptions, type PaymentStatus, type PaymentMethod } from '../types/index.js';
+import { utcNow } from '../utils/utcTime.util.js';
 
 /**
  * Payment Service
@@ -138,7 +139,7 @@ export class PaymentService {
     const nextId = await databaseService.getNextSequence('payments');
 
     // Prepare payment data
-    const now = new Date().toISOString();
+    const now = utcNow();
     const paymentRecord = {
       id: nextId,
       date: paymentData.date,

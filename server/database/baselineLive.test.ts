@@ -17,6 +17,7 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { buildMysqlBaseline } from './baseline.js';
 import { MySQLDatabase } from './MySQLDatabase.js';
 import { tableSchemas } from './schemas/tables.schema.js';
+import { isUtcTimestamp, utcNow } from '../utils/utcTime.util.js';
 import type { MysqlSettings } from '../runtime/database.js';
 
 const url = process.env.TEST_MYSQL_URL;
@@ -178,7 +179,32 @@ live('buildMysqlBaseline against a real server', () => {
       ['Stamped']
     );
 
-    expect(row?.created_at).toMatch(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/);
+    // Asserted against the shared predicate, not a regex written out here: a
+    // column default and utcNow() have to produce the same bytes, and two
+    // separately-maintained patterns is how they would stop doing so.
+    expect(isUtcTimestamp(row?.created_at)).toBe(true);
+  });
+
+  it('agrees with the timestamp the application writes', async () => {
+    // Rows get their created_at from whichever wrote them — the default here,
+    // insertRecord in most services. Both land in the same TEXT column and are
+    // compared lexicographically, so they have to be the same shape.
+    await db.executeQuery('INSERT INTO clients (name) VALUES (?)', ['Compared']);
+    await db.executeQuery('INSERT INTO clients (name, created_at) VALUES (?, ?)', [
+      'Written',
+      utcNow()
+    ]);
+
+    const rows = await db.getMany<{ name: string; created_at: string }>(
+      'SELECT name, created_at FROM clients WHERE name IN (?, ?)',
+      ['Compared', 'Written']
+    );
+
+    expect(rows).toHaveLength(2);
+    for (const row of rows) {
+      expect(isUtcTimestamp(row.created_at)).toBe(true);
+    }
+    expect(rows[0]!.created_at).toHaveLength(rows[1]!.created_at.length);
   });
 
   /**

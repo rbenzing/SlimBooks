@@ -10,6 +10,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import bcrypt from 'bcryptjs';
 import { createDatabaseMock, flattenSql } from './databaseMock.test-helper.js';
+import { sqliteDialect } from '../database/dialects/sqlite.dialect.js';
 
 const db = createDatabaseMock();
 vi.mock('../core/DatabaseService.js', () => ({ databaseService: db }));
@@ -94,7 +95,9 @@ describe.each(flows)('$kind tokens', ({ table, create, verify }) => {
     await create(42, HOUR);
 
     const expiresAt = new Date(String(insertOf()?.params[2])).getTime();
-    expect(expiresAt).toBeGreaterThanOrEqual(before + HOUR);
+    // A second of slack: stored timestamps carry whole seconds, so an expiry
+    // computed from a sub-second `before` truncates down by up to 999ms.
+    expect(expiresAt).toBeGreaterThanOrEqual(before + HOUR - 1000);
     expect(expiresAt).toBeLessThan(before + HOUR + 5000);
   });
 
@@ -113,7 +116,7 @@ describe.each(flows)('$kind tokens', ({ table, create, verify }) => {
     const sql = flattenSql(db.getMany.mock.calls[0][0] as string);
     expect(sql).toMatch(new RegExp(`FROM ${table}`));
     expect(sql).toMatch(/used_at IS NULL/);
-    expect(sql).toMatch(/expires_at > datetime\('now'\)/);
+    expect(sql).toContain(`expires_at > ${sqliteDialect.now()}`);
   });
 
   it('burns the token on use so it cannot be replayed', async () => {
@@ -124,7 +127,7 @@ describe.each(flows)('$kind tokens', ({ table, create, verify }) => {
 
     const update = db.queries.find(q => /UPDATE/.test(q.sql));
     expect(flattenSql(update?.sql ?? '')).toBe(
-      `UPDATE ${table} SET used_at = datetime('now') WHERE id = ?`
+      `UPDATE ${table} SET used_at = ${sqliteDialect.now()} WHERE id = ?`
     );
     expect(update?.params).toEqual([7]);
   });
@@ -167,8 +170,8 @@ describe('cleanupExpiredTokens', () => {
 
     const statements = db.queries.map(q => flattenSql(q.sql));
     expect(statements).toEqual([
-      "DELETE FROM password_reset_tokens WHERE expires_at < datetime('now')",
-      "DELETE FROM email_verification_tokens WHERE expires_at < datetime('now')"
+      `DELETE FROM password_reset_tokens WHERE expires_at < ${sqliteDialect.now()}`,
+      `DELETE FROM email_verification_tokens WHERE expires_at < ${sqliteDialect.now()}`
     ]);
   });
 
@@ -176,7 +179,7 @@ describe('cleanupExpiredTokens', () => {
     await tokenService.cleanupExpiredTokens();
 
     for (const { sql } of db.queries) {
-      expect(flattenSql(sql)).toMatch(/expires_at < datetime\('now'\)/);
+      expect(flattenSql(sql)).toContain(`expires_at < ${sqliteDialect.now()}`);
     }
   });
 });

@@ -12,7 +12,9 @@ const quote = (identifier: string): string => `\`${identifier}\``;
 const placeholders = (count: number): string =>
   Array.from({ length: count }, () => '?').join(', ');
 
-const TIMESTAMP_MASK = "'%Y-%m-%d %H:%i:%s'";
+// ISO 8601 with the `T` and the `Z`, matching utcTime.util.ts exactly. `T` and
+// `Z` carry no `%`, so DATE_FORMAT copies them through literally.
+const TIMESTAMP_MASK = "'%Y-%m-%dT%H:%i:%sZ'";
 const DATE_MASK = "'%Y-%m-%d'";
 
 /**
@@ -29,10 +31,11 @@ export const mysqlDialect: SqlDialect = {
   name: 'mysql',
 
   // DATE_FORMAT rather than NOW(): the columns are TEXT on both backends, and
-  // NOW() renders with a session-timezone offset and possible fractional
-  // seconds. This produces output byte-identical to SQLite's datetime('now'),
-  // so stored values sort and compare the same way on either backend and data
-  // exported from one reads correctly in the other.
+  // NOW() renders in the session timezone, without a `T` or a `Z`, and with
+  // possible fractional seconds. This produces output byte-identical to the
+  // SQLite dialect and to utcNow(), so stored values sort and compare the same
+  // way on either backend and data exported from one reads correctly in the
+  // other.
   now: () => `DATE_FORMAT(UTC_TIMESTAMP(),${TIMESTAMP_MASK})`,
   today: () => `DATE_FORMAT(UTC_TIMESTAMP(),${DATE_MASK})`,
 

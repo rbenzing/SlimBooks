@@ -9,6 +9,7 @@
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { createDatabaseMock, flattenSql } from './databaseMock.test-helper.js';
+import { isUtcTimestamp } from '../utils/utcTime.util.js';
 
 const db = createDatabaseMock();
 vi.mock('../core/DatabaseService.js', () => ({ databaseService: db }));
@@ -82,7 +83,7 @@ describe('every read is a prepared statement', () => {
 
     const [sql] = db.getMany.mock.calls[0];
     expect(flattenSql(sql as string)).toMatch(/i\.created_at > \?/);
-    expect(windowParamOf(0)).toMatch(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/);
+    expect(isUtcTimestamp(windowParamOf(0))).toBe(true);
   });
 
   it('builds the same SQL text whatever the window', async () => {

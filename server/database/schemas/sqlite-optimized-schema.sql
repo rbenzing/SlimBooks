@@ -22,8 +22,8 @@ CREATE TABLE IF NOT EXISTS users (
     last_login TEXT,
     failed_login_attempts INTEGER NOT NULL DEFAULT 0 CHECK (failed_login_attempts >= 0),
     account_locked_until TEXT,
-    created_at TEXT NOT NULL DEFAULT (datetime('now')),
-    updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
+    updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
     deleted_at TEXT                                   -- nullable soft-delete
 );
 
@@ -44,8 +44,8 @@ CREATE TABLE IF NOT EXISTS clients (
     zipCode TEXT CHECK (zipCode IS NULL OR (length(trim(zipCode)) >= 3 AND length(zipCode) <= 10)),
     country TEXT DEFAULT 'US' CHECK (length(country) = 2),
     stripe_customer_id TEXT CHECK (stripe_customer_id IS NULL OR length(stripe_customer_id) <= 50),
-    created_at TEXT NOT NULL DEFAULT (datetime('now')),
-    updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
+    updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
     deleted_at TEXT
 );
 
@@ -58,8 +58,8 @@ CREATE TABLE IF NOT EXISTS invoice_design_templates (
     content TEXT NOT NULL,
     is_default INTEGER NOT NULL DEFAULT 0 CHECK (is_default IN (0, 1)),
     variables TEXT,
-    created_at TEXT NOT NULL DEFAULT (datetime('now')),
-    updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
+    updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
     deleted_at TEXT
 );
 
@@ -82,8 +82,8 @@ CREATE TABLE IF NOT EXISTS recurring_invoice_templates (
     shipping_amount REAL NOT NULL DEFAULT 0 CHECK (shipping_amount >= 0),
     shipping_rate_id TEXT CHECK (shipping_rate_id IS NULL OR length(shipping_rate_id) <= 50),
     notes TEXT,
-    created_at TEXT NOT NULL DEFAULT (datetime('now')),
-    updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
+    updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
     deleted_at TEXT,
     
     FOREIGN KEY (client_id) REFERENCES clients (id) ON DELETE CASCADE
@@ -127,8 +127,8 @@ CREATE TABLE IF NOT EXISTS invoices (
     email_error TEXT CHECK (email_error IS NULL OR length(email_error) <= 500),
     last_email_attempt TEXT,
     recurring_period_date TEXT,
-    created_at TEXT NOT NULL DEFAULT (datetime('now')),
-    updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
+    updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
     deleted_at TEXT,
 
     FOREIGN KEY (client_id) REFERENCES clients (id) ON DELETE RESTRICT,
@@ -153,8 +153,8 @@ CREATE TABLE IF NOT EXISTS expenses (
     is_billable INTEGER DEFAULT 0 CHECK (is_billable IN (0, 1)),
     client_id INTEGER,
     project TEXT,
-    created_at TEXT NOT NULL DEFAULT (datetime('now')),
-    updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
+    updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
     deleted_at TEXT,
     
     FOREIGN KEY (client_id) REFERENCES clients (id) ON DELETE SET NULL
@@ -175,8 +175,8 @@ CREATE TABLE IF NOT EXISTS payments (
     status TEXT NOT NULL DEFAULT 'received' CHECK (status IN ('received', 'pending', 'failed', 'refunded')),
     currency TEXT DEFAULT 'USD',
     stripe_payment_id TEXT,
-    created_at TEXT NOT NULL DEFAULT (datetime('now')),
-    updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
+    updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
     deleted_at TEXT,
     
     FOREIGN KEY (invoice_id) REFERENCES invoices (id) ON DELETE SET NULL
@@ -192,7 +192,7 @@ CREATE TABLE IF NOT EXISTS reports (
     date_range_start TEXT NOT NULL,
     date_range_end TEXT NOT NULL,
     data TEXT,
-    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
     deleted_at TEXT
 );
 
@@ -220,7 +220,7 @@ CREATE TABLE IF NOT EXISTS scheduler_leases (
 CREATE TABLE IF NOT EXISTS stripe_events (
     event_id TEXT PRIMARY KEY,
     event_type TEXT NOT NULL,
-    processed_at TEXT NOT NULL DEFAULT (datetime('now'))
+    processed_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
 );
 
 -- =====================================================
@@ -239,8 +239,8 @@ CREATE TABLE IF NOT EXISTS project_settings (
     key TEXT PRIMARY KEY CHECK (length(trim(key)) >= 2 AND length(key) <= 100),
     value TEXT NOT NULL,
     enabled INTEGER DEFAULT NULL CHECK (enabled IS NULL OR enabled IN (0, 1)),
-    created_at TEXT NOT NULL DEFAULT (datetime('now')),
-    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
+    updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
 );
 
 -- =====================================================
@@ -252,7 +252,7 @@ CREATE TABLE IF NOT EXISTS password_reset_tokens (
     token_hash  TEXT    NOT NULL UNIQUE,
     expires_at  TEXT    NOT NULL,
     used_at     TEXT    DEFAULT NULL,
-    created_at  TEXT    NOT NULL DEFAULT (datetime('now')),
+    created_at  TEXT    NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
     FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
 );
 
@@ -262,7 +262,7 @@ CREATE TABLE IF NOT EXISTS email_verification_tokens (
     token_hash  TEXT    NOT NULL UNIQUE,
     expires_at  TEXT    NOT NULL,
     used_at     TEXT    DEFAULT NULL,
-    created_at  TEXT    NOT NULL DEFAULT (datetime('now')),
+    created_at  TEXT    NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
     FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
 );
 
@@ -354,54 +354,54 @@ CREATE TRIGGER IF NOT EXISTS update_users_timestamp
     AFTER UPDATE ON users
     FOR EACH ROW
     BEGIN
-        UPDATE users SET updated_at = datetime('now') WHERE id = NEW.id;
+        UPDATE users SET updated_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now') WHERE id = NEW.id;
     END;
 
 CREATE TRIGGER IF NOT EXISTS update_clients_timestamp 
     AFTER UPDATE ON clients
     FOR EACH ROW
     BEGIN
-        UPDATE clients SET updated_at = datetime('now') WHERE id = NEW.id;
+        UPDATE clients SET updated_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now') WHERE id = NEW.id;
     END;
 
 CREATE TRIGGER IF NOT EXISTS update_invoices_timestamp 
     AFTER UPDATE ON invoices
     FOR EACH ROW
     BEGIN
-        UPDATE invoices SET updated_at = datetime('now') WHERE id = NEW.id;
+        UPDATE invoices SET updated_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now') WHERE id = NEW.id;
     END;
 
 CREATE TRIGGER IF NOT EXISTS update_invoice_design_templates_timestamp 
     AFTER UPDATE ON invoice_design_templates
     FOR EACH ROW
     BEGIN
-        UPDATE invoice_design_templates SET updated_at = datetime('now') WHERE id = NEW.id;
+        UPDATE invoice_design_templates SET updated_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now') WHERE id = NEW.id;
     END;
 
 CREATE TRIGGER IF NOT EXISTS update_recurring_invoice_templates_timestamp 
     AFTER UPDATE ON recurring_invoice_templates
     FOR EACH ROW
     BEGIN
-        UPDATE recurring_invoice_templates SET updated_at = datetime('now') WHERE id = NEW.id;
+        UPDATE recurring_invoice_templates SET updated_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now') WHERE id = NEW.id;
     END;
 
 CREATE TRIGGER IF NOT EXISTS update_expenses_timestamp 
     AFTER UPDATE ON expenses
     FOR EACH ROW
     BEGIN
-        UPDATE expenses SET updated_at = datetime('now') WHERE id = NEW.id;
+        UPDATE expenses SET updated_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now') WHERE id = NEW.id;
     END;
 
 CREATE TRIGGER IF NOT EXISTS update_payments_timestamp 
     AFTER UPDATE ON payments
     FOR EACH ROW
     BEGIN
-        UPDATE payments SET updated_at = datetime('now') WHERE id = NEW.id;
+        UPDATE payments SET updated_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now') WHERE id = NEW.id;
     END;
 
 CREATE TRIGGER IF NOT EXISTS update_project_settings_timestamp 
     AFTER UPDATE ON project_settings
     FOR EACH ROW
     BEGIN
-        UPDATE project_settings SET updated_at = datetime('now') WHERE key = NEW.key;
+        UPDATE project_settings SET updated_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now') WHERE key = NEW.key;
     END;

@@ -4,7 +4,12 @@
 import { EmailService } from './email.svc';
 import { generateInvoiceToken } from '@/utils/invoiceTokens';
 import { sqliteService } from './sqlite.svc';
-import { formatClientAddressSingleLine } from '@/utils/formatting';
+import {
+  formatClientAddressSingleLine,
+  formatDateSync,
+  formatTimeSync,
+  parseDisplayDate
+} from '@/utils/formatting';
 import { authenticatedFetch, getToken } from '@/utils/api';
 import {
   type InvoiceEmailData,
@@ -136,7 +141,7 @@ export class InvoiceService {
     viewUrl: string, 
     company: CompanySettings
   ): string {
-    const dueDate = new Date(invoice.due_date).toLocaleDateString();
+    const dueDate = formatDateSync(invoice.due_date);
     
     return `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
@@ -204,7 +209,7 @@ export class InvoiceService {
     viewUrl: string,
     company: CompanySettings
   ): string {
-    const dueDate = new Date(invoice.due_date).toLocaleDateString();
+    const dueDate = formatDateSync(invoice.due_date);
 
     return `
 ${company.companyName}
@@ -238,8 +243,8 @@ This email was sent by ${company.companyName}. If you have any questions about t
     viewUrl: string,
     company: CompanySettings
   ): string {
-    const dueDate = new Date(invoice.due_date).toLocaleDateString();
-    const isOverdue = new Date(invoice.due_date) < new Date();
+    const dueDate = formatDateSync(invoice.due_date);
+    const isOverdue = parseDisplayDate(invoice.due_date) < new Date();
 
     return `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
@@ -290,8 +295,8 @@ This email was sent by ${company.companyName}. If you have any questions about t
     viewUrl: string,
     company: CompanySettings
   ): string {
-    const dueDate = new Date(invoice.due_date).toLocaleDateString();
-    const isOverdue = new Date(invoice.due_date) < new Date();
+    const dueDate = formatDateSync(invoice.due_date);
+    const isOverdue = parseDisplayDate(invoice.due_date) < new Date();
 
     return `
 ${company.companyName}
@@ -446,8 +451,7 @@ ${company.email ? company.email + '\n' : ''}${company.phone ? company.phone + '\
         return 'Sending...';
       case 'sent':
         if (sentAt) {
-          const date = new Date(sentAt);
-          return `Sent on ${date.toLocaleDateString()} at ${date.toLocaleTimeString()}`;
+          return `Sent on ${formatDateSync(sentAt)} at ${formatTimeSync(sentAt)}`;
         }
         return 'Sent';
       case 'failed':
@@ -455,8 +459,7 @@ ${company.email ? company.email + '\n' : ''}${company.phone ? company.phone + '\
           return `Failed to send: ${error}`;
         }
         if (lastAttempt) {
-          const date = new Date(lastAttempt);
-          return `Failed to send (last attempt: ${date.toLocaleDateString()})`;
+          return `Failed to send (last attempt: ${formatDateSync(lastAttempt)})`;
         }
         return 'Failed to send';
       default:
@@ -596,7 +599,7 @@ ${company.email ? company.email + '\n' : ''}${company.phone ? company.phone + '\
       const allInvoices = result.data;
       const scheduledInvoices = allInvoices.filter((invoice: Invoice) => 
         invoice.status === 'draft' &&
-        new Date(invoice.due_date) <= today &&
+        parseDisplayDate(invoice.due_date) <= today &&
         invoice.email_status !== 'sent'
       );
 
@@ -630,7 +633,7 @@ ${company.email ? company.email + '\n' : ''}${company.phone ? company.phone + '\
       const allInvoices = result.data;
       const overdueInvoices = allInvoices.filter((invoice: Invoice) => 
         (invoice.status === 'sent' || invoice.status === 'overdue') &&
-        new Date(invoice.due_date) < today
+        parseDisplayDate(invoice.due_date) < today
       );
 
       return overdueInvoices.map(invoice => ({

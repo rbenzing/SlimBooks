@@ -8,10 +8,15 @@ describe('mysqlDialect', () => {
   });
 
   it('formats timestamps identically to SQLite', () => {
-    // The columns are TEXT on both backends. NOW() would render with a
-    // timezone-dependent offset and possible fractional seconds, so values
-    // written by one backend would not sort or compare against the other's.
-    expect(mysqlDialect.now()).toBe("DATE_FORMAT(UTC_TIMESTAMP(),'%Y-%m-%d %H:%i:%s')");
+    // The columns are TEXT on both backends. NOW() would render in the session
+    // timezone, without a T or a Z, and with possible fractional seconds, so
+    // values written by one backend would not sort or compare against the
+    // other's.
+    //
+    // Pinned as text only because there is no server here. What the server
+    // actually returns for these is asserted in baselineLive.test.ts and
+    // twoDriver.test.ts, which is the assertion that matters.
+    expect(mysqlDialect.now()).toBe("DATE_FORMAT(UTC_TIMESTAMP(),'%Y-%m-%dT%H:%i:%sZ')");
     expect(mysqlDialect.today()).toBe("DATE_FORMAT(UTC_TIMESTAMP(),'%Y-%m-%d')");
   });
 
@@ -31,7 +36,7 @@ describe('mysqlDialect', () => {
     // The compared columns are TEXT on both backends, so a raw DATE_SUB would
     // compare a MySQL datetime against a string in a different format.
     expect(mysqlDialect.nowMinus(7, 'day')).toBe(
-      "DATE_FORMAT(DATE_SUB(UTC_TIMESTAMP(), INTERVAL 7 DAY),'%Y-%m-%d %H:%i:%s')"
+      "DATE_FORMAT(DATE_SUB(UTC_TIMESTAMP(), INTERVAL 7 DAY),'%Y-%m-%dT%H:%i:%sZ')"
     );
     expect(mysqlDialect.todayMinus(12, 'month')).toBe(
       "DATE_FORMAT(DATE_SUB(UTC_TIMESTAMP(), INTERVAL 12 MONTH),'%Y-%m-%d')"

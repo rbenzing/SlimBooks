@@ -1,4 +1,5 @@
 import type { IDatabase } from '../../types/database.types.js';
+import { sqliteDialect } from '../dialects/sqlite.dialect.js';
 
 /**
  * Create token tables for password reset and email verification.
@@ -14,7 +15,7 @@ export async function createTokenTables(db: IDatabase): Promise<void> {
       token_hash  TEXT    NOT NULL UNIQUE,
       expires_at  TEXT    NOT NULL,
       used_at     TEXT    DEFAULT NULL,
-      created_at  TEXT    NOT NULL DEFAULT (datetime('now')),
+      created_at  TEXT    NOT NULL DEFAULT (${sqliteDialect.now()}),
       FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
     )
   `);
@@ -45,7 +46,7 @@ export async function createTokenTables(db: IDatabase): Promise<void> {
       token_hash  TEXT    NOT NULL UNIQUE,
       expires_at  TEXT    NOT NULL,
       used_at     TEXT    DEFAULT NULL,
-      created_at  TEXT    NOT NULL DEFAULT (datetime('now')),
+      created_at  TEXT    NOT NULL DEFAULT (${sqliteDialect.now()}),
       FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
     )
   `);

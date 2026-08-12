@@ -7,6 +7,7 @@ import { authConfig } from '../config/index.js';
 import { type ServiceOptions, type InvoiceWithClient, type InvoiceStatus } from '../types/index.js';
 import { type PublicInvoiceDisplay, type PublicInvoiceTokenPayload } from '../types/invoice.types.js';
 import { invoiceNumberService } from './InvoiceNumberService.js';
+import { asUtcTimestamp, utcNow } from '../utils/utcTime.util.js';
 
 /**
  * `key` is a reserved word in MySQL, so the column is backticked — a quoting
@@ -261,7 +262,7 @@ export class InvoiceService {
     const nextId = await databaseService.getNextSequence('invoices');
     
     // Prepare invoice data
-    const now = new Date().toISOString();
+    const now = utcNow();
     const invoiceRecord = {
       id: nextId,
       invoice_number: invoiceNumber,
@@ -537,7 +538,9 @@ export class InvoiceService {
       throw new Error('Valid invoice ID is required');
     }
 
-    const sentAt = emailSentAt || new Date().toISOString();
+    // Coerced, not trusted: the caller may pass anything, and a stray shape in
+    // this column compares wrongly against every other timestamp in it.
+    const sentAt = asUtcTimestamp(emailSentAt) ?? utcNow();
 
     const result = await databaseService.executeQuery(`
       UPDATE invoices

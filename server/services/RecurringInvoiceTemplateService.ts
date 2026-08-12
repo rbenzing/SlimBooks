@@ -3,6 +3,7 @@
 
 import { databaseService } from '../core/DatabaseService.js';
 import type { SQLParams } from '../types/database.types.js';
+import { utcCalendarDay } from '../utils/utcTime.util.js';
 
 /**
  * Recurring Invoice Template interface
@@ -386,7 +387,7 @@ export class RecurringInvoiceTemplateService {
         return currentDate;
     }
 
-    return date.toISOString().split('T')[0]!; // Return YYYY-MM-DD format
+    return utcCalendarDay(date); // Return YYYY-MM-DD format
   }
 }
 

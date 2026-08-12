@@ -15,13 +15,23 @@ const modifier = (count: number, unit: DateUnit): string => {
   return `'-${count} ${unit}s'`;
 };
 
+/**
+ * The canonical timestamp shape, as SQLite spells it.
+ *
+ * `datetime('now')` would be the obvious choice and is what this used to be,
+ * but it renders `YYYY-MM-DD HH:MM:SS`, which JavaScript does not parse to a
+ * defined instant — see `server/utils/utcTime.util.ts`. `strftime` builds the
+ * ISO-8601 form instead, byte-identical to what `utcNow()` writes.
+ */
+const TIMESTAMP_MASK = "'%Y-%m-%dT%H:%M:%SZ'";
+
 export const sqliteDialect: SqlDialect = {
   name: 'sqlite',
 
-  now: () => "datetime('now')",
+  now: () => `strftime(${TIMESTAMP_MASK}, 'now')`,
   today: () => "date('now')",
 
-  nowMinus: (count, unit) => `datetime('now', ${modifier(count, unit)})`,
+  nowMinus: (count, unit) => `strftime(${TIMESTAMP_MASK}, 'now', ${modifier(count, unit)})`,
   todayMinus: (count, unit) => `date('now', ${modifier(count, unit)})`,
 
   formatMonth: column => `strftime('%Y-%m', ${column})`,

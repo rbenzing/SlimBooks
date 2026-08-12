@@ -2,6 +2,17 @@
 import React, { useState, useEffect } from 'react';
 import { formatDate } from '@/utils/formatting';
 
+/**
+ * Re-exported, not reimplemented.
+ *
+ * This module used to carry its own `formatDateSync` that hard-coded
+ * `MM/DD/YYYY` in `en-US` and parsed with a bare `new Date(...)`. Eleven screens
+ * import it, so eleven screens ignored the user's chosen date format and showed
+ * a bare `yyyy-MM-dd` due date as the previous day for every viewer west of
+ * UTC. The import path is kept; the implementation is the one in date.util.ts.
+ */
+export { formatDateSync, formatDateRangeSync } from '@/utils/formatting';
+
 interface FormattedDateProps {
   date: Date | string;
   customFormat?: string;
@@ -31,27 +42,3 @@ export const FormattedDate = React.memo<FormattedDateProps>(({
 
   return <>{formattedDate}</>;
 });
-
-// Simple synchronous date formatter for basic cases
-export const formatDateSync = (date: Date | string): string => {
-  try {
-    const dateObj = typeof date === 'string' ? new Date(date) : date;
-    if (isNaN(dateObj.getTime())) {
-      return 'Invalid Date';
-    }
-    return dateObj.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit'
-    });
-  } catch {
-    return 'Invalid Date';
-  }
-};
-
-// Simple synchronous date range formatter
-export const formatDateRangeSync = (startDate: Date | string, endDate: Date | string): string => {
-  const start = formatDateSync(startDate);
-  const end = formatDateSync(endDate);
-  return `${start} - ${end}`;
-};

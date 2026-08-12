@@ -5,6 +5,29 @@ import {
   TIME_FORMAT_OPTIONS
 } from '@/types';
 
+/**
+ * Reading stored dates for display.
+ *
+ * The server stores two things, and they are not the same kind of value:
+ *
+ *   2026-08-12T13:54:13Z   an instant, UTC — created_at, updated_at, expiries
+ *   2026-08-12             a calendar day — due dates, issue dates, payment and
+ *                          expense dates
+ *
+ * An instant is rendered in the viewer's own timezone, because that is what the
+ * viewer means by "when". A calendar day is rendered as itself: an invoice due
+ * on the 12th is due on the 12th in Auckland and in Los Angeles, and treating it
+ * as an instant shows the 11th to half the world.
+ *
+ * Which format the user sees is theirs to choose, in Settings → General. Both a
+ * sync and an async path exist because most of the app renders synchronously —
+ * they share one implementation so the two can't disagree, and both read the
+ * same settings.
+ */
+
+/** Where the sync formatters find the settings before the API answers. */
+const STORAGE_KEY = 'slimbooks.dateTimeSettings';
+
 let dateTimeSettingsCache: DateTimeSettings | null = null;
 let dateTimeSettingsPromise: Promise<DateTimeSettings> | null = null;
 
@@ -18,6 +41,40 @@ const isDateTimeSettings = (settings: unknown): settings is DateTimeSettings => 
     typeof (settings as DateTimeSettings).timeFormat === 'string'
   );
 };
+
+/**
+ * Mirror the settings into localStorage.
+ *
+ * Without this the synchronous formatters render the first screen in the
+ * default format and only pick up the user's choice once something happens to
+ * await the API — so a user who set DD/MM/YYYY would watch their dates flip
+ * format mid-session. localStorage is readable at first paint, which is the
+ * only reason it is used here; the API remains the source of truth.
+ */
+const rememberDateTimeSettings = (settings: DateTimeSettings): void => {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
+  } catch {
+    // A private-mode or quota failure costs the first render its format and
+    // nothing else. Never worth failing a page over.
+  }
+};
+
+const recallDateTimeSettings = (): DateTimeSettings | null => {
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (!stored) return null;
+
+    const parsed: unknown = JSON.parse(stored);
+    return isDateTimeSettings(parsed) ? parsed : null;
+  } catch {
+    return null;
+  }
+};
+
+/** The settings as far as anything synchronous can know them. */
+const currentDateTimeSettings = (): DateTimeSettings =>
+  dateTimeSettingsCache ?? recallDateTimeSettings() ?? DEFAULT_DATE_TIME_SETTINGS;
 
 export const getDateTimeSettings = async (): Promise<DateTimeSettings> => {
   if (dateTimeSettingsCache) {
@@ -40,6 +97,7 @@ export const getDateTimeSettings = async (): Promise<DateTimeSettings> => {
             timeFormat: settings.timeFormat || DEFAULT_DATE_TIME_SETTINGS.timeFormat
           };
           dateTimeSettingsCache = result;
+          rememberDateTimeSettings(result);
           return result;
         }
       }
@@ -63,6 +121,7 @@ export const saveDateTimeSettings = async (settings: DateTimeSettings): Promise<
     if (sqliteService.isReady()) {
       await sqliteService.setSetting('date_time_settings', settings, 'general');
       dateTimeSettingsCache = settings;
+      rememberDateTimeSettings(settings);
     }
   } catch (error) {
     console.error('Error saving date/time settings:', error);
@@ -108,21 +167,61 @@ const toIsoCalendarDay = (date: Date): string => {
   return `${date.getFullYear()}-${month}-${day}`;
 };
 
+/** The single place a chosen date format is turned into text. */
+const applyDateFormat = (date: Date, format: string): string => {
+  const options = getDateFormatOptions(format);
+
+  if (format === 'DD/MM/YYYY') {
+    return date.toLocaleDateString('en-GB', options);
+  }
+  if (format === 'YYYY-MM-DD') {
+    return toIsoCalendarDay(date);
+  }
+  if (format === 'DD MMM YYYY') {
+    return date.toLocaleDateString('en-GB', options);
+  }
+
+  return date.toLocaleDateString('en-US', options);
+};
+
+/** The single place a chosen time format is turned into text. */
+const applyTimeFormat = (date: Date, format: string): string =>
+  date.toLocaleTimeString('en-US', getTimeFormatOptions(format));
+
+const CALENDAR_DAY = /^(\d{4})-(\d{2})-(\d{2})$/;
+
 /**
- * Reads a stored date for display. A bare `yyyy-MM-dd` is a calendar day, not
- * an instant, but `new Date('2026-07-31')` parses it as UTC midnight — which is
- * the previous day everywhere west of UTC. Due dates and issue dates are stored
- * in exactly that form, so they must be read as local days. Full timestamps
- * stay instants.
+ * A UTC timestamp written without its `T` or its `Z`.
+ *
+ * The server no longer produces these — migration 014 rewrote the stored ones —
+ * but a database restored from an older backup still holds them, and `Date`
+ * reads this shape as *local* time, silently shifting every value by the
+ * viewer's offset. Recognising it here costs one regex and removes the only way
+ * that shift can still happen.
+ */
+const LEGACY_SQL_TIMESTAMP = /^(\d{4}-\d{2}-\d{2}) (\d{2}:\d{2}:\d{2})$/;
+
+/**
+ * Reads a stored date for display.
+ *
+ * A bare `yyyy-MM-dd` is a calendar day, not an instant, but
+ * `new Date('2026-07-31')` parses it as UTC midnight — which is the previous day
+ * everywhere west of UTC. Due dates and issue dates are stored in exactly that
+ * form, so they must be read as local days. Full timestamps stay instants.
  */
 export const parseDisplayDate = (value: Date | string): Date => {
   if (typeof value !== 'string') {
     return value;
   }
 
-  const calendarDate = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  const calendarDate = CALENDAR_DAY.exec(value);
   if (calendarDate) {
     return new Date(Number(calendarDate[1]), Number(calendarDate[2]) - 1, Number(calendarDate[3]));
+  }
+
+  const legacy = LEGACY_SQL_TIMESTAMP.exec(value);
+  if (legacy) {
+    return new Date(`${legacy[1]}T${legacy[2]}Z`);
   }
 
   return new Date(value);
@@ -135,18 +234,7 @@ export const formatDate = async (date: Date | string, customFormat?: string): Pr
   }
 
   const settings = await getDateTimeSettings();
-  const format = customFormat || settings.dateFormat;
-  const options = getDateFormatOptions(format);
-
-  if (format === 'DD/MM/YYYY') {
-    return dateObj.toLocaleDateString('en-GB', options);
-  } else if (format === 'YYYY-MM-DD') {
-    return toIsoCalendarDay(dateObj);
-  } else if (format === 'DD MMM YYYY') {
-    return dateObj.toLocaleDateString('en-GB', options);
-  }
-
-  return dateObj.toLocaleDateString('en-US', options);
+  return applyDateFormat(dateObj, customFormat || settings.dateFormat);
 };
 
 export const formatTime = async (date: Date | string, customFormat?: string): Promise<string> => {
@@ -156,10 +244,7 @@ export const formatTime = async (date: Date | string, customFormat?: string): Pr
   }
 
   const settings = await getDateTimeSettings();
-  const format = customFormat || settings.timeFormat;
-  const options = getTimeFormatOptions(format);
-
-  return dateObj.toLocaleTimeString('en-US', options);
+  return applyTimeFormat(dateObj, customFormat || settings.timeFormat);
 };
 
 export const formatDateTime = async (
@@ -190,9 +275,9 @@ export const formatDateRange = async (
 
 /**
  * Narrows a date to the `yyyy-MM-dd` value an `<input type="date">` accepts.
- * The API stores dates as full ISO-8601 timestamps, which the control rejects
- * silently and renders as blank. Returns '' when there is nothing to show, so
- * an absent date never becomes a fabricated one.
+ * A full timestamp is rejected silently by the control and renders as blank.
+ * Returns '' when there is nothing to show, so an absent date never becomes a
+ * fabricated one.
  */
 export const toDateInputValue = (date: Date | string | null | undefined): string => {
   if (!date) {
@@ -217,6 +302,15 @@ export const toDateInputValue = (date: Date | string | null | undefined): string
   return `${dateObj.getFullYear()}-${month}-${day}`;
 };
 
+/**
+ * The date, in the user's chosen format, without awaiting anything.
+ *
+ * Used by the list and detail views, which render synchronously. This used to
+ * hard-code `MM/DD/YYYY` in `en-US`, so eleven screens ignored the format the
+ * user had chosen in Settings while the four that awaited `formatDate`
+ * honoured it — the same invoice showed two different dates depending on where
+ * you looked at it.
+ */
 export const formatDateSync = (date: Date | string | null | undefined): string => {
   if (!date) {
     return 'Invalid Date';
@@ -226,7 +320,33 @@ export const formatDateSync = (date: Date | string | null | undefined): string =
     return 'Invalid Date';
   }
 
-  return dateObj.toLocaleDateString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit' });
+  return applyDateFormat(dateObj, currentDateTimeSettings().dateFormat);
+};
+
+/** The time of day, in the user's chosen format, in their own timezone. */
+export const formatTimeSync = (date: Date | string | null | undefined): string => {
+  if (!date) {
+    return 'Invalid Time';
+  }
+  const dateObj = parseDisplayDate(date);
+  if (isNaN(dateObj.getTime())) {
+    return 'Invalid Time';
+  }
+
+  return applyTimeFormat(dateObj, currentDateTimeSettings().timeFormat);
+};
+
+/** Date and time together, both in the user's chosen formats. */
+export const formatDateTimeSync = (date: Date | string | null | undefined): string => {
+  if (!date) {
+    return 'Invalid Date/Time';
+  }
+  const dateObj = parseDisplayDate(date);
+  if (isNaN(dateObj.getTime())) {
+    return 'Invalid Date/Time';
+  }
+
+  return `${formatDateSync(dateObj)} ${formatTimeSync(dateObj)}`;
 };
 
 export const formatDateRangeSync = (startDate: Date | string, endDate: Date | string): string => {
@@ -237,35 +357,23 @@ export const formatDateRangeSync = (startDate: Date | string, endDate: Date | st
     return 'Invalid Date Range';
   }
 
-  const start = startObj.toLocaleDateString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit' });
-  const end = endObj.toLocaleDateString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit' });
-  return `${start} - ${end}`;
+  return `${formatDateSync(startObj)} - ${formatDateSync(endObj)}`;
 };
 
-export const getDateFormatPreview = (format: string): string => {
-  const sampleDate = new Date(2024, 11, 31);
-  const options = getDateFormatOptions(format);
+export const getDateFormatPreview = (format: string): string =>
+  applyDateFormat(new Date(2024, 11, 31), format);
 
-  if (format === 'DD/MM/YYYY') {
-    return sampleDate.toLocaleDateString('en-GB', options);
-  } else if (format === 'YYYY-MM-DD') {
-    return toIsoCalendarDay(sampleDate);
-  } else if (format === 'DD MMM YYYY') {
-    return sampleDate.toLocaleDateString('en-GB', options);
-  }
-
-  return sampleDate.toLocaleDateString('en-US', options);
-};
-
-export const getTimeFormatPreview = (format: string): string => {
-  const sampleDate = new Date(2024, 11, 31, 14, 30);
-  const options = getTimeFormatOptions(format);
-  return sampleDate.toLocaleTimeString('en-US', options);
-};
+export const getTimeFormatPreview = (format: string): string =>
+  applyTimeFormat(new Date(2024, 11, 31, 14, 30), format);
 
 export const clearDateTimeCache = (): void => {
   dateTimeSettingsCache = null;
   dateTimeSettingsPromise = null;
+  try {
+    localStorage.removeItem(STORAGE_KEY);
+  } catch {
+    // Nothing to clear if storage is unavailable.
+  }
 };
 
 export { DATE_FORMAT_OPTIONS, TIME_FORMAT_OPTIONS, DEFAULT_DATE_TIME_SETTINGS };

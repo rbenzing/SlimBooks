@@ -12,6 +12,7 @@ import { MySQLDatabase } from './MySQLDatabase.js';
 import { buildMysqlBaseline } from './baseline.js';
 import type { IDatabase } from '../types/database.types.js';
 import type { DatabaseSettings } from '../runtime/database.js';
+import { utcTimestamp } from '../utils/utcTime.util.js';
 
 /**
  * The active database.
@@ -72,7 +73,7 @@ const acquireBootLock = async (owner: string): Promise<boolean> => {
 
   do {
     const now = new Date();
-    const expiresAt = new Date(now.getTime() + BOOT_LOCK_TTL_MS).toISOString();
+    const expiresAt = utcTimestamp(new Date(now.getTime() + BOOT_LOCK_TTL_MS));
 
     // Only expiry releases this lock — there is no "I already hold it" branch,
     // because each boot takes a fresh owner id.
@@ -84,7 +85,7 @@ const acquireBootLock = async (owner: string): Promise<boolean> => {
       owner,
       values: { owner, expires_at: expiresAt },
       takeoverCondition: 'expires_at <= ?',
-      takeoverParams: [now.toISOString()]
+      takeoverParams: [utcTimestamp(now)]
     });
 
     if (claimed) return true;

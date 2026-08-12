@@ -3,6 +3,7 @@
 
 import { databaseService } from '../core/DatabaseService.js';
 import { buildPeriodBuckets, periodKeyFor } from '../utils/reportPeriods.util.js';
+import { utcNow } from '../utils/utcTime.util.js';
 import {
   type Client,
   type Expense,
@@ -97,7 +98,7 @@ export class ReportService {
 
     // Get next ID from counter service
     const nextId = await databaseService.getNextSequence('reports');
-    const now = new Date().toISOString();
+    const now = utcNow();
 
     const result = await databaseService.executeQuery(`
       INSERT INTO reports (id, name, type, date_range_start, date_range_end, data, created_at)

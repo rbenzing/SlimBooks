@@ -9,6 +9,7 @@
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { createDatabaseMock, insertColumnsOf, flattenSql } from './databaseMock.test-helper.js';
+import { sqliteDialect } from '../database/dialects/sqlite.dialect.js';
 
 const db = createDatabaseMock();
 vi.mock('../core/DatabaseService.js', () => ({ databaseService: db }));
@@ -134,7 +135,7 @@ describe('reads', () => {
 
     const sql = flattenSql(db.getMany.mock.calls[0][0] as string);
     expect(sql).toMatch(/account_locked_until IS NOT NULL/);
-    expect(sql).toMatch(/account_locked_until > datetime\('now'\)/);
+    expect(sql).toContain(`account_locked_until > ${sqliteDialect.now()}`);
   });
 
   it('matches a search term against name, email and username', async () => {
@@ -267,9 +268,9 @@ describe('deleteUser', () => {
 
 describe('lockout bookkeeping', () => {
   it('records the attempt count and the lockout expiry together', async () => {
-    await userService.updateUserLoginAttempts(1, 3, '2026-07-30T12:00:00.000Z');
+    await userService.updateUserLoginAttempts(1, 3, '2026-07-30T12:00:00Z');
 
-    expect(db.queries[0].params).toEqual([3, '2026-07-30T12:00:00.000Z', 1]);
+    expect(db.queries[0].params).toEqual([3, '2026-07-30T12:00:00Z', 1]);
   });
 
   it('clears the lockout when no expiry is given', async () => {
@@ -291,13 +292,13 @@ describe('lockout bookkeeping', () => {
 
     const sql = flattenSql(db.queries[0].sql);
     expect(sql).toMatch(/email_verified = 1/);
-    expect(sql).toMatch(/email_verified_at = datetime\('now'\)/);
+    expect(sql).toContain(`email_verified_at = ${sqliteDialect.now()}`);
   });
 
   it('records the last login', async () => {
     await userService.updateUserLastLogin(1);
 
-    expect(flattenSql(db.queries[0].sql)).toMatch(/last_login = datetime\('now'\)/);
+    expect(flattenSql(db.queries[0].sql)).toContain(`last_login = ${sqliteDialect.now()}`);
   });
 
   it('reports false when the update matched no row', async () => {

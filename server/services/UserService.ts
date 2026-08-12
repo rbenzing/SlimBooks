@@ -3,6 +3,7 @@
 
 import { databaseService } from '../core/DatabaseService.js';
 import { type User, type UserPublic, type ServiceOptions } from '../types/index.js';
+import { utcNow } from '../utils/utcTime.util.js';
 
 /**
  * User Management Service
@@ -111,7 +112,7 @@ export class UserService {
     const nextId = await databaseService.getNextSequence('users');
 
     // Create user
-    const now = new Date().toISOString();
+    const now = utcNow();
     await databaseService.executeQuery(`
       INSERT INTO users (
         id, name, email, username, password_hash, role, email_verified,

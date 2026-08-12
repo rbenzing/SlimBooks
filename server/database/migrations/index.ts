@@ -14,6 +14,7 @@ import { up as migration010 } from './010_add_stripe_payment_link_to_invoices.js
 import { up as migration011 } from './011_add_recurring_period_date.js';
 import { up as migration012 } from './012_add_runtime_tables.js';
 import { up as migration013 } from './013_add_stored_objects.js';
+import { up as migration014 } from './014_normalize_timestamps.js';
 
 interface Migration {
   id: string;
@@ -84,6 +85,11 @@ const migrations: Migration[] = [
     id: '013',
     name: 'add_stored_objects',
     up: migration013
+  },
+  {
+    id: '014',
+    name: 'normalize_timestamps',
+    up: migration014
   }
 ];
 

@@ -3,6 +3,7 @@
 
 import { databaseService } from '../core/DatabaseService.js';
 import { type Expense, type ExpenseStatus, type ServiceOptions } from '../types/index.js';
+import { utcNow } from '../utils/utcTime.util.js';
 
 /**
  * Expense Service
@@ -144,7 +145,7 @@ export class ExpenseService {
     const nextId = await databaseService.getNextSequence('expenses');
     
     // Prepare expense data
-    const now = new Date().toISOString();
+    const now = utcNow();
     const expenseRecord = {
       id: nextId,
       amount: expenseData.amount,

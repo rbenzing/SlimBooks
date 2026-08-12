@@ -4,6 +4,7 @@
 import { databaseService } from '../core/DatabaseService.js';
 import { settingsService } from './SettingsService.js';
 import { type User, type UserPublic } from '../types/index.js';
+import { utcNow, utcTimestamp } from '../utils/utcTime.util.js';
 
 /**
  * Authentication Service
@@ -59,7 +60,7 @@ export class AuthService {
     const nextId = await databaseService.getNextSequence('users');
 
     // Create user
-    const now = new Date().toISOString();
+    const now = utcNow();
     await databaseService.executeQuery(`
       INSERT INTO users (
         id, name, email, username, password_hash, role, email_verified,
@@ -102,7 +103,7 @@ export class AuthService {
 
     let lockedUntil: string | null = null;
     if (newAttempts >= maxAttempts) {
-      lockedUntil = new Date(Date.now() + lockoutDuration).toISOString();
+      lockedUntil = utcTimestamp(new Date(Date.now() + lockoutDuration));
     }
 
     await databaseService.executeQuery(`
@@ -139,7 +140,7 @@ export class AuthService {
 
     const changes = databaseService.updateRecord('users', userId, { 
       email_verified: 1,
-      email_verified_at: new Date().toISOString()
+      email_verified_at: utcNow()
     });
     return changes;
   }
@@ -158,7 +159,7 @@ export class AuthService {
 
     const changes = databaseService.updateRecord('users', userId, { 
       password_hash: passwordHash,
-      password_updated_at: new Date().toISOString()
+      password_updated_at: utcNow()
     });
     return changes;
   }
@@ -303,7 +304,7 @@ export class AuthService {
       throw new Error('Valid user ID is required');
     }
 
-    const lockedUntil = new Date(Date.now() + lockDuration).toISOString();
+    const lockedUntil = utcTimestamp(new Date(Date.now() + lockDuration));
     const changes = databaseService.updateRecord('users', userId, {
       account_locked_until: lockedUntil
     });

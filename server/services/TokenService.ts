@@ -1,6 +1,7 @@
 import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
 import { databaseService } from '../core/DatabaseService.js';
+import { utcTimestamp } from '../utils/utcTime.util.js';
 
 export interface TokenRecord {
   id: number;
@@ -39,7 +40,7 @@ export class TokenService {
   async createPasswordResetToken(userId: number, expiryMs: number): Promise<string> {
     const token = this.generateToken();
     const tokenHash = await this.hashToken(token);
-    const expiresAt = new Date(Date.now() + expiryMs).toISOString();
+    const expiresAt = utcTimestamp(new Date(Date.now() + expiryMs));
 
     // Delete any existing unused tokens for this user
     await databaseService.executeQuery(
@@ -89,7 +90,7 @@ export class TokenService {
   async createEmailVerificationToken(userId: number, expiryMs: number): Promise<string> {
     const token = this.generateToken();
     const tokenHash = await this.hashToken(token);
-    const expiresAt = new Date(Date.now() + expiryMs).toISOString();
+    const expiresAt = utcTimestamp(new Date(Date.now() + expiryMs));
 
     // Delete any existing unused tokens for this user
     await databaseService.executeQuery(

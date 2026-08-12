@@ -18,6 +18,9 @@ import { join } from 'node:path';
 import { SQLiteDatabase } from './SQLiteDatabase.js';
 import { MySQLDatabase } from './MySQLDatabase.js';
 import { claimExclusive } from './claim.util.js';
+import { mysqlDialect } from './dialects/mysql.dialect.js';
+import { sqliteDialect } from './dialects/sqlite.dialect.js';
+import { isUtcTimestamp, utcNow } from '../utils/utcTime.util.js';
 import type { IDatabase } from '../types/database.types.js';
 import type { MysqlSettings } from '../runtime/database.js';
 
@@ -71,7 +74,7 @@ const backends: Backend[] = [
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         label TEXT,
         amount REAL,
-        stamp TEXT NOT NULL DEFAULT (datetime('now')),
+        stamp TEXT NOT NULL DEFAULT (${sqliteDialect.now()}),
         deleted_at TEXT
       )`
     ]
@@ -97,7 +100,7 @@ if (url !== undefined && url.length > 0) {
         id INT AUTO_INCREMENT PRIMARY KEY,
         label TEXT,
         amount DOUBLE,
-        stamp TEXT NOT NULL DEFAULT (DATE_FORMAT(UTC_TIMESTAMP(),'%Y-%m-%d %H:%i:%s')),
+        stamp TEXT NOT NULL DEFAULT (${mysqlDialect.now()}),
         deleted_at VARCHAR(64)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`
     ]
@@ -160,42 +163,60 @@ describe.each(backends)('$name', backend => {
   it('renders the default timestamp in the same shape on both backends', async () => {
     // The columns are TEXT everywhere and compared lexicographically. A MySQL
     // default of NOW() would carry a timezone offset and fractional seconds,
-    // and would not sort against a SQLite datetime('now').
+    // and would not sort against SQLite's.
     await db.executeQuery('INSERT INTO ledger (label) VALUES (?)', ['stamped']);
 
     const row = await db.getOne<{ stamp: string }>('SELECT stamp FROM ledger');
 
-    expect(row?.stamp).toMatch(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/);
+    expect(isUtcTimestamp(row?.stamp)).toBe(true);
   });
 
   it('produces the same expression for "now" through the dialect', async () => {
     const row = await db.getOne<{ n: string }>(`SELECT ${db.dialect.now()} as n`);
 
-    expect(row?.n).toMatch(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/);
+    expect(isUtcTimestamp(row?.n)).toBe(true);
+  });
+
+  it('agrees with the timestamp the application writes', async () => {
+    // Half these values are written by SQL and half by Node; a column holding
+    // both shapes compares wrongly, which is the defect this format fixes.
+    const fromSql = await db.getOne<{ n: string }>(`SELECT ${db.dialect.now()} as n`);
+
+    expect(Math.abs(Date.parse(fromSql!.n) - Date.parse(utcNow()))).toBeLessThanOrEqual(2000);
   });
 
   it('groups by month identically', async () => {
     // strftime does not exist in MySQL. The frontend indexes report payloads by
     // these keys, so a differing format silently empties a chart.
+    //
+    // Both shapes are checked: production only ever groups by a calendar-day
+    // column, but a timestamp is the obvious next thing someone will group by,
+    // and MySQL's DATE_FORMAT has to swallow the trailing Z for that to work.
     await db.executeQuery('INSERT INTO ledger (label, stamp) VALUES (?, ?)', [
-      'x',
-      '2026-08-09 10:00:00'
+      'day',
+      '2026-08-09'
+    ]);
+    await db.executeQuery('INSERT INTO ledger (label, stamp) VALUES (?, ?)', [
+      'instant',
+      '2026-08-09T10:00:00Z'
     ]);
 
     const month = db.dialect.formatMonth('stamp');
-    const row = await db.getOne<{ m: string }>(`SELECT ${month} as m FROM ledger`);
+    const rows = await db.getMany<{ m: string }>(
+      `SELECT ${month} as m FROM ledger ORDER BY label`
+    );
 
-    expect(row?.m).toBe('2026-08');
+    expect(rows.map(row => row.m)).toEqual(['2026-08', '2026-08']);
   });
 
   it('filters on a relative-date cutoff', async () => {
     await db.executeQuery('INSERT INTO ledger (label, stamp) VALUES (?, ?)', [
       'old',
-      '2000-01-01 00:00:00'
+      '2000-01-01T00:00:00Z'
     ]);
     await db.executeQuery('INSERT INTO ledger (label, stamp) VALUES (?, ?)', [
       'new',
-      '2999-01-01 00:00:00'
+      '2999-01-01T00:00:00Z'
     ]);
 
     const rows = await db.getMany<{ label: string }>(

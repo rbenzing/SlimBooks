@@ -9,6 +9,7 @@
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { createDatabaseMock, insertColumnsOf, flattenSql } from './databaseMock.test-helper.js';
+import { sqliteDialect } from '../database/dialects/sqlite.dialect.js';
 
 const db = createDatabaseMock();
 vi.mock('../core/DatabaseService.js', () => ({ databaseService: db }));
@@ -78,7 +79,7 @@ describe('updateLoginAttempts', () => {
     const sql = flattenSql(db.queries[0].sql);
     expect(sql).toMatch(/failed_login_attempts = 0/);
     expect(sql).toMatch(/account_locked_until = NULL/);
-    expect(sql).toMatch(/last_login = datetime\('now'\)/);
+    expect(sql).toContain(`last_login = ${sqliteDialect.now()}`);
   });
 
   it('increments the counter on failure without locking early', async () => {
@@ -108,7 +109,9 @@ describe('updateLoginAttempts', () => {
     await authService.updateLoginAttempts(1, false);
 
     const lockedUntil = new Date(db.queries[0].params[1] as string).getTime();
-    expect(lockedUntil).toBeGreaterThanOrEqual(before + 1_800_000);
+    // A second of slack: stored timestamps carry whole seconds, so an expiry
+    // computed from a sub-second `before` truncates down by up to 999ms.
+    expect(lockedUntil).toBeGreaterThanOrEqual(before + 1_800_000 - 1000);
     expect(lockedUntil).toBeLessThan(before + 1_800_000 + 5000);
   });
 
@@ -222,7 +225,7 @@ describe('locking', () => {
 
     const [, , updateData] = db.updateRecord.mock.calls[0];
     const lockedUntil = new Date(updateData.account_locked_until as string).getTime();
-    expect(lockedUntil).toBeGreaterThanOrEqual(before + 60_000);
+    expect(lockedUntil).toBeGreaterThanOrEqual(before + 60_000 - 1000);
   });
 
   it('unlocking clears both the counter and the window', async () => {
@@ -287,13 +290,13 @@ describe('authentication lookups', () => {
   it('reports login statistics with the lock state resolved', async () => {
     const future = new Date(Date.now() + 60_000).toISOString();
     db.getOne.mockReturnValue({
-      last_login: '2026-07-01T00:00:00.000Z',
+      last_login: '2026-07-01T00:00:00Z',
       failed_login_attempts: 3,
       account_locked_until: future
     });
 
     await expect(authService.getUserLoginStats(1)).resolves.toEqual({
-      lastLogin: '2026-07-01T00:00:00.000Z',
+      lastLogin: '2026-07-01T00:00:00Z',
       failedAttempts: 3,
       isLocked: true,
       lockedUntil: future

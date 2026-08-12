@@ -3,7 +3,18 @@
 // WAL-friendly pragmas, and structural integrity for concurrent load.
 
 import type { IDatabase, TableSchema } from '../../types/database.types.js';
+import { sqliteDialect } from '../dialects/sqlite.dialect.js';
 import { createTokenTables } from './tokenTables.schema.js';
+
+/**
+ * What every timestamp column defaults to.
+ *
+ * Taken from the dialect rather than written out, so the value a column
+ * defaults to and the value `utcNow()` writes cannot drift apart — they are the
+ * same shape by construction. mysql.ddl.ts translates this exact text into the
+ * MySQL spelling, so it is also the only place the two backends have to agree.
+ */
+const TIMESTAMP_DEFAULT = `NOT NULL DEFAULT (${sqliteDialect.now()})`;
 
 /**
  * User authentication and management table
@@ -26,8 +37,8 @@ const usersSchema: TableSchema = {
     { name: 'account_locked_until', type: 'TEXT' },
     { name: 'password_updated_at', type: 'TEXT' },
     { name: 'email_verified_at', type: 'TEXT' },
-    { name: 'created_at', type: 'TEXT', constraints: ['NOT NULL DEFAULT (datetime(\'now\'))'] },
-    { name: 'updated_at', type: 'TEXT', constraints: ['NOT NULL DEFAULT (datetime(\'now\'))'] },
+    { name: 'created_at', type: 'TEXT', constraints: [TIMESTAMP_DEFAULT] },
+    { name: 'updated_at', type: 'TEXT', constraints: [TIMESTAMP_DEFAULT] },
     { name: 'deleted_at', type: 'TEXT' }
   ]
 };
@@ -54,8 +65,8 @@ const clientsSchema: TableSchema = {
     { name: 'notes', type: 'TEXT' },
     { name: 'stripe_customer_id', type: 'TEXT' },
     { name: 'is_active', type: 'INTEGER', constraints: ['DEFAULT 1'] },
-    { name: 'created_at', type: 'TEXT', constraints: ['NOT NULL DEFAULT (datetime(\'now\'))'] },
-    { name: 'updated_at', type: 'TEXT', constraints: ['NOT NULL DEFAULT (datetime(\'now\'))'] },
+    { name: 'created_at', type: 'TEXT', constraints: [TIMESTAMP_DEFAULT] },
+    { name: 'updated_at', type: 'TEXT', constraints: [TIMESTAMP_DEFAULT] },
     { name: 'deleted_at', type: 'TEXT' } // nullable soft-delete terrain
   ]
 };
@@ -107,8 +118,8 @@ const invoicesSchema: TableSchema = {
     { name: 'recurring_frequency', type: 'TEXT' },
     { name: 'next_due_date', type: 'TEXT' },
     { name: 'recurring_period_date', type: 'TEXT' },
-    { name: 'created_at', type: 'TEXT', constraints: ['NOT NULL DEFAULT (datetime(\'now\'))'] },
-    { name: 'updated_at', type: 'TEXT', constraints: ['NOT NULL DEFAULT (datetime(\'now\'))'] },
+    { name: 'created_at', type: 'TEXT', constraints: [TIMESTAMP_DEFAULT] },
+    { name: 'updated_at', type: 'TEXT', constraints: [TIMESTAMP_DEFAULT] },
     { name: 'deleted_at', type: 'TEXT' }
   ],
   constraints: [
@@ -132,8 +143,8 @@ const invoiceItemsSchema: TableSchema = {
     { name: 'total', type: 'REAL', constraints: ['NOT NULL DEFAULT 0'] },
     { name: 'tax_rate', type: 'REAL', constraints: ['DEFAULT 0'] },
     { name: 'sort_order', type: 'INTEGER', constraints: ['DEFAULT 0'] },
-    { name: 'created_at', type: 'TEXT', constraints: ['NOT NULL DEFAULT (datetime(\'now\'))'] },
-    { name: 'updated_at', type: 'TEXT', constraints: ['NOT NULL DEFAULT (datetime(\'now\'))'] },
+    { name: 'created_at', type: 'TEXT', constraints: [TIMESTAMP_DEFAULT] },
+    { name: 'updated_at', type: 'TEXT', constraints: [TIMESTAMP_DEFAULT] },
     { name: 'deleted_at', type: 'TEXT' }
   ],
   constraints: [
@@ -161,8 +172,8 @@ const paymentsSchema: TableSchema = {
     { name: 'description', type: 'TEXT' },
     { name: 'stripe_payment_id', type: 'TEXT' },
     { name: 'date', type: 'TEXT', constraints: ['NOT NULL'] },
-    { name: 'created_at', type: 'TEXT', constraints: ['NOT NULL DEFAULT (datetime(\'now\'))'] },
-    { name: 'updated_at', type: 'TEXT', constraints: ['NOT NULL DEFAULT (datetime(\'now\'))'] },
+    { name: 'created_at', type: 'TEXT', constraints: [TIMESTAMP_DEFAULT] },
+    { name: 'updated_at', type: 'TEXT', constraints: [TIMESTAMP_DEFAULT] },
     { name: 'deleted_at', type: 'TEXT' }
   ],
   constraints: [
@@ -190,8 +201,8 @@ const expensesSchema: TableSchema = {
     { name: 'is_billable', type: 'INTEGER', constraints: ['DEFAULT 0'] },
     { name: 'client_id', type: 'INTEGER' },
     { name: 'project', type: 'TEXT' },
-    { name: 'created_at', type: 'TEXT', constraints: ['NOT NULL DEFAULT (datetime(\'now\'))'] },
-    { name: 'updated_at', type: 'TEXT', constraints: ['NOT NULL DEFAULT (datetime(\'now\'))'] },
+    { name: 'created_at', type: 'TEXT', constraints: [TIMESTAMP_DEFAULT] },
+    { name: 'updated_at', type: 'TEXT', constraints: [TIMESTAMP_DEFAULT] },
     { name: 'deleted_at', type: 'TEXT' }
   ],
   constraints: [
@@ -210,8 +221,8 @@ const invoiceDesignTemplatesSchema: TableSchema = {
     { name: 'content', type: 'TEXT', constraints: ['NOT NULL'] },
     { name: 'is_default', type: 'INTEGER', constraints: ['DEFAULT 0'] },
     { name: 'variables', type: 'TEXT' },
-    { name: 'created_at', type: 'TEXT', constraints: ['NOT NULL DEFAULT (datetime(\'now\'))'] },
-    { name: 'updated_at', type: 'TEXT', constraints: ['NOT NULL DEFAULT (datetime(\'now\'))'] },
+    { name: 'created_at', type: 'TEXT', constraints: [TIMESTAMP_DEFAULT] },
+    { name: 'updated_at', type: 'TEXT', constraints: [TIMESTAMP_DEFAULT] },
     { name: 'deleted_at', type: 'TEXT' }
   ]
 };
@@ -237,8 +248,8 @@ const recurringInvoiceTemplatesSchema: TableSchema = {
     { name: 'shipping_amount', type: 'REAL', constraints: ['DEFAULT 0'] },
     { name: 'shipping_rate_id', type: 'TEXT' },
     { name: 'notes', type: 'TEXT' },
-    { name: 'created_at', type: 'TEXT', constraints: ['NOT NULL DEFAULT (datetime(\'now\'))'] },
-    { name: 'updated_at', type: 'TEXT', constraints: ['NOT NULL DEFAULT (datetime(\'now\'))'] },
+    { name: 'created_at', type: 'TEXT', constraints: [TIMESTAMP_DEFAULT] },
+    { name: 'updated_at', type: 'TEXT', constraints: [TIMESTAMP_DEFAULT] },
     { name: 'deleted_at', type: 'TEXT' }
   ],
   constraints: [
@@ -261,8 +272,8 @@ const settingsSchema: TableSchema = {
     // Added by migration 002; declared here so a fresh database matches an
     // upgraded one.
     { name: 'category', type: 'TEXT' },
-    { name: 'created_at', type: 'TEXT', constraints: ['NOT NULL DEFAULT (datetime(\'now\'))'] },
-    { name: 'updated_at', type: 'TEXT', constraints: ['NOT NULL DEFAULT (datetime(\'now\'))'] }
+    { name: 'created_at', type: 'TEXT', constraints: [TIMESTAMP_DEFAULT] },
+    { name: 'updated_at', type: 'TEXT', constraints: [TIMESTAMP_DEFAULT] }
   ]
 };
 
@@ -276,8 +287,8 @@ const projectSettingsSchema: TableSchema = {
     { name: 'key', type: 'TEXT', constraints: ['UNIQUE NOT NULL'] },
     { name: 'value', type: 'TEXT' },
     { name: 'enabled', type: 'INTEGER', constraints: ['DEFAULT 1'] },
-    { name: 'created_at', type: 'TEXT', constraints: ['NOT NULL DEFAULT (datetime(\'now\'))'] },
-    { name: 'updated_at', type: 'TEXT', constraints: ['NOT NULL DEFAULT (datetime(\'now\'))'] }
+    { name: 'created_at', type: 'TEXT', constraints: [TIMESTAMP_DEFAULT] },
+    { name: 'updated_at', type: 'TEXT', constraints: [TIMESTAMP_DEFAULT] }
   ]
 };
 
@@ -293,7 +304,7 @@ const reportsSchema: TableSchema = {
     { name: 'date_range_start', type: 'TEXT' },
     { name: 'date_range_end', type: 'TEXT' },
     { name: 'data', type: 'TEXT' },
-    { name: 'created_at', type: 'TEXT', constraints: ['NOT NULL DEFAULT (datetime(\'now\'))'] },
+    { name: 'created_at', type: 'TEXT', constraints: [TIMESTAMP_DEFAULT] },
     { name: 'deleted_at', type: 'TEXT' }
   ]
 };
@@ -307,8 +318,8 @@ const countersSchema: TableSchema = {
     { name: 'id', type: 'INTEGER', constraints: ['PRIMARY KEY AUTOINCREMENT'] },
     { name: 'name', type: 'TEXT', constraints: ['UNIQUE NOT NULL'] },
     { name: 'value', type: 'INTEGER', constraints: ['NOT NULL DEFAULT 0'] },
-    { name: 'created_at', type: 'TEXT', constraints: ['NOT NULL DEFAULT (datetime(\'now\'))'] },
-    { name: 'updated_at', type: 'TEXT', constraints: ['NOT NULL DEFAULT (datetime(\'now\'))'] },
+    { name: 'created_at', type: 'TEXT', constraints: [TIMESTAMP_DEFAULT] },
+    { name: 'updated_at', type: 'TEXT', constraints: [TIMESTAMP_DEFAULT] },
     { name: 'deleted_at', type: 'TEXT' }
   ]
 };
@@ -337,7 +348,7 @@ const stripeEventsSchema: TableSchema = {
   columns: [
     { name: 'event_id', type: 'TEXT', constraints: ['PRIMARY KEY'] },
     { name: 'event_type', type: 'TEXT', constraints: ['NOT NULL'] },
-    { name: 'processed_at', type: 'TEXT', constraints: ['NOT NULL DEFAULT (datetime(\'now\'))'] }
+    { name: 'processed_at', type: 'TEXT', constraints: [TIMESTAMP_DEFAULT] }
   ]
 };
 
@@ -359,7 +370,7 @@ const storedObjectsSchema: TableSchema = {
     { name: 'content_type', type: 'TEXT' },
     { name: 'size', type: 'INTEGER', constraints: ['NOT NULL'] },
     { name: 'data', type: 'BLOB', constraints: ['NOT NULL'] },
-    { name: 'created_at', type: 'TEXT', constraints: ['NOT NULL DEFAULT (datetime(\'now\'))'] }
+    { name: 'created_at', type: 'TEXT', constraints: [TIMESTAMP_DEFAULT] }
   ]
 };
 
@@ -463,7 +474,7 @@ export const triggers = [
      AFTER UPDATE ON expenses
      FOR EACH ROW
    BEGIN
-     UPDATE expenses SET updated_at = datetime('now') WHERE id = NEW.id;
+     UPDATE expenses SET updated_at = ${sqliteDialect.now()} WHERE id = NEW.id;
    END`
 ];
 

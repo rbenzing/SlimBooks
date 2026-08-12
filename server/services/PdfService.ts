@@ -11,6 +11,7 @@ import type { Browser, Page, PDFOptions, PaperFormat } from 'puppeteer';
 import { databaseService } from '../core/DatabaseService.js';
 import { settingsService } from './SettingsService.js';
 import { type InvoiceWithClient } from '../types/index.js';
+import { utcNow } from '../utils/utcTime.util.js';
 
 /**
  * `settingsService.getSettingByKey()` already JSON-parses the stored value, so
@@ -495,7 +496,7 @@ export class PdfService {
         invoice_id: invoiceId,
         action,
         metadata: JSON.stringify(metadata),
-        created_at: new Date().toISOString()
+        created_at: utcNow()
       };
 
       // Only log if there's an activity log table

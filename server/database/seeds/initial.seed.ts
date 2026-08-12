@@ -4,6 +4,17 @@
 import bcrypt from 'bcryptjs';
 import type { IDatabase, SeedData } from '../../types/database.types.js';
 import { appConfig } from '../../config/index.js';
+import { utcCalendarDay, utcNow } from '../../utils/utcTime.util.js';
+
+/**
+ * A calendar day relative to today, for the sample rows.
+ *
+ * These used to be full ISO instants written into date columns, so a sample
+ * invoice's due date rendered as one day or the next depending on where the
+ * reader was. A due date is a day.
+ */
+const dayOffsetFromToday = (days: number): string =>
+  utcCalendarDay(new Date(Date.now() + days * 24 * 60 * 60 * 1000));
 
 /**
  * Initialize application counters
@@ -47,8 +58,8 @@ export const initializeAdminUser = async (db: IDatabase): Promise<void> => {
         password_hash: hashedPassword,
         role: 'admin',
         email_verified: 1,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
+        created_at: utcNow(),
+        updated_at: utcNow()
       }]
     };
     
@@ -197,7 +208,7 @@ export const initializeSampleInvoices = async (db: IDatabase): Promise<void> => 
         tax_amount: 120.00,
         total_amount: 1620.00,
         status: 'sent',
-        due_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+        due_date: dayOffsetFromToday(30),
         notes: 'Sample invoice for development',
         terms: 'Payment due within 30 days'
       },
@@ -208,8 +219,8 @@ export const initializeSampleInvoices = async (db: IDatabase): Promise<void> => 
         tax_amount: 200.00,
         total_amount: 2700.00,
         status: 'paid',
-        due_date: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
-        paid_date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+        due_date: dayOffsetFromToday(-5),
+        paid_date: dayOffsetFromToday(-2),
         notes: 'Paid invoice sample'
       }
     ]
@@ -241,7 +252,7 @@ export const initializeSamplePayments = async (db: IDatabase): Promise<void> => 
         method: 'bank_transfer',
         status: 'received',
         reference: 'TXN-12345',
-        date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+        date: dayOffsetFromToday(-2),
         description: 'Payment received via bank transfer'
       }
     ]

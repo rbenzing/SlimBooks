@@ -5,6 +5,7 @@ import type { IDatabase, QueryOptions, ServiceOptions } from '../types/database.
 import type { SqlDialect } from '../database/dialect.types.js';
 import { activeDatabase } from '../database/index.js';
 import { validateTableName } from './TableValidator.js';
+import { utcNow } from '../utils/utcTime.util.js';
 
 /**
  * Base Database Service
@@ -181,7 +182,7 @@ export class DatabaseService {
 
     // Add updated_at timestamp
     keys.push('updated_at');
-    values.push(new Date().toISOString());
+    values.push(utcNow());
 
     // Every identifier is quoted, because these builders take arbitrary column
     // names and `settings.key` is one of them — a reserved word in MySQL.
@@ -203,7 +204,7 @@ export class DatabaseService {
     const values = Object.values(data);
 
     // Add timestamps
-    const now = new Date().toISOString();
+    const now = utcNow();
     keys.push('created_at', 'updated_at');
     values.push(now, now);
 

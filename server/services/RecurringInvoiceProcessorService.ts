@@ -4,6 +4,7 @@
 import { databaseService } from '../core/DatabaseService.js';
 import { recurringInvoiceTemplateService } from './RecurringInvoiceTemplateService.js';
 import { invoiceNumberService } from './InvoiceNumberService.js';
+import { utcCalendarDay } from '../utils/utcTime.util.js';
 
 /**
  * Invoice creation data interface
@@ -163,7 +164,7 @@ export class RecurringInvoiceProcessorService {
     // applies to both and the counter is not advanced twice.
     const invoiceNumber = await invoiceNumberService.generateInvoiceNumber();
 
-    const issueDate: string = new Date().toISOString().split('T')[0]!;
+    const issueDate: string = utcCalendarDay(new Date());
     const dueDate = this.calculateDueDate(issueDate, template.payment_terms);
 
     return {
@@ -251,7 +252,7 @@ export class RecurringInvoiceProcessorService {
     }
 
     date.setUTCDate(date.getUTCDate() + daysToAdd);
-    return date.toISOString().split('T')[0]!;
+    return utcCalendarDay(date);
   }
 
   /**
@@ -263,7 +264,7 @@ export class RecurringInvoiceProcessorService {
     templatesOverdue: number;
     nextProcessingDate?: string | undefined;
   }> {
-    const today = new Date().toISOString().split('T')[0];
+    const today = utcCalendarDay(new Date());
 
     const activeTemplates = await databaseService.getOne<{ count: number }>(
       'SELECT COUNT(*) as count FROM recurring_invoice_templates WHERE is_active = 1'

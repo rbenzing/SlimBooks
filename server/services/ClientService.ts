@@ -3,7 +3,7 @@
 
 import { databaseService } from '../core/DatabaseService.js';
 import { type Client, type ServiceOptions } from '../types/index.js';
-import { sqlTimestampDaysAgo } from '../utils/sqlTime.util.js';
+import { utcNow, utcTimestampDaysAgo } from '../utils/utcTime.util.js';
 
 /**
  * Client Service
@@ -82,7 +82,7 @@ export class ClientService {
     const nextId = await databaseService.getNextSequence('clients');
     
     // Prepare client data
-    const now = new Date().toISOString();
+    const now = utcNow();
     const clientRecord = {
       id: nextId,
       name: clientData.name,
@@ -352,10 +352,10 @@ export class ClientService {
     // The window used to be bound as a SQLite modifier ('-30 days') consumed by
     // datetime('now', ?). MySQL cannot express that at all — INTERVAL takes no
     // placeholder — so the cutoff is computed here and bound as a timestamp.
-    // sqlTimestampDaysAgo renders the same YYYY-MM-DD HH:MM:SS shape
-    // datetime('now', …) did, so the comparison is unchanged, and both
-    // properties this used to have are preserved on both backends.
-    const cutoff = sqlTimestampDaysAgo(days);
+    // utcTimestampDaysAgo renders the same shape the column holds, so the
+    // lexicographic comparison is the chronological one, and both properties
+    // this used to have are preserved on both backends.
+    const cutoff = utcTimestampDaysAgo(days);
 
     return databaseService.getMany<Client>(`
       SELECT DISTINCT c.* FROM clients c

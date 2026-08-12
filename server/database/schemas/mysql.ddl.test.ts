@@ -6,6 +6,8 @@ import {
   renderIndex
 } from './mysql.ddl.js';
 import { indexes, tableSchemas } from './tables.schema.js';
+import { mysqlDialect } from '../dialects/mysql.dialect.js';
+import { sqliteDialect } from '../dialects/sqlite.dialect.js';
 
 const tableFor = (name: string) => {
   const schema = tableSchemas.find(candidate => candidate.name === name);
@@ -80,8 +82,9 @@ describe('renderCreateTable', () => {
   it('translates the SQLite timestamp default to an identical MySQL expression', () => {
     const sql = renderCreateTable(tableFor('users'), columnsOf('users'));
 
-    expect(sql).toContain("DEFAULT (DATE_FORMAT(UTC_TIMESTAMP(),'%Y-%m-%d %H:%i:%s'))");
-    expect(sql).not.toContain("datetime('now')");
+    expect(sql).toContain(`DEFAULT (${mysqlDialect.now()})`);
+    expect(sql).not.toContain(sqliteDialect.now());
+    expect(sql).not.toContain('strftime');
   });
 
   it('emits InnoDB and utf8mb4, which the transaction guarantee depends on', () => {

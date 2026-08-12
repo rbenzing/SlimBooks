@@ -3,6 +3,7 @@
 
 import { databaseService } from '../core/DatabaseService.js';
 import { type Setting, type ProjectSettings, type SettingValue } from '../types/index.js';
+import { utcNow } from '../utils/utcTime.util.js';
 
 /**
  * Project settings live in the `settings` table as one flat key per value
@@ -431,8 +432,8 @@ export class SettingsService {
             key: fullKey,
             value: JSON.stringify(value),
             id: 0, // Temporary ID, will be set by database
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
+            created_at: utcNow(),
+            updated_at: utcNow()
           });
         }
       }

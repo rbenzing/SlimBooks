@@ -26,7 +26,10 @@ import {
   formatDateTime,
   formatDateRange,
   formatDateSync,
+  formatTimeSync,
+  formatDateTimeSync,
   formatDateRangeSync,
+  parseDisplayDate,
   toDateInputValue,
   getDateFormatPreview,
   getTimeFormatPreview,
@@ -40,8 +43,30 @@ const localCalendarDay = (date: Date) => {
   return `${date.getFullYear()}-${month}-${day}`;
 };
 
+/**
+ * A real in-memory localStorage for this file.
+ *
+ * The shared setup installs bare `vi.fn()` stubs that accept a write and return
+ * null on read, which would make the synchronous formatters look like they work
+ * from memory alone. They do not — the whole point of the mirror is surviving a
+ * page load — so the storage has to actually store. Same approach as
+ * authToken.test.ts.
+ */
+const installMemoryStorage = (): void => {
+  const store = new Map<string, string>();
+
+  vi.mocked(localStorage.getItem).mockImplementation(key => store.get(key) ?? null);
+  vi.mocked(localStorage.setItem).mockImplementation((key, value) => {
+    store.set(key, String(value));
+  });
+  vi.mocked(localStorage.removeItem).mockImplementation(key => {
+    store.delete(key);
+  });
+};
+
 beforeEach(() => {
   vi.clearAllMocks();
+  installMemoryStorage();
   clearDateTimeCache();
   isReady.mockReturnValue(true);
   getSetting.mockResolvedValue(null);
@@ -275,6 +300,103 @@ describe('formatDateSync', () => {
     expect(formatDateSync(undefined)).toBe('Invalid Date');
     expect(formatDateSync('')).toBe('Invalid Date');
     expect(formatDateSync('rubbish')).toBe('Invalid Date');
+  });
+
+  it('honours the format the user chose', async () => {
+    // Eleven screens render through this. It used to hard-code MM/DD/YYYY, so
+    // a user on DD/MM/YYYY saw their choice on some screens and not others.
+    getSetting.mockResolvedValue({ dateFormat: 'DD/MM/YYYY', timeFormat: '24-hour' });
+    await getDateTimeSettings();
+
+    expect(formatDateSync(new Date(2026, 0, 2, 12))).toBe('02/01/2026');
+  });
+
+  it('agrees with the async formatter', async () => {
+    getSetting.mockResolvedValue({ dateFormat: 'MMMM DD, YYYY', timeFormat: '12-hour' });
+    await getDateTimeSettings();
+
+    const date = new Date(2026, 0, 2, 12);
+    expect(formatDateSync(date)).toBe(await formatDate(date));
+  });
+
+  it('picks the format up from storage before the API has answered', () => {
+    // First paint happens before any await resolves. Without a synchronously
+    // readable copy the dates render in the default format and then change
+    // under the user a moment later.
+    localStorage.setItem(
+      'slimbooks.dateTimeSettings',
+      JSON.stringify({ dateFormat: 'DD/MM/YYYY', timeFormat: '24-hour' })
+    );
+
+    expect(formatDateSync(new Date(2026, 0, 2, 12))).toBe('02/01/2026');
+  });
+
+  it('writes that copy when the settings load', async () => {
+    getSetting.mockResolvedValue({ dateFormat: 'DD MMM YYYY', timeFormat: '24-hour' });
+    await getDateTimeSettings();
+
+    expect(JSON.parse(localStorage.getItem('slimbooks.dateTimeSettings') ?? 'null'))
+      .toEqual({ dateFormat: 'DD MMM YYYY', timeFormat: '24-hour' });
+  });
+});
+
+describe('formatTimeSync and formatDateTimeSync', () => {
+  it('renders the time in the chosen format', async () => {
+    getSetting.mockResolvedValue({ dateFormat: 'MM/DD/YYYY', timeFormat: '24-hour' });
+    await getDateTimeSettings();
+
+    expect(formatTimeSync(new Date(2026, 0, 2, 14, 30))).toBe('14:30');
+  });
+
+  it('renders a stored UTC instant in the viewer\'s own time', async () => {
+    // The whole point of storing UTC: the value is an instant, and the viewer
+    // sees it on their own clock. Asserted against the local components rather
+    // than a fixed string so it holds in any timezone.
+    getSetting.mockResolvedValue({ dateFormat: 'MM/DD/YYYY', timeFormat: '24-hour' });
+    await getDateTimeSettings();
+
+    const stored = '2026-08-12T13:54:13Z';
+    const local = new Date(stored);
+    const expected = `${String(local.getHours()).padStart(2, '0')}:${String(local.getMinutes()).padStart(2, '0')}`;
+
+    expect(formatTimeSync(stored)).toBe(expected);
+  });
+
+  it('combines both halves', async () => {
+    getSetting.mockResolvedValue({ dateFormat: 'YYYY-MM-DD', timeFormat: '24-hour' });
+    await getDateTimeSettings();
+
+    expect(formatDateTimeSync(new Date(2026, 0, 2, 14, 30))).toBe('2026-01-02 14:30');
+  });
+
+  it('says so plainly for a missing or unparseable value', () => {
+    expect(formatTimeSync(null)).toBe('Invalid Time');
+    expect(formatTimeSync('rubbish')).toBe('Invalid Time');
+    expect(formatDateTimeSync(null)).toBe('Invalid Date/Time');
+    expect(formatDateTimeSync('rubbish')).toBe('Invalid Date/Time');
+  });
+});
+
+describe('parseDisplayDate', () => {
+  it('reads a canonical stored timestamp as the instant it is', () => {
+    expect(parseDisplayDate('2026-08-12T13:54:13Z').getTime())
+      .toBe(Date.parse('2026-08-12T13:54:13Z'));
+  });
+
+  it('reads a legacy space-separated timestamp as UTC, not local', () => {
+    // Migration 014 rewrote the stored ones, but a database restored from an
+    // older backup still holds this shape and Date reads it as local time —
+    // every value would shift by the viewer's offset.
+    expect(parseDisplayDate('2026-08-12 13:54:13').getTime())
+      .toBe(Date.parse('2026-08-12T13:54:13Z'));
+  });
+
+  it('reads a bare calendar day as a local day, not UTC midnight', () => {
+    const parsed = parseDisplayDate('2026-07-31');
+
+    expect(parsed.getFullYear()).toBe(2026);
+    expect(parsed.getMonth()).toBe(6);
+    expect(parsed.getDate()).toBe(31);
   });
 });
 

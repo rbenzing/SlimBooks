@@ -29,7 +29,7 @@ travel with the database backup instead of being a separate thing to remember.
 
 | | Minimum | Why |
 |---|---|---|
-| MySQL | 8.0.13 | Expression column defaults. `TEXT` columns can take a default *only* in expression form, and every `created_at` in the schema uses one. Below this the `CREATE TABLE` is a syntax error. |
+| MySQL | 8.0.13 | Expression column defaults. Every `created_at` in the schema stamps itself with one, and below this version the `CREATE TABLE` is a syntax error. |
 | MariaDB | 10.2 | Same feature, same reason. |
 | Engine | InnoDB | MyISAM ignores transactions without erroring, which would let an interrupted recurring-invoice run bill a customer twice. |
 
@@ -72,6 +72,36 @@ are SQLite archaeology — `PRAGMA table_info` guards, a create-copy-drop-rename
 table rebuild — so a fresh MySQL schema is built from `tables.schema.ts` and its
 history recorded as already applied. Migrations written from now on run on both
 and must be dialect-neutral.
+
+## How dates and times are stored
+
+Two kinds of value, and the difference is not cosmetic.
+
+**An instant is epoch milliseconds** — an integer. `INTEGER` on SQLite, `BIGINT`
+on MySQL. Everything named `*_at`, plus `last_login`, `account_locked_until` and
+`last_email_attempt`. The API sends and accepts these as JSON numbers.
+
+**A calendar day is `YYYY-MM-DD` text** — `due_date`, `issue_date`, `paid_date`,
+`next_due_date`, `recurring_period_date`, `next_invoice_date`, `date`, and
+`date_range_start`/`date_range_end`. A due date is the 12th in Auckland and the
+12th in Los Angeles; storing it as an instant would pick a midnight in some
+timezone and show half the world the 11th.
+
+Everything is stored in UTC and rendered in the browser, on the viewer's clock
+and in the date format chosen in Settings. Nothing is formatted for display on
+the server.
+
+SQLite tables are declared `STRICT`, so text written into an integer column is
+an error rather than a value quietly stored under a different type. Two tables
+are exempt — `migrations` and `boot_locks` are declared once for both engines in
+`VARCHAR`/`BIGINT`, which `STRICT` will not accept — and neither holds customer
+data. `STRICT` still converts a number sent as a string, so an API client posting
+`{"amount": "100.50"}` is stored as `100.5` rather than refused.
+
+Upgrading converts existing rows automatically, on the first boot after the
+upgrade. Migration 015 rebuilds each table, converts every instant, and takes a
+few seconds on a normal install; it is transactional on SQLite and per-column on
+MySQL, so an interrupted run resumes correctly on the next start.
 
 ## Moving an existing install to MySQL
 
@@ -126,6 +156,11 @@ clause — so a dump from one would not load into the other, which is the only
 direction anyone needs. It carries rows only; the schema is built by the
 application.
 
+The dump records a format version, and **2.2.0 reads version 2 only.** A dump
+taken with 2.1.x carries timestamps as text, which those columns are no longer;
+import refuses the file rather than loading it. Export again with 2.2.0 — both
+scripts run from the same checkout, so an export and its import always agree.
+
 Three tables are deliberately not carried:
 
 - `migrations` — the target records its own history when its schema is built
@@ -149,5 +184,21 @@ docker run --rm -d --name slimbooks-mysql \
 TEST_MYSQL_URL=mysql://root:root@127.0.0.1:3307/slimbooks_test npm test
 ```
 
+For MariaDB, swap the image and the port:
+
+```bash
+docker run --rm -d --name slimbooks-maria \
+  -e MARIADB_ROOT_PASSWORD=root -e MARIADB_DATABASE=slimbooks_test \
+  -p 3308:3306 mariadb:10.11
+
+TEST_MYSQL_URL=mysql://root:root@127.0.0.1:3308/slimbooks_test npm test
+```
+
 CI runs the server suite against MySQL 8.0 and MariaDB 10.11 on every push, and
 fails if the MySQL half did not actually execute.
+
+Run it even when the change looks dialect-neutral. The 2.2.0 timestamp
+conversion was verified by a live probe of the conversion expression and still
+shipped a statement MySQL 8.4 rejects outright — the probe had been given a
+value MySQL already liked. Only running the migration against a table holding
+the real legacy values found it.

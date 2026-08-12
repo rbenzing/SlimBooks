@@ -67,6 +67,10 @@ export const mysqlDialect: SqlDialect = {
     return rows.map(row => row.COLUMN_NAME);
   },
 
+  // Session-scoped, so this affects only the importing connection.
+  deferForeignKeys: 'SET FOREIGN_KEY_CHECKS = 0',
+  restoreForeignKeys: 'SET FOREIGN_KEY_CHECKS = 1',
+
   supportsPartialIndex: false,
   supportsSelfUpdatingTrigger: false
 };

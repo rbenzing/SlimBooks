@@ -41,6 +41,9 @@ export const sqliteDialect: SqlDialect = {
     return rows.map(row => row.name);
   },
 
+  deferForeignKeys: 'PRAGMA foreign_keys = OFF',
+  restoreForeignKeys: 'PRAGMA foreign_keys = ON',
+
   supportsPartialIndex: true,
   supportsSelfUpdatingTrigger: true
 };

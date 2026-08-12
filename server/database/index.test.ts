@@ -42,7 +42,7 @@ const sqliteRuntime = () => {
 
 describe('initializeDatabase', () => {
   it('builds a usable database from nothing', async () => {
-    await initializeDatabase(sqliteRuntime(), false);
+    await initializeDatabase(sqliteRuntime());
 
     expect(await db.tableExists('invoices')).toBe(true);
     expect(await db.tableExists('clients')).toBe(true);
@@ -50,7 +50,7 @@ describe('initializeDatabase', () => {
   });
 
   it('records every migration as applied', async () => {
-    await initializeDatabase(sqliteRuntime(), false);
+    await initializeDatabase(sqliteRuntime());
 
     const applied = await db.getMany<{ id: string }>('SELECT id FROM migrations ORDER BY id');
 
@@ -58,14 +58,14 @@ describe('initializeDatabase', () => {
   });
 
   it('creates the tables migrations add, not just those in the schema file', async () => {
-    await initializeDatabase(sqliteRuntime(), false);
+    await initializeDatabase(sqliteRuntime());
 
     expect(await db.tableExists('scheduler_leases')).toBe(true);
     expect(await db.tableExists('stripe_events')).toBe(true);
   });
 
   it('applies the column migration 011 adds', async () => {
-    await initializeDatabase(sqliteRuntime(), false);
+    await initializeDatabase(sqliteRuntime());
 
     const columns = await db.getMany<{ name: string }>('PRAGMA table_info(invoices)');
 
@@ -73,12 +73,12 @@ describe('initializeDatabase', () => {
   });
 
   it('is idempotent, so a restart re-runs it safely', async () => {
-    await initializeDatabase(sqliteRuntime(), false);
-    await expect(initializeDatabase(sqliteRuntime(), false)).resolves.toBeUndefined();
+    await initializeDatabase(sqliteRuntime());
+    await expect(initializeDatabase(sqliteRuntime())).resolves.toBeUndefined();
   });
 
   it('releases the boot lock, so the next start is not blocked', async () => {
-    await initializeDatabase(sqliteRuntime(), false);
+    await initializeDatabase(sqliteRuntime());
 
     const held = await db.getMany('SELECT * FROM boot_locks');
     expect(held).toHaveLength(0);

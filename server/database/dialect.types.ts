@@ -56,6 +56,17 @@ export interface SqlDialect {
   /** The column names a table currently has, in declaration order. */
   columnsOf(db: IDatabase, table: string): Promise<string[]>;
 
+  /**
+   * Statements bracketing a bulk load, to suspend foreign-key enforcement.
+   *
+   * Import inserts in dependency order, so this is belt and braces — but a
+   * source database with a row pointing at a parent that was hard-deleted years
+   * ago would otherwise abort the whole transfer, and refusing to move a
+   * customer's books because of one orphan is the wrong trade.
+   */
+  readonly deferForeignKeys: string;
+  readonly restoreForeignKeys: string;
+
   /** Whether `CREATE INDEX … WHERE …` is available. */
   readonly supportsPartialIndex: boolean;
 

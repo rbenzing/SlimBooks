@@ -45,7 +45,7 @@ export const createApp = async (runtime: Runtime) => {
   validateConfig();
 
   const includeSampleData = serverConfig.enableSampleData || serverConfig.isDevelopment;
-  await initializeDatabase(runtime, includeSampleData);
+  await initializeDatabase(runtime, { includeSampleData });
 
   const app = express();
 

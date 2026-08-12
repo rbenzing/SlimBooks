@@ -104,14 +104,30 @@ const releaseBootLock = async (owner: string): Promise<void> => {
   await db.executeQuery('DELETE FROM boot_locks WHERE name = ? AND owner = ?', ['schema', owner]);
 };
 
+export interface InitializeOptions {
+  /** Development-only demo rows. Never in production. */
+  includeSampleData?: boolean;
+  /**
+   * Whether to seed at all.
+   *
+   * `db:import` sets this false. Seeding creates the administrator account and
+   * the default settings, which would make `users` and `settings` non-empty —
+   * and import refuses a non-empty target, so with seeding on there is no way
+   * to load a dump into a database this process has just prepared.
+   */
+  seed?: boolean;
+}
+
 /**
  * Initialize the complete database setup
  * This includes creating tables and seeding initial data
  */
 export const initializeDatabase = async (
   runtime: { paths: { dataDir: string; dbFile: string }; database: DatabaseSettings },
-  includeSampleData = false
+  options: InitializeOptions = {}
 ): Promise<void> => {
+  const { includeSampleData = false, seed = true } = options;
+
   if (runtime.database.driver === 'mysql') {
     // Replaces the SQLite singleton for the life of the process. Every importer
     // of `db` sees the swap because it is a live binding.
@@ -147,7 +163,9 @@ export const initializeDatabase = async (
       await runMigrations(db);
     }
 
-    await initializeAllSeeds(db, includeSampleData);
+    if (seed) {
+      await initializeAllSeeds(db, includeSampleData);
+    }
   } finally {
     if (holder) await releaseBootLock(owner);
   }

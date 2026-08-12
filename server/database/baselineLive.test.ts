@@ -76,16 +76,25 @@ live('buildMysqlBaseline against a real server', () => {
     }
   };
 
+  /**
+   * Vitest's default hook timeout is 10s, which is not a meaningful bound for
+   * these two. They drop nineteen tables and run the baseline's sixty-one DDL
+   * statements against a real server that the other live suites are hitting at
+   * the same time; the suite failed on hook timeout in a full run while passing
+   * on its own. The number is a ceiling on a hang, not a performance assertion.
+   */
+  const DDL_TIMEOUT_MS = 60_000;
+
   beforeAll(async () => {
     await db.connect({ driver: 'mysql', settings: settingsFrom(url as string) });
     await wipe();
     await buildMysqlBaseline(db);
-  });
+  }, DDL_TIMEOUT_MS);
 
   afterAll(async () => {
     await wipe();
     await db.disconnect();
-  });
+  }, DDL_TIMEOUT_MS);
 
   it('creates every table the SQLite schema declares', async () => {
     for (const schema of tableSchemas) {
@@ -275,7 +284,7 @@ live('buildMysqlBaseline against a real server', () => {
   it('soft-delete filtering behaves the same as on SQLite', async () => {
     await db.executeQuery('INSERT INTO clients (name, deleted_at) VALUES (?, ?)', [
       'Deleted',
-      '2026-01-01 00:00:00'
+      Date.parse('2026-01-01T00:00:00Z')
     ]);
 
     const live = await db.getMany<{ name: string }>(

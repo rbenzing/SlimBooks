@@ -60,9 +60,21 @@ export const mysqlDialect: SqlDialect = {
   // +05:30, so it would shift an entire database by the host's offset,
   // silently, on hosts nobody controls. TIMESTAMPDIFF is datetime arithmetic
   // and returned the identical value under both. Used by migration 015.
+  //
+  // The stored text has to be spelled MySQL's way first. `2026-08-12T13:54:13Z`
+  // — which is exactly what 2.1.1 wrote into every one of these columns — is not
+  // a datetime literal to MySQL: under 8.4's default strict sql_mode it raises
+  // ER_TRUNCATED_WRONG_VALUE and aborts the migration. So `T` becomes a space
+  // and the trailing `Z` goes, leaving `2026-08-12 13:54:13`, which MySQL reads
+  // as a datetime. Fractional seconds are fine to leave on; TIMESTAMPDIFF
+  // truncates to the second, which is the documented precision here.
+  //
+  // The numeric arm is tried first, so a value that is already epoch text never
+  // reaches the REPLACEs.
   epochFromStored: column =>
     `CASE WHEN ${column} REGEXP '^-?[0-9]+$' THEN CAST(${column} AS SIGNED) ` +
-    `ELSE TIMESTAMPDIFF(SECOND, '1970-01-01 00:00:00', ${column}) * 1000 END`,
+    `ELSE TIMESTAMPDIFF(SECOND, '1970-01-01 00:00:00', ` +
+    `REPLACE(REPLACE(${column}, 'T', ' '), 'Z', '')) * 1000 END`,
 
   formatMonth: column => `DATE_FORMAT(${column}, '%Y-%m')`,
   formatYear: column => `DATE_FORMAT(${column}, '%Y')`,

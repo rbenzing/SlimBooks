@@ -157,15 +157,23 @@ describe.each(backends)('migration 015 on $name', backend => {
       'SELECT name, created_at, deleted_at FROM retype_parent ORDER BY name'
     );
 
+  /**
+   * Every hook here is DDL against a real server that the other live suites are
+   * using at the same time, and vitest's 10s default is not a meaningful bound
+   * for that — this suite failed on hook timeout in a full run while passing on
+   * its own. A ceiling on a hang, not a performance assertion.
+   */
+  const DDL_TIMEOUT_MS = 60_000;
+
   beforeAll(async () => {
     db = await backend.open();
-  });
+  }, DDL_TIMEOUT_MS);
 
   afterAll(async () => {
     await db.executeQuery('DROP TABLE IF EXISTS retype_child');
     await db.executeQuery('DROP TABLE IF EXISTS retype_parent');
     await backend.close(db);
-  });
+  }, DDL_TIMEOUT_MS);
 
   beforeEach(async () => {
     await db.executeQuery('DROP TABLE IF EXISTS retype_child');
@@ -176,7 +184,7 @@ describe.each(backends)('migration 015 on $name', backend => {
       await db.executeQuery('INSERT INTO retype_parent (name, created_at) VALUES (?, ?)', [name, stored]);
     }
     await db.executeQuery('INSERT INTO retype_child (parent_id) VALUES (?)', [1]);
-  });
+  }, DDL_TIMEOUT_MS);
 
   it('converts every text shape to the right instant', async () => {
     await retype();

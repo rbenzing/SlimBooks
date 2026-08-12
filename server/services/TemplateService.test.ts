@@ -12,6 +12,7 @@
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import Database from 'better-sqlite3';
+import { sqliteDialect } from '../database/dialects/sqlite.dialect.js';
 import { createDatabaseMock, flattenSql } from './databaseMock.test-helper.js';
 
 const db = createDatabaseMock();
@@ -93,14 +94,17 @@ describe('updateTemplate', () => {
     await templateService.updateTemplate(1, { name: 'Renamed' });
 
     const sql = flattenSql(db.queries[0].sql);
-    expect(sql).toMatch(/SET name = \?, updated_at = DATETIME\('now'\) WHERE id = \?/);
+    // Built from the dialect rather than pinned to the SQLite spelling: an
+    // assertion on the literal text passes whether or not the statement would
+    // run on any other backend, which is how ten of these survived a sweep.
+    expect(sql).toContain(`SET name = ?, updated_at = ${sqliteDialect.now()} WHERE id = ?`);
     expect(db.queries[0].params).toEqual(['Renamed', 1]);
   });
 
   it('always stamps updated_at', async () => {
     await templateService.updateTemplate(1, { content: '<p></p>' });
 
-    expect(flattenSql(db.queries[0].sql)).toMatch(/updated_at = DATETIME\('now'\)/);
+    expect(flattenSql(db.queries[0].sql)).toContain(`updated_at = ${sqliteDialect.now()}`);
   });
 
   it('converts is_default to the 0/1 SQLite stores', async () => {

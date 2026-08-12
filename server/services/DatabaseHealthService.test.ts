@@ -251,26 +251,42 @@ describe('getTableColumns', () => {
 });
 
 describe('tableExists', () => {
-  it('binds the name rather than interpolating it', async () => {
-    db.getOne.mockReturnValue({ name: 'clients' });
+  /**
+   * This used to query sqlite_master directly, which has no meaning on MySQL —
+   * an unguarded SQLite-ism that survived the portability sweep. It delegates to
+   * IDatabase.tableExists now, which answers for whichever backend is active,
+   * so these assert the delegation rather than a particular statement.
+   */
+  it('answers true for a table the backend reports', async () => {
+    db.tableExists.mockResolvedValue(true);
 
     expect(await health.tableExists('clients')).toBe(true);
-    expect(db.getOne.mock.calls[0][1]).toEqual(['clients']);
+    expect(db.tableExists).toHaveBeenCalledWith('clients');
   });
 
   it('answers false for a table that is absent', async () => {
-    db.getOne.mockReturnValue(undefined);
+    db.tableExists.mockResolvedValue(false);
 
     expect(await health.tableExists('missing')).toBe(false);
   });
 
-  it('answers false for an invalid name without querying', async () => {
-    expect(await health.tableExists('bad name')).toBe(false);
+  it('asks the backend rather than naming a SQLite catalogue table', async () => {
+    // sqlite_master does not exist on MySQL, so a direct query would throw
+    // there and be swallowed by the catch — reporting every table as absent.
+    db.tableExists.mockResolvedValue(true);
+
+    await health.tableExists('clients');
+
     expect(db.getOne).not.toHaveBeenCalled();
   });
 
+  it('answers false for an invalid name without querying', async () => {
+    expect(await health.tableExists('bad name')).toBe(false);
+    expect(db.tableExists).not.toHaveBeenCalled();
+  });
+
   it('answers false rather than throwing on a query error', async () => {
-    db.getOne.mockImplementation(() => { throw new Error('locked'); });
+    db.tableExists.mockImplementation(() => { throw new Error('locked'); });
 
     expect(await health.tableExists('clients')).toBe(false);
   });

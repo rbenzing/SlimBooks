@@ -82,20 +82,39 @@ export const indexedColumnsFor = (
   return map;
 };
 
+/** Types MySQL refuses to give a bare literal default. */
+const needsExpressionDefault = (type: string): boolean =>
+  type === 'TEXT' || type === 'MEDIUMBLOB';
+
 /**
  * Translate a column's SQLite constraint list.
  *
  * AUTOINCREMENT is spelled differently and must sit beside the type rather than
- * after PRIMARY KEY. Expression defaults keep their parentheses, which MariaDB
- * has accepted since 10.2 — the floor asserted at boot.
+ * after PRIMARY KEY. Expression defaults keep their parentheses, which MySQL has
+ * accepted since 8.0.13 and MariaDB since 10.2 — the floors asserted at boot.
+ *
+ * The parenthesising of literals is not cosmetic. MySQL: "The BLOB, TEXT,
+ * GEOMETRY, and JSON data types can be assigned a default value only if the
+ * value is written as an expression, even if the expression value is a
+ * literal." So `role TEXT DEFAULT 'user'` is rejected outright while
+ * `role TEXT DEFAULT ('user')` is accepted, and ten columns in this schema are
+ * declared the first way. Nothing caught it until the generated DDL was run
+ * against a real server, because as text the statement looks perfectly ordinary.
  */
-const translateConstraints = (constraints: readonly string[]): string =>
-  constraints
+const translateConstraints = (constraints: readonly string[], type: string): string => {
+  const translated = constraints
     .join(' ')
     .replace(/PRIMARY KEY AUTOINCREMENT/i, 'AUTO_INCREMENT PRIMARY KEY')
     .replace(/datetime\('now'\)/gi, MYSQL_NOW)
     .replace(/date\('now'\)/gi, MYSQL_TODAY)
     .trim();
+
+  if (!needsExpressionDefault(type)) return translated;
+
+  // Skips a default that is already an expression — the timestamp defaults
+  // arrive as `DEFAULT (datetime('now'))` and come out already wrapped.
+  return translated.replace(/\bDEFAULT\s+(?!\()('[^']*'|\S+)/i, 'DEFAULT ($1)');
+};
 
 export const mysqlColumnType = (
   column: ColumnDefinition,
@@ -125,7 +144,7 @@ export const mysqlColumnType = (
 export const renderCreateTable = (schema: TableSchema, indexed: ReadonlySet<string>): string => {
   const columns = schema.columns.map(column => {
     const type = mysqlColumnType(column, indexed);
-    const constraints = translateConstraints(column.constraints ?? []);
+    const constraints = translateConstraints(column.constraints ?? [], type);
 
     return `${quote(column.name)} ${type}${constraints.length > 0 ? ` ${constraints}` : ''}`;
   });

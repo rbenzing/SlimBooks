@@ -12,6 +12,7 @@
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import Database from 'better-sqlite3';
+import { sqliteDialect } from '../database/dialects/sqlite.dialect.js';
 import { createDatabaseMock, insertColumnsOf, flattenSql } from './databaseMock.test-helper.js';
 
 const db = createDatabaseMock();
@@ -172,8 +173,13 @@ describe('updateRecurringTemplate', () => {
   it('sets only the fields that were supplied', async () => {
     await service.updateRecurringTemplate(1, { name: 'Renamed' });
 
-    expect(flattenSql(db.queries[0].sql))
-      .toBe("UPDATE recurring_invoice_templates SET name = ?, updated_at = DATETIME('now') WHERE id = ?");
+    // Built from the dialect rather than a literal: pinning the exact spelling
+    // is what let ten uppercase DATETIME('now') sites survive the portability
+    // sweep, since a test asserting the SQLite text passes whether or not the
+    // statement would run anywhere else.
+    expect(flattenSql(db.queries[0].sql)).toBe(
+      `UPDATE recurring_invoice_templates SET name = ?, updated_at = ${sqliteDialect.now()} WHERE id = ?`
+    );
     expect(db.queries[0].params).toEqual(['Renamed', 1]);
   });
 
@@ -261,7 +267,7 @@ describe('scheduling', () => {
     const sql = flattenSql(db.getMany.mock.calls[0][0] as string);
     expect(sql).toMatch(/FROM recurring_invoice_templates/);
     expect(sql).toMatch(/is_active = 1/);
-    expect(sql).toMatch(/next_invoice_date <= DATE\('now'\)/);
+    expect(sql).toContain(`next_invoice_date <= ${sqliteDialect.today()}`);
   });
 
   it('toggles activity with a 0/1 flag', async () => {

@@ -63,6 +63,7 @@ export const exportDatabase = async (req: Request, res: Response): Promise<void>
     // Checkpoint WAL to ensure all data is written to the main database file
     // This is crucial in WAL mode to include all recent transactions
     try {
+      // sqlite-only: refuseUnlessSqlite() returned already on any other driver.
       console.log('Checkpointing WAL before export...');
       databaseService.executeQuery('PRAGMA wal_checkpoint(FULL)');
       console.log('WAL checkpoint completed');
@@ -158,6 +159,7 @@ export const importDatabase = [
 
         // Checkpoint the new database to ensure proper WAL initialization
         try {
+          // sqlite-only: refuseUnlessSqlite() returned already on any other driver.
           console.log('Checkpointing new database...');
           databaseService.executeQuery('PRAGMA wal_checkpoint(FULL)');
           console.log('New database checkpoint completed');

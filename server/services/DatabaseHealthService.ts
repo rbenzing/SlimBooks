@@ -108,6 +108,7 @@ export class DatabaseHealthService {
       // Get all tables, excluding each engine's own bookkeeping.
       const tables =
         databaseService.dialect.name === 'sqlite'
+          // sqlite-only: the MySQL arm is the INFORMATION_SCHEMA query below.
           ? await databaseService.getMany<{ name: string; type: string }>(`
               SELECT name, type
               FROM sqlite_master
@@ -185,6 +186,7 @@ export class DatabaseHealthService {
         })) as TableInfo[];
       }
 
+      // sqlite-only: the MySQL arm returned above.
       return await databaseService.getMany<TableInfo>(`PRAGMA table_info(${tableName})`);
     } catch (error) {
       console.error(`Error getting columns for table ${tableName}:`, error);
@@ -225,6 +227,7 @@ export class DatabaseHealthService {
         };
       }
 
+      // sqlite-only: the MySQL arm returned above.
       // Get database page count and page size
       const pageCount = await databaseService.getOne<{page_count: number}>('PRAGMA page_count');
       const pageSize = await databaseService.getOne<{page_size: number}>('PRAGMA page_size');
@@ -232,7 +235,7 @@ export class DatabaseHealthService {
       const estimatedSize = pageCount && pageSize ?
         (pageCount.page_count * pageSize.page_size) : 0;
 
-      // Get database version info
+      // Get database version info — sqlite-only, as above.
       const userVersion = await databaseService.getOne<{user_version: number}>('PRAGMA user_version');
       const applicationId = await databaseService.getOne<{application_id: number}>('PRAGMA application_id');
 
@@ -279,12 +282,10 @@ export class DatabaseHealthService {
         return false;
       }
 
-      const result = await databaseService.getOne<{name: string}>(`
-        SELECT name FROM sqlite_master
-        WHERE type='table' AND name=?
-      `, [tableName]);
-
-      return !!result;
+      // Delegated rather than asking sqlite_master directly, which is what this
+      // did and which has no meaning on MySQL. IDatabase already answers this
+      // for whichever backend is active.
+      return await databaseService.tableExists(tableName);
     } catch (error) {
       console.error(`Error checking if table ${tableName} exists:`, error);
       return false;
@@ -368,6 +369,7 @@ export class DatabaseHealthService {
         };
       }
 
+      // sqlite-only: the MySQL arm returned above.
       const result = await databaseService.getOne<{integrity_check: string}>('PRAGMA integrity_check');
       
       const isHealthy = result && (result.integrity_check === 'ok' || 
@@ -411,9 +413,11 @@ export class DatabaseHealthService {
         };
       }
 
+      // sqlite-only: the MySQL arm returned above.
       // Get various database settings
       const journalMode = await databaseService.getOne<{journal_mode: string}>('PRAGMA journal_mode');
       const synchronous = await databaseService.getOne<{synchronous: number}>('PRAGMA synchronous');
+      // sqlite-only, as above.
       const foreignKeys = await databaseService.getOne<{foreign_keys: number}>('PRAGMA foreign_keys');
       
       return {

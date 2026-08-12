@@ -84,7 +84,9 @@ export class RecurringInvoiceTemplateService {
    */
   async getTemplatesDueForProcessing(): Promise<RecurringInvoiceTemplate[]> {
     return databaseService.getMany<RecurringInvoiceTemplate>(
-      'SELECT * FROM recurring_invoice_templates WHERE is_active = 1 AND next_invoice_date <= DATE(\'now\') ORDER BY next_invoice_date ASC'
+      `SELECT * FROM recurring_invoice_templates
+       WHERE is_active = 1 AND next_invoice_date <= ${databaseService.dialect.today()}
+       ORDER BY next_invoice_date ASC`
     );
   }
 
@@ -159,7 +161,7 @@ export class RecurringInvoiceTemplateService {
         name, client_id, amount, description, frequency, payment_terms, 
         next_invoice_date, is_active, line_items, tax_amount, tax_rate_id, 
         shipping_amount, shipping_rate_id, notes, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, DATETIME('now'), DATETIME('now'))`,
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ${databaseService.dialect.now()}, ${databaseService.dialect.now()})`,
       [
         templateData.name,
         templateData.client_id,
@@ -284,7 +286,7 @@ export class RecurringInvoiceTemplateService {
       values.push(templateData.notes);
     }
 
-    updates.push('updated_at = DATETIME(\'now\')');
+    updates.push(`updated_at = ${databaseService.dialect.now()}`);
     values.push(id);
 
     const result = await databaseService.executeQuery(
@@ -330,7 +332,7 @@ export class RecurringInvoiceTemplateService {
     }
 
     const result = await databaseService.executeQuery(
-      'UPDATE recurring_invoice_templates SET is_active = ?, updated_at = DATETIME(\'now\') WHERE id = ?',
+      `UPDATE recurring_invoice_templates SET is_active = ?, updated_at = ${databaseService.dialect.now()} WHERE id = ?`,
       [isActive ? 1 : 0, id]
     );
 
@@ -350,7 +352,7 @@ export class RecurringInvoiceTemplateService {
     }
 
     const result = await databaseService.executeQuery(
-      'UPDATE recurring_invoice_templates SET next_invoice_date = ?, updated_at = DATETIME(\'now\') WHERE id = ?',
+      `UPDATE recurring_invoice_templates SET next_invoice_date = ?, updated_at = ${databaseService.dialect.now()} WHERE id = ?`,
       [nextDate, id]
     );
 

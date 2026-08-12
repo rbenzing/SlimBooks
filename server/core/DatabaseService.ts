@@ -219,6 +219,8 @@ export class DatabaseService {
    * Get next sequence value for a counter
    */
   public async getNextSequence(counterName: string): Promise<number> {
+    const now = this.dialect.now();
+
     return await this.withTransaction(async () => {
       // Get current value
       const counter = await this.getOne<{ value: number }>(
@@ -229,7 +231,7 @@ export class DatabaseService {
       if (!counter) {
         // Create counter if it doesn't exist
         await this.executeQuery(
-          'INSERT INTO counters (name, value, created_at, updated_at) VALUES (?, 1, datetime(\'now\'), datetime(\'now\'))',
+          `INSERT INTO counters (name, value, created_at, updated_at) VALUES (?, 1, ${now}, ${now})`,
           [counterName]
         );
         return 1;
@@ -238,7 +240,7 @@ export class DatabaseService {
       // Increment counter
       const nextValue = counter.value + 1;
       await this.executeQuery(
-        'UPDATE counters SET value = ?, updated_at = datetime(\'now\') WHERE name = ?',
+        `UPDATE counters SET value = ?, updated_at = ${now} WHERE name = ?`,
         [nextValue, counterName]
       );
 

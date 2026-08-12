@@ -66,7 +66,7 @@ export class RecurringInvoiceProcessorService {
             await this.insertInvoiceRow(row);
 
             await databaseService.executeQuery(
-              'UPDATE recurring_invoice_templates SET next_invoice_date = ?, updated_at = DATETIME(\'now\') WHERE id = ?',
+              `UPDATE recurring_invoice_templates SET next_invoice_date = ?, updated_at = ${databaseService.dialect.now()} WHERE id = ?`,
               [nextDate, template.id]
             );
           });
@@ -122,7 +122,7 @@ export class RecurringInvoiceProcessorService {
         const id = await this.insertInvoiceRow(row);
 
         await databaseService.executeQuery(
-          'UPDATE recurring_invoice_templates SET next_invoice_date = ?, updated_at = DATETIME(\'now\') WHERE id = ?',
+          `UPDATE recurring_invoice_templates SET next_invoice_date = ?, updated_at = ${databaseService.dialect.now()} WHERE id = ?`,
           [nextDate, template.id]
         );
 
@@ -195,7 +195,7 @@ export class RecurringInvoiceProcessorService {
         amount, tax_amount, total_amount, status, due_date, issue_date,
         description, line_items, notes, payment_terms, shipping_amount,
         tax_rate_id, shipping_rate_id, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, DATETIME('now'), DATETIME('now'))`,
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ${databaseService.dialect.now()}, ${databaseService.dialect.now()})`,
       [
         data.invoice_number,
         data.client_id,

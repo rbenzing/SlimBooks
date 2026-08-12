@@ -75,7 +75,7 @@ export class TemplateService {
     }
 
     const result = await databaseService.executeQuery(
-      'INSERT INTO invoice_design_templates (name, content, is_default, variables, created_at, updated_at) VALUES (?, ?, ?, ?, DATETIME(\'now\'), DATETIME(\'now\'))',
+      `INSERT INTO invoice_design_templates (name, content, is_default, variables, created_at, updated_at) VALUES (?, ?, ?, ?, ${databaseService.dialect.now()}, ${databaseService.dialect.now()})`,
       [
         templateData.name,
         templateData.content,
@@ -136,7 +136,7 @@ export class TemplateService {
       values.push(templateData.variables);
     }
 
-    updates.push('updated_at = DATETIME(\'now\')');
+    updates.push(`updated_at = ${databaseService.dialect.now()}`);
     values.push(id);
 
     const result = await databaseService.executeQuery(
@@ -204,7 +204,7 @@ export class TemplateService {
 
       // Set new default
       await databaseService.executeQuery(
-        'UPDATE invoice_design_templates SET is_default = 1, updated_at = DATETIME(\'now\') WHERE id = ?',
+        `UPDATE invoice_design_templates SET is_default = 1, updated_at = ${databaseService.dialect.now()} WHERE id = ?`,
         [id]
       );
     };

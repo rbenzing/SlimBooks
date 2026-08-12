@@ -169,11 +169,13 @@ describe('buildMysqlBaseline', () => {
     // way, adding a migration fails here until someone confirms the baseline
     // should be recording it as already done.
     //
-    // 014 rewrites legacy timestamp values, of which a database created from
-    // this baseline has none — every column already defaults to the canonical
-    // shape. Recording it is correct.
+    // 014 rewrites legacy timestamp values and 015 retypes those columns to
+    // integers. A database created from this baseline has neither problem —
+    // every timestamp column is already BIGINT and already defaults to epoch
+    // milliseconds. Recording both is correct.
     expect(fake.inserts.map(insert => insert.params[0])).toEqual([
-      '001', '002', '003', '004', '006', '007', '008', '009', '010', '011', '012', '013', '014'
+      '001', '002', '003', '004', '006', '007', '008', '009', '010', '011', '012', '013',
+      '014', '015'
     ]);
   });
 

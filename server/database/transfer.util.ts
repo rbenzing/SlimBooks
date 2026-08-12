@@ -12,8 +12,17 @@
 import type { IDatabase, SQLParameter } from '../types/database.types.js';
 import { tableSchemas } from './schemas/tables.schema.js';
 
-/** Format version, so a future change can refuse an incompatible file. */
-export const TRANSFER_VERSION = 1;
+/**
+ * Format version, so a future change can refuse an incompatible file.
+ *
+ * Bumped to 2 for the epoch-millisecond change. Version 1 carried timestamps as
+ * text (`2026-08-12T13:54:13Z`) and those columns are now integers, so loading a
+ * version 1 dump would put text into an INTEGER column — which MySQL rejects
+ * outright and SQLite accepts, storing it under TEXT affinity and leaving the
+ * table holding two types in one column. Refusing the file is the only honest
+ * outcome; re-export from the source install with this build.
+ */
+export const TRANSFER_VERSION = 2;
 
 export interface TransferTable {
   name: string;
@@ -22,6 +31,10 @@ export interface TransferTable {
 
 export interface TransferDump {
   version: number;
+  /**
+   * When the dump was taken, ISO 8601. Envelope metadata a person reads, not a
+   * stored column — the timestamps inside `tables` are epoch milliseconds.
+   */
   exportedAt: string;
   driver: string;
   tables: TransferTable[];

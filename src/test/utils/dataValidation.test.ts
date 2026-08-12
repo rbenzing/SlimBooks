@@ -22,8 +22,8 @@ const client: Client = {
   id: 1,
   name: 'Acme Corporation',
   email: 'contact@acme.com',
-  created_at: '2026-07-01',
-  updated_at: '2026-07-01'
+  created_at: Date.parse('2026-07-01'),
+  updated_at: Date.parse('2026-07-01')
 };
 
 const invoiceData = { invoice_number: 'INV-001', due_date: '2026-08-01', status: 'draft' as const };

@@ -14,7 +14,12 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { SQLiteDatabase } from './SQLiteDatabase.js';
 import { createTables } from './schemas/tables.schema.js';
-import { exportDatabase, importDatabase, transferTables } from './transfer.util.js';
+import {
+  exportDatabase,
+  importDatabase,
+  transferTables,
+  TRANSFER_VERSION
+} from './transfer.util.js';
 import type { IDatabase } from '../types/database.types.js';
 
 const AT = '2026-08-09T12:00:00.000Z';
@@ -76,7 +81,26 @@ describe('exportDatabase', () => {
   it('records the format version and the source driver', async () => {
     const dump = await exportDatabase(source, AT);
 
-    expect(dump).toMatchObject({ version: 1, exportedAt: AT, driver: 'sqlite' });
+    expect(dump).toMatchObject({ version: TRANSFER_VERSION, exportedAt: AT, driver: 'sqlite' });
+  });
+
+  it('refuses the version that carried text timestamps', async () => {
+    // A version 1 dump holds `2026-08-12T13:54:13Z` where the target now has an
+    // INTEGER column. MySQL rejects that; SQLite accepts it under TEXT affinity
+    // and the table ends up holding two types in one column, which is the bug
+    // this whole change removes. Re-export from the source instead.
+    const dump = await exportDatabase(source, AT);
+
+    await expect(importDatabase(target, { ...dump, version: 1 })).rejects.toThrow(/version/i);
+  });
+
+  it('carries instants as numbers, not text', async () => {
+    await seed();
+
+    const dump = await exportDatabase(source, AT);
+    const client = dump.tables.find(table => table.name === 'clients')?.rows[0];
+
+    expect(typeof client?.created_at).toBe('number');
   });
 
   it('omits the tables that must not travel', async () => {

@@ -305,18 +305,18 @@ describe('updateInvoiceStatus', () => {
 
 describe('markInvoiceAsSent', () => {
   it('records the send time alongside both status columns', async () => {
-    await invoiceService.markInvoiceAsSent(1, '2026-07-04T10:00:00Z');
+    await invoiceService.markInvoiceAsSent(1, Date.parse('2026-07-04T10:00:00Z'));
 
     const { sql, params } = db.queries[0];
     expect(flattenSql(sql)).toMatch(/status = 'sent'/);
     expect(flattenSql(sql)).toMatch(/email_status = 'sent'/);
-    expect(params).toEqual(['2026-07-04T10:00:00Z', 1]);
+    expect(params).toEqual([Date.parse('2026-07-04T10:00:00Z'), 1]);
   });
 
   it('stamps the current time when none is supplied', async () => {
     await invoiceService.markInvoiceAsSent(1);
 
-    expect(String(db.queries[0].params[0])).toMatch(/^\d{4}-\d{2}-\d{2}T/);
+    expect(db.queries[0].params[0]).toBeGreaterThan(Date.now() - 5000);
   });
 
   it('rejects an invalid id', async () => {

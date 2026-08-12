@@ -9,7 +9,7 @@
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { createDatabaseMock, flattenSql } from './databaseMock.test-helper.js';
-import { isUtcTimestamp } from '../utils/utcTime.util.js';
+import { isEpochMillis } from '../utils/utcTime.util.js';
 
 const db = createDatabaseMock();
 vi.mock('../core/DatabaseService.js', () => ({ databaseService: db }));
@@ -75,15 +75,18 @@ describe('every read is a prepared statement', () => {
    * properties the old ones did — the value is bound, and the statement text
    * does not vary with it — against the mechanism that works on both backends.
    */
-  const windowParamOf = (call: number): string =>
-    (db.getMany.mock.calls[call][1] as unknown[])[0] as string;
+  const windowParamOf = (call: number): number =>
+    (db.getMany.mock.calls[call][1] as unknown[])[0] as number;
+
+  /** Same minute, so a cutoff is comparable even if the clock ticked mid-test. */
+  const toMinute = (value: number): number => Math.floor(value / 60_000);
 
   it('binds the activity window instead of splicing it in', async () => {
     await clientService.getClientsWithRecentActivity(90);
 
     const [sql] = db.getMany.mock.calls[0];
     expect(flattenSql(sql as string)).toMatch(/i\.created_at > \?/);
-    expect(isUtcTimestamp(windowParamOf(0))).toBe(true);
+    expect(isEpochMillis(windowParamOf(0))).toBe(true);
   });
 
   it('builds the same SQL text whatever the window', async () => {
@@ -108,21 +111,21 @@ describe('every read is a prepared statement', () => {
     await clientService.getClientsWithRecentActivity(30);
 
     // Same day, so the two cutoffs agree to the minute even if the clock ticked.
-    expect(windowParamOf(0).slice(0, 16)).toBe(windowParamOf(1).slice(0, 16));
+    expect(toMinute(windowParamOf(0))).toBe(toMinute(windowParamOf(1)));
   });
 
   it('falls back to the default window for a nonsense value', async () => {
     await clientService.getClientsWithRecentActivity(NaN);
     await clientService.getClientsWithRecentActivity(30);
 
-    expect(windowParamOf(0).slice(0, 16)).toBe(windowParamOf(1).slice(0, 16));
+    expect(toMinute(windowParamOf(0))).toBe(toMinute(windowParamOf(1)));
   });
 
   it('refuses a negative window that would look into the future', async () => {
     await clientService.getClientsWithRecentActivity(-30);
     await clientService.getClientsWithRecentActivity(30);
 
-    expect(windowParamOf(0).slice(0, 16)).toBe(windowParamOf(1).slice(0, 16));
+    expect(toMinute(windowParamOf(0))).toBe(toMinute(windowParamOf(1)));
   });
 });
 

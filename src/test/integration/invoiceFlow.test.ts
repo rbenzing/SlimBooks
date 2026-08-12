@@ -293,7 +293,7 @@ describe('Invoice Lifecycle Integration Tests', () => {
 
     it('should handle concurrent invoice updates', async () => {
       // Simulate two users updating same invoice
-      mockFetchSuccess({ id: 1, updated_at: '2026-02-16T10:00:00Z' });
+      mockFetchSuccess({ id: 1, updated_at: Date.parse('2026-02-16T10:00:00Z') });
 
       const response1 = fetch('/api/invoices/1', {
         method: 'PUT',
@@ -383,7 +383,7 @@ describe('Invoice Lifecycle Integration Tests', () => {
 
     it('should soft delete and restore entities', async () => {
       // Soft delete invoice
-      mockFetchSuccess({ id: 1, deleted_at: '2026-02-16T10:00:00Z' });
+      mockFetchSuccess({ id: 1, deleted_at: Date.parse('2026-02-16T10:00:00Z') });
       let response = await fetch('/api/invoices/1', {
         method: 'DELETE'
       });

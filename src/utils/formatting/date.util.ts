@@ -209,7 +209,12 @@ const LEGACY_SQL_TIMESTAMP = /^(\d{4}-\d{2}-\d{2}) (\d{2}:\d{2}:\d{2})$/;
  * everywhere west of UTC. Due dates and issue dates are stored in exactly that
  * form, so they must be read as local days. Full timestamps stay instants.
  */
-export const parseDisplayDate = (value: Date | string): Date => {
+export const parseDisplayDate = (value: Date | string | number): Date => {
+  // An instant, exactly as the database stores it: epoch milliseconds.
+  if (typeof value === 'number') {
+    return new Date(value);
+  }
+
   if (typeof value !== 'string') {
     return value;
   }
@@ -227,7 +232,7 @@ export const parseDisplayDate = (value: Date | string): Date => {
   return new Date(value);
 };
 
-export const formatDate = async (date: Date | string, customFormat?: string): Promise<string> => {
+export const formatDate = async (date: Date | string | number, customFormat?: string): Promise<string> => {
   const dateObj = parseDisplayDate(date);
   if (isNaN(dateObj.getTime())) {
     return 'Invalid Date';
@@ -237,7 +242,7 @@ export const formatDate = async (date: Date | string, customFormat?: string): Pr
   return applyDateFormat(dateObj, customFormat || settings.dateFormat);
 };
 
-export const formatTime = async (date: Date | string, customFormat?: string): Promise<string> => {
+export const formatTime = async (date: Date | string | number, customFormat?: string): Promise<string> => {
   const dateObj = parseDisplayDate(date);
   if (isNaN(dateObj.getTime())) {
     return 'Invalid Time';
@@ -248,7 +253,7 @@ export const formatTime = async (date: Date | string, customFormat?: string): Pr
 };
 
 export const formatDateTime = async (
-  date: Date | string,
+  date: Date | string | number,
   customDateFormat?: string,
   customTimeFormat?: string
 ): Promise<string> => {
@@ -264,8 +269,8 @@ export const formatDateTime = async (
 };
 
 export const formatDateRange = async (
-  startDate: Date | string,
-  endDate: Date | string,
+  startDate: Date | string | number,
+  endDate: Date | string | number,
   customFormat?: string
 ): Promise<string> => {
   const start = await formatDate(startDate, customFormat);
@@ -279,7 +284,7 @@ export const formatDateRange = async (
  * Returns '' when there is nothing to show, so an absent date never becomes a
  * fabricated one.
  */
-export const toDateInputValue = (date: Date | string | null | undefined): string => {
+export const toDateInputValue = (date: Date | string | number | null | undefined): string => {
   if (!date) {
     return '';
   }
@@ -311,7 +316,7 @@ export const toDateInputValue = (date: Date | string | null | undefined): string
  * honoured it — the same invoice showed two different dates depending on where
  * you looked at it.
  */
-export const formatDateSync = (date: Date | string | null | undefined): string => {
+export const formatDateSync = (date: Date | string | number | null | undefined): string => {
   if (!date) {
     return 'Invalid Date';
   }
@@ -324,7 +329,7 @@ export const formatDateSync = (date: Date | string | null | undefined): string =
 };
 
 /** The time of day, in the user's chosen format, in their own timezone. */
-export const formatTimeSync = (date: Date | string | null | undefined): string => {
+export const formatTimeSync = (date: Date | string | number | null | undefined): string => {
   if (!date) {
     return 'Invalid Time';
   }
@@ -337,7 +342,7 @@ export const formatTimeSync = (date: Date | string | null | undefined): string =
 };
 
 /** Date and time together, both in the user's chosen formats. */
-export const formatDateTimeSync = (date: Date | string | null | undefined): string => {
+export const formatDateTimeSync = (date: Date | string | number | null | undefined): string => {
   if (!date) {
     return 'Invalid Date/Time';
   }
@@ -349,7 +354,10 @@ export const formatDateTimeSync = (date: Date | string | null | undefined): stri
   return `${formatDateSync(dateObj)} ${formatTimeSync(dateObj)}`;
 };
 
-export const formatDateRangeSync = (startDate: Date | string, endDate: Date | string): string => {
+export const formatDateRangeSync = (
+  startDate: Date | string | number,
+  endDate: Date | string | number
+): string => {
   const startObj = parseDisplayDate(startDate);
   const endObj = parseDisplayDate(endDate);
 

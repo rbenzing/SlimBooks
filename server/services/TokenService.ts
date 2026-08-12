@@ -7,9 +7,9 @@ export interface TokenRecord {
   id: number;
   user_id: number;
   token_hash: string;
-  expires_at: string;
-  used_at: string | null;
-  created_at: string;
+  expires_at: number;
+  used_at: number | null;
+  created_at: number;
 }
 
 export class TokenService {

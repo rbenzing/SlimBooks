@@ -22,7 +22,7 @@ const invoice = (over: Record<string, unknown> = {}) => ({
   client_id: 1,
   amount: 100,
   status: 'paid',
-  created_at: '2026-02-15T00:00:00.000Z',
+  created_at: Date.parse('2026-02-15T00:00:00.000Z'),
   ...over
 });
 
@@ -147,8 +147,8 @@ describe('generateProfitLossData', () => {
   it('breaks the period into columns that add up to the total', async () => {
     seed({
       invoices: [
-        invoice({ amount: 300, created_at: '2026-02-15T00:00:00.000Z' }),
-        invoice({ id: 2, amount: 200, created_at: '2026-05-15T00:00:00.000Z' })
+        invoice({ amount: 300, created_at: Date.parse('2026-02-15T00:00:00.000Z') }),
+        invoice({ id: 2, amount: 200, created_at: Date.parse('2026-05-15T00:00:00.000Z') })
       ],
       expenses: [
         expense({ amount: 40, date: '2026-02-20' }),
@@ -169,7 +169,7 @@ describe('generateProfitLossData', () => {
   });
 
   it('buckets by month when asked', async () => {
-    seed({ invoices: [invoice({ amount: 100, created_at: '2026-02-15T00:00:00.000Z' })] });
+    seed({ invoices: [invoice({ amount: 100, created_at: Date.parse('2026-02-15T00:00:00.000Z') })] });
 
     const report = await reportService.generateProfitLossData(
       '2026-01-01', '2026-03-31', 'accrual', undefined, 'monthly'
@@ -180,7 +180,7 @@ describe('generateProfitLossData', () => {
   });
 
   it('hides a breakdown that would just restate the total column', async () => {
-    seed({ invoices: [invoice({ amount: 100, created_at: '2026-02-15T00:00:00.000Z' })] });
+    seed({ invoices: [invoice({ amount: 100, created_at: Date.parse('2026-02-15T00:00:00.000Z') })] });
 
     const report = await reportService.generateProfitLossData(
       '2026-02-01', '2026-02-28', 'accrual', undefined, 'quarterly'
@@ -195,8 +195,8 @@ describe('generateProfitLossData', () => {
     // not reconcile with the total column beside them.
     seed({
       invoices: [
-        invoice({ amount: 300, created_at: '2026-02-15T00:00:00.000Z' }),
-        invoice({ id: 2, amount: 200, status: 'sent', created_at: '2026-02-16T00:00:00.000Z' })
+        invoice({ amount: 300, created_at: Date.parse('2026-02-15T00:00:00.000Z') }),
+        invoice({ id: 2, amount: 200, status: 'sent', created_at: Date.parse('2026-02-16T00:00:00.000Z') })
       ]
     });
 
@@ -209,8 +209,11 @@ describe('generateProfitLossData', () => {
     expect(columnRevenue).toBe(report.revenue.total);
   });
 
-  it('stretches the end date to cover the whole final day', async () => {
-    // Invoice timestamps carry a time; a bare date would exclude that last day.
+  it('queries the range as instants, not as the days the user picked', async () => {
+    // `created_at` holds epoch milliseconds. Binding '2026-01-01' against it
+    // fails silently and differently on each engine: SQLite orders every number
+    // below every string, so the report comes back empty; MySQL reads the string
+    // as 2026, so the lower bound matches everything and the upper bound nothing.
     seed({});
 
     await reportService.generateProfitLossData('2026-01-01', '2026-03-31');
@@ -218,7 +221,37 @@ describe('generateProfitLossData', () => {
     const invoiceParams = db.getMany.mock.calls.find(
       call => /FROM invoices/.test(call[0] as string)
     )?.[1] as unknown[];
-    expect(invoiceParams[1]).toBe('2026-03-31T23:59:59.999Z');
+    expect(invoiceParams).toEqual([
+      Date.parse('2026-01-01T00:00:00.000Z'),
+      Date.parse('2026-03-31T23:59:59.999Z')
+    ]);
+  });
+
+  it('stretches the end bound to cover the whole final day', async () => {
+    // Invoice timestamps carry a time; stopping at the final midnight would
+    // drop that day's invoices from the report.
+    seed({});
+
+    await reportService.generateProfitLossData('2026-01-01', '2026-03-31');
+
+    const invoiceParams = db.getMany.mock.calls.find(
+      call => /FROM invoices/.test(call[0] as string)
+    )?.[1] as unknown[];
+    expect(invoiceParams[1]).toBeGreaterThan(Date.parse('2026-03-31T18:00:00.000Z'));
+    expect(invoiceParams[1]).toBeLessThan(Date.parse('2026-04-01T00:00:00.000Z'));
+  });
+
+  it('still queries expenses by calendar day, because that column is days', async () => {
+    // `expenses.date` is a day, not an instant. Converting it too would compare
+    // 'YYYY-MM-DD' text against a number and return nothing.
+    seed({});
+
+    await reportService.generateProfitLossData('2026-01-01', '2026-03-31');
+
+    const expenseParams = db.getMany.mock.calls.find(
+      call => /FROM expenses/.test(call[0] as string)
+    )?.[1] as unknown[];
+    expect(expenseParams).toEqual(['2026-01-01', '2026-03-31']);
   });
 
   it('excludes soft-deleted records', async () => {
@@ -365,7 +398,10 @@ describe('generateClientData', () => {
 
     const call = db.getMany.mock.calls.find(c => /FROM invoices/.test(c[0] as string));
     expect(flattenSql(call?.[0] as string)).toMatch(/i\.created_at >= \? AND i\.created_at <= \?/);
-    expect(call?.[1]).toEqual(['2026-01-01', '2026-03-31T23:59:59.999Z']);
+    expect(call?.[1]).toEqual([
+      Date.parse('2026-01-01T00:00:00.000Z'),
+      Date.parse('2026-03-31T23:59:59.999Z')
+    ]);
   });
 
   it('reports over all time when no range is given', async () => {

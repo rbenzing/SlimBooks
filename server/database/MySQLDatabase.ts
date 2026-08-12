@@ -52,9 +52,17 @@ export class MySQLDatabase implements IDatabase {
       password: settings.password,
       connectionLimit: settings.poolSize,
       waitForConnections: true,
-      // The timestamp columns are TEXT on both backends. Left to itself mysql2
-      // hands back a Date for DATE/DATETIME columns, and the two backends would
-      // then return different JavaScript types for the same row.
+      // No column is DATE or DATETIME: instants are BIGINT epoch milliseconds
+      // and calendar days are text. This stays as a standing guard — mysql2
+      // hands back a `Date` object for those types, and a future column
+      // declared as one would then return a different JavaScript type here than
+      // on SQLite, for the same row.
+      //
+      // BIGINT needs no option: mysql2 returns it as a Number unless
+      // `supportBigNumbers` is set, and epoch milliseconds (~1.7e12) are three
+      // orders of magnitude below the safe-integer limit. Turning that option on
+      // would be the harmful choice — it returns a String past 2^53, so the type
+      // would depend on the value.
       dateStrings: true,
       // Nothing in this codebase issues multi-statement SQL, and enabling it
       // would turn any missed parameterisation into a full injection.

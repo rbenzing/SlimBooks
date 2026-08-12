@@ -60,8 +60,8 @@ const client: Client = {
   email: 'contact@acme.com',
   phone: '(555) 123-4567',
   company: 'Acme Corporation',
-  created_at: '2026-07-25',
-  updated_at: '2026-07-25'
+  created_at: Date.parse('2026-07-25'),
+  updated_at: Date.parse('2026-07-25')
 };
 
 const invoice = {

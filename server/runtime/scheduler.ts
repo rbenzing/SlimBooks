@@ -31,10 +31,9 @@ export interface SchedulerOptions {
 }
 
 import { claimExclusive } from '../database/claim.util.js';
-import { utcNow, utcTimestamp } from '../utils/utcTime.util.js';
+import { utcNow } from '../utils/utcTime.util.js';
 
-const plusMs = (iso: string, milliseconds: number): string =>
-  utcTimestamp(new Date(new Date(iso).getTime() + milliseconds));
+const plusMs = (from: number, milliseconds: number): number => from + milliseconds;
 
 /**
  * Claim a job, or report that someone else holds it.
@@ -47,7 +46,7 @@ export const acquireLease = async (
   jobName: string,
   owner: string,
   ttlMs: number,
-  now: string
+  now: number
 ): Promise<boolean> => {
   const expiresAt = plusMs(now, ttlMs);
 

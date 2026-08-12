@@ -131,8 +131,8 @@ describe('filterByDateRange', () => {
 
   it('filters on an alternative date field', () => {
     const invoices = [
-      { id: 1, created_at: '2026-07-10' },
-      { id: 2, created_at: '2026-09-10' }
+      { id: 1, created_at: Date.parse('2026-07-10') },
+      { id: 2, created_at: Date.parse('2026-09-10') }
     ];
     expect(filterByDateRange(invoices, range, 'created_at').map(r => r.id)).toEqual([1]);
   });

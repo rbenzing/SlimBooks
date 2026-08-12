@@ -15,14 +15,30 @@ export type DateUnit = 'day' | 'month' | 'year';
 export interface SqlDialect {
   readonly name: DialectName;
 
-  /** Expression yielding `YYYY-MM-DD HH:MM:SS` in UTC. */
+  /** Expression yielding the current instant as epoch milliseconds. */
   now(): string;
 
   /** Expression yielding `YYYY-MM-DD` in UTC. */
   today(): string;
 
   /**
-   * Expression yielding a UTC timestamp `count` units in the past.
+   * Expression converting a stored value into epoch milliseconds.
+   *
+   * Reads what a pre-2.2 database holds in a timestamp column — text in any of
+   * the shapes this application ever wrote — and passes an already-converted
+   * integer through unchanged. That passthrough is a correctness requirement,
+   * not a nicety: SQLite's `unixepoch()` returns NULL for a bare number, so a
+   * conversion applied twice would erase the column.
+   *
+   * Only migration 015 uses this. It is on the dialect rather than in the
+   * migration because the two engines disagree about it in a way that has
+   * already caused a silent, timezone-dependent corruption in testing.
+   */
+  epochFromStored(column: string): string;
+
+  /**
+   * Expression yielding an instant `count` units in the past, as epoch
+   * milliseconds.
    *
    * The count is interpolated rather than bound, because MySQL cannot take an
    * INTERVAL quantity as a placeholder. Implementations must therefore reject a

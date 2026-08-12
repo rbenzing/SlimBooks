@@ -71,9 +71,9 @@ export interface CreateUserRequest {
     role?: 'user' | 'admin';
     email_verified?: boolean;
     google_id?: string;
-    last_login?: string;
+    last_login?: number;
     failed_login_attempts?: number;
-    account_locked_until?: string;
+    account_locked_until?: number;
   };
 }
 
@@ -317,7 +317,7 @@ export interface WebhookEndpoint {
   events: string[];
   secret: string;
   is_active: boolean;
-  created_at: string;
+  created_at: number;
 }
 
 // Error response types
@@ -411,9 +411,9 @@ export interface InvoiceRequest {
   shipping_amount?: number;
   shipping_rate_id?: number;
   email_status?: string;
-  email_sent_at?: string;
+  email_sent_at?: number;
   email_error?: string;
-  last_email_attempt?: string;
+  last_email_attempt?: number;
 }
 
 /**

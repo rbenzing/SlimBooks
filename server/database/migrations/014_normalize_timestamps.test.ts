@@ -2,9 +2,16 @@
  * Migration 014 against a real database.
  *
  * The point of this migration is that a customer's existing rows come out
- * comparable, so it is exercised on a database built the way a customer's was:
- * createTables() then the full migration chain, with legacy-shaped values
- * written in behind the migration's back.
+ * comparable, so it is exercised on the shape a customer's database actually
+ * had when 014 ran: TEXT timestamp columns, holding the two legacy shapes.
+ *
+ * That shape is written out here rather than taken from `createTables()`. It
+ * used to come from the schema, on the reasoning that SQLite is dynamically
+ * typed and would store text in an INTEGER column regardless — which was true
+ * until the tables became STRICT, at which point every insert here was refused
+ * and the test failed. The lesson is the narrower one: 014 is history, and a
+ * test of history should build the world it ran in instead of borrowing
+ * today's and hoping the differences do not matter.
  */
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
@@ -12,10 +19,52 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { SQLiteDatabase } from '../SQLiteDatabase.js';
-import { createTables } from '../schemas/tables.schema.js';
 import { up as normalizeTimestamps } from './014_normalize_timestamps.js';
-import { isUtcTimestamp } from '../../utils/utcTime.util.js';
 import type { IDatabase } from '../../types/database.types.js';
+
+/**
+ * 2.1.1's stored shape, which is what this migration produced.
+ *
+ * Asserted with a local pattern rather than a shared helper: 015 has since
+ * moved these columns to integers and the helper went with them, but 014 is
+ * history and its test has to keep describing the world 014 lived in.
+ */
+const UTC_TEXT = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/;
+
+/**
+ * The pre-015 shape of the three tables these cases touch: every timestamp and
+ * every calendar day a TEXT column, no STRICT, exactly as 014 found them.
+ */
+const LEGACY_DDL = [
+  `CREATE TABLE clients (
+     id INTEGER PRIMARY KEY AUTOINCREMENT,
+     name TEXT NOT NULL,
+     created_at TEXT NOT NULL DEFAULT (datetime('now')),
+     updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+     deleted_at TEXT
+   )`,
+  `CREATE TABLE invoices (
+     id INTEGER PRIMARY KEY AUTOINCREMENT,
+     invoice_number TEXT NOT NULL,
+     client_id INTEGER NOT NULL,
+     due_date TEXT,
+     issue_date TEXT,
+     paid_date TEXT,
+     next_due_date TEXT,
+     email_sent_at TEXT,
+     last_email_attempt TEXT,
+     created_at TEXT NOT NULL DEFAULT (datetime('now')),
+     updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+     deleted_at TEXT
+   )`,
+  `CREATE TABLE stored_objects (
+     \`key\` TEXT PRIMARY KEY,
+     content_type TEXT NOT NULL,
+     size INTEGER NOT NULL,
+     data BLOB NOT NULL,
+     created_at TEXT NOT NULL DEFAULT (datetime('now'))
+   )`
+];
 
 let dir: string;
 let db: IDatabase;
@@ -24,7 +73,7 @@ beforeEach(async () => {
   dir = mkdtempSync(join(tmpdir(), 'slimbooks-014-'));
   db = new SQLiteDatabase();
   await db.connect({ driver: 'sqlite', path: join(dir, 'test.db'), options: { timeout: 5000 } });
-  await createTables(db);
+  for (const statement of LEGACY_DDL) await db.executeQuery(statement);
 });
 
 afterEach(async () => {
@@ -53,7 +102,7 @@ describe('migration 014', () => {
     await normalizeTimestamps(db);
 
     for (const row of await clientRows()) {
-      expect(isUtcTimestamp(row.created_at)).toBe(true);
+      expect(row.created_at).toMatch(UTC_TEXT);
       expect(row.created_at).toBe('2026-08-12T13:54:13Z');
     }
   });

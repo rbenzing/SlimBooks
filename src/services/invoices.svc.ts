@@ -330,7 +330,8 @@ ${company.email ? company.email + '\n' : ''}${company.phone ? company.phone + '\
     error?: string
   ): Promise<{ success: boolean; message: string }> {
     try {
-      const now = new Date().toISOString();
+      // Epoch milliseconds: what the column holds.
+      const now = Date.now();
       
       const updateData: Partial<EmailStatusUpdate> = {
         email_status: status,

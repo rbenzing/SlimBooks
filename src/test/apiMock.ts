@@ -99,8 +99,8 @@ export const mockData = {
     state: 'TS',
     zipCode: '12345',
     country: 'Test Country',
-    created_at: '2026-02-16T00:00:00Z',
-    updated_at: '2026-02-16T00:00:00Z'
+    created_at: Date.parse('2026-02-16T00:00:00Z'),
+    updated_at: Date.parse('2026-02-16T00:00:00Z')
   }),
 
   invoice: (id = 1, clientId = 1): Invoice => ({
@@ -119,8 +119,8 @@ export const mockData = {
     type: 'one-time',
     shipping_amount: 0,
     email_status: 'not_sent',
-    created_at: '2026-02-16T00:00:00Z',
-    updated_at: '2026-02-16T00:00:00Z'
+    created_at: Date.parse('2026-02-16T00:00:00Z'),
+    updated_at: Date.parse('2026-02-16T00:00:00Z')
   }),
 
   payment: (id = 1, invoiceId = 1): Payment => ({
@@ -131,8 +131,8 @@ export const mockData = {
     amount: 500,
     method: 'bank_transfer',
     status: 'received',
-    created_at: '2026-02-16T00:00:00Z',
-    updated_at: '2026-02-16T00:00:00Z'
+    created_at: Date.parse('2026-02-16T00:00:00Z'),
+    updated_at: Date.parse('2026-02-16T00:00:00Z')
   }),
 
   expense: (id = 1): Expense => ({
@@ -143,7 +143,7 @@ export const mockData = {
     amount: 150,
     description: 'Office chairs',
     currency: 'USD',
-    created_at: '2026-02-16T00:00:00Z',
-    updated_at: '2026-02-16T00:00:00Z'
+    created_at: Date.parse('2026-02-16T00:00:00Z'),
+    updated_at: Date.parse('2026-02-16T00:00:00Z')
   })
 };

@@ -43,11 +43,11 @@ export interface Invoice {
   shipping_amount: number;
   shipping_rate_id?: string;
   email_status: EmailStatus;
-  email_sent_at?: string;
+  email_sent_at?: number;
   email_error?: string;
-  last_email_attempt?: string;
-  created_at: string;
-  updated_at: string;
+  last_email_attempt?: number;
+  created_at: number;
+  updated_at: number;
 }
 
 export interface InvoiceFormData {
@@ -95,8 +95,8 @@ export interface InvoiceTemplate {
   shipping_amount: number;
   shipping_rate_id?: string;
   notes?: string;
-  created_at: string;
-  updated_at: string;
+  created_at: number;
+  updated_at: number;
 }
 
 export interface InvoiceTemplateFormData {
@@ -155,9 +155,9 @@ export interface InvoiceEmailData {
 // Email status update interface
 export interface EmailStatusUpdate {
   email_status: EmailStatus;
-  email_sent_at?: string;
+  email_sent_at?: number;
   email_error?: string;
-  last_email_attempt: string;
+  last_email_attempt: number;
 }
 
 // Scheduled invoice interface

@@ -1,59 +1,55 @@
 /**
- * The one timestamp shape this application stores, sends and compares.
+ * Instants, and the calendar days that are not instants.
  *
- * ## The format
+ * ## The two kinds of value
  *
- * `YYYY-MM-DDTHH:MM:SSZ` — ISO 8601, UTC, whole seconds, always exactly 20
- * characters. Calendar days (due dates, issue dates, the `date` on a payment or
- * expense) are `YYYY-MM-DD` and stay that way: a due date is a day, not an
- * instant, and giving it a time would invent information.
+ *   an instant     epoch milliseconds, an integer — `created_at`, expiries,
+ *                  `last_login`, everything named `*_at`
+ *   a calendar day `YYYY-MM-DD` text — due dates, issue dates, the `date` on a
+ *                  payment or expense
  *
- * ## Why one shape at all
+ * A due date is a day. It is the 12th in Auckland and the 12th in Los Angeles,
+ * and encoding it as an instant would force a midnight in some timezone and
+ * show half the world the 11th. So days stay text, and SQLite having no DATE
+ * type is not the reason — it is merely why MySQL cannot have one either.
  *
- * These columns are TEXT on both backends, so every comparison is
- * lexicographic. Two shapes in one column therefore compare wrongly:
- * `2026-08-12T01:00:00.000Z` and `2026-08-12 23:00:00` were both written by
- * this application, and the second sorts *before* the first because a space is
- * below `T` in ASCII — so a "created in the last hour" window silently returned
- * the wrong rows. Fixed width matters for the same reason: with seconds always
- * present, string order is time order, which is what the indexes on these
- * columns are for.
+ * ## Why integers for instants
  *
- * ## Why this shape and not `YYYY-MM-DD HH:MM:SS`
+ * These columns were TEXT, and text has a format. Two formats lived in them at
+ * once — `2026-08-12T13:54:13.241Z` from `toISOString()` and `2026-08-12
+ * 13:54:13` from the column defaults — and because the comparison is
+ * lexicographic and a space sorts below `T`, a window query spanning both
+ * returned the wrong rows. 2.1.1 fixed that by convention and two tests that
+ * enforce it. An integer column enforces it instead: there is no second way to
+ * write a number.
  *
- * The SQL spelling is what both backends' column defaults produced, so it was
- * the smaller change. It is also not a format JavaScript can parse: the
- * standard covers `2026-08-12T13:54:13Z` and says nothing about the space form,
- * so `new Date('2026-08-12 13:54:13')` is implementation-defined and V8 reads
- * it as *local* time. Every timestamp would then display shifted by the
- * viewer's offset, and no test written in UTC would ever catch it. The database
- * moves to the format its only consumer can read, rather than the other way
- * round.
+ * A pleasant consequence: precision no longer has to match. Second-granularity
+ * and millisecond-granularity values sort against each other correctly, which
+ * is not true of text, where a change in precision changes the width and breaks
+ * the ordering. It happens that both backends produce milliseconds anyway.
  *
  * ## Rendering
  *
- * Nothing here formats for display. The stored value is an instant; turning it
- * into a wall clock is the browser's job, done against the user's date/time
- * settings in `src/utils/formatting/date.util.ts`.
+ * Nothing here formats for display. An instant becomes a wall clock in the
+ * browser, against the viewer's timezone and their chosen format, in
+ * `src/utils/formatting/date.util.ts`.
  *
  * No project imports, so it loads standalone under Vitest.
  */
 
-/** Length of a canonical timestamp: `2026-08-12T13:54:13Z`. */
-const TIMESTAMP_LENGTH = 20;
+/** The current instant, as every timestamp column stores it. */
+export const utcNow = (): number => Date.now();
 
-/** `YYYY-MM-DDTHH:MM:SSZ`, in UTC. */
-export const utcTimestamp = (moment: Date): string =>
-  `${moment.toISOString().slice(0, 19)}Z`;
+/** A `Date` as epoch milliseconds. */
+export const utcTimestamp = (moment: Date): number => moment.getTime();
 
-/** The current instant, in the shape every timestamp column holds. */
-export const utcNow = (): string => utcTimestamp(new Date());
-
-/** `YYYY-MM-DD`, in UTC — the shape every calendar-day column holds. */
+/** `YYYY-MM-DD` in UTC — the shape every calendar-day column holds. */
 export const utcCalendarDay = (moment: Date): string => moment.toISOString().slice(0, 10);
 
+const MILLIS_PER_DAY = 24 * 60 * 60 * 1000;
+
 /**
- * A timestamp `days` before `from`, in the same shape.
+ * An instant `days` before `from`.
  *
  * This exists so a caller-supplied window can be a bound parameter. SQLite
  * would accept `datetime('now', ?)`, but MySQL cannot bind an INTERVAL quantity
@@ -69,36 +65,152 @@ export const utcTimestampDaysAgo = (
   days: number,
   from: Date = new Date(),
   fallbackDays = 30
-): string => {
+): number => {
   const whole = Number.isFinite(days) ? Math.abs(Math.trunc(days)) : fallbackDays;
 
-  return utcTimestamp(new Date(from.getTime() - whole * 24 * 60 * 60 * 1000));
+  return from.getTime() - whole * MILLIS_PER_DAY;
 };
 
+/** Whether a value is usable as a stored instant. */
+export const isEpochMillis = (value: unknown): boolean =>
+  typeof value === 'number' && Number.isInteger(value) && Number.isFinite(value);
+
 const CALENDAR_DAY = /^(\d{4}-\d{2}-\d{2})$/;
+
+/**
+ * The leading `YYYY-MM-DD` of a day or a timestamp, if it names a real day.
+ *
+ * `Date.parse('2026-02-30T00:00:00Z')` does not fail — V8 rolls the date
+ * forward and hands back 2 March. A range edge that quietly moved to another
+ * month would put invoices in the wrong report and nothing would say so, hence
+ * the round-trip check.
+ */
+const leadingDay = (value: string): string | null => {
+  const match = /^(\d{4}-\d{2}-\d{2})/.exec(value.trim());
+  if (!match) return null;
+
+  const day = match[1]!;
+  const parsed = Date.parse(`${day}T00:00:00.000Z`);
+
+  if (Number.isNaN(parsed)) return null;
+
+  return new Date(parsed).toISOString().slice(0, 10) === day ? day : null;
+};
+
+/**
+ * The instant bounds of a calendar day, for querying a timestamp column.
+ *
+ * A report range is a pair of days — the user picked `2026-01-01` to
+ * `2026-01-31` — and every column it filters on is now epoch milliseconds.
+ * Comparing the two directly is not a type error in either engine, it is a
+ * wrong-answer bug: SQLite orders every number below every string, so
+ * `created_at >= '2026-01-01'` is false for every row; MySQL coerces the string
+ * to the number 2026, so the same predicate is true for every row. Neither
+ * reports a problem. Convert the edges instead.
+ *
+ * The end bound is the last millisecond of its day, so the range includes the
+ * day the user named rather than stopping at its midnight.
+ *
+ * A malformed or impossible day (`2026-02-30`) yields null; callers decide
+ * whether that is an empty result or an error.
+ */
+export const utcDayStart = (day: string): number | null => {
+  const part = typeof day === 'string' ? leadingDay(day) : null;
+  if (part === null) return null;
+
+  const parsed = Date.parse(`${part}T00:00:00.000Z`);
+
+  return Number.isNaN(parsed) ? null : parsed;
+};
+
+/** The last instant of a calendar day; see `utcDayStart`. */
+export const utcDayEnd = (day: string): number | null => {
+  const part = typeof day === 'string' ? leadingDay(day) : null;
+  if (part === null) return null;
+
+  const parsed = Date.parse(`${part}T23:59:59.999Z`);
+
+  return Number.isNaN(parsed) ? null : parsed;
+};
 
 /** `2026-08-12T13:54:13`, with or without fractional seconds and a `Z`. */
 const ISO_LIKE = /^(\d{4}-\d{2}-\d{2})[T ](\d{2}:\d{2}:\d{2})(?:\.\d+)?Z?$/;
 
 /**
- * Rewrite a stored timestamp into the canonical shape, or null if it is already
- * canonical or is not a timestamp at all.
+ * Coerce a value from outside into a stored instant, or null if it is not one.
  *
- * Null means "leave this row alone", which keeps migration 014 from writing
- * every row on every boot and keeps it from mangling a value it does not
- * understand. Four shapes are recognised, all of which this application has
- * written at some point:
+ * Use this on anything the application did not produce itself — a request body,
+ * a Stripe webhook, a CSV import, a restored dump. The column is an integer, so
+ * a stray value cannot corrupt the *format* any more; it can still be the wrong
+ * instant, which is what the text shapes below are for.
  *
- *   2026-08-12T13:54:13.241Z   `new Date().toISOString()`
- *   2026-08-12 13:54:13        `datetime('now')` and the MySQL equivalent
- *   2026-08-12T13:54:13        an offset-less ISO string, read as UTC
- *   2026-08-12                 a bare day in a timestamp column, read as its
- *                              first instant so it still sorts before that day
- *
- * Anything else falls through to `Date` parsing, which covers a value carrying
- * a real offset (`+05:00`). Note the order: the space form has to be caught by
- * the pattern above, because `Date` would read it as local time.
+ * Note the order. The space-separated form has to be recognised before `Date`
+ * sees it: that shape is outside the ECMAScript grammar, so `Date` falls back
+ * to implementation-defined parsing and V8 reads it as *local* time — every
+ * value would shift by the host's offset. A bare day is read as its first
+ * instant, so it still orders before anything else on that day.
  */
+export const toEpochMillis = (value: unknown): number | null => {
+  if (typeof value === 'number') {
+    return Number.isFinite(value) ? Math.trunc(value) : null;
+  }
+
+  if (typeof value !== 'string') return null;
+
+  const trimmed = value.trim();
+  if (trimmed.length === 0) return null;
+
+  // A stored integer that has been round-tripped through JSON or a TEXT column.
+  if (/^-?\d+$/.test(trimmed)) return Number(trimmed);
+
+  const day = CALENDAR_DAY.exec(trimmed);
+  if (day) return Date.parse(`${day[1]}T00:00:00Z`);
+
+  const isoLike = ISO_LIKE.exec(trimmed);
+  if (isoLike) return Date.parse(`${isoLike[1]}T${isoLike[2]}Z`);
+
+  const parsed = Date.parse(trimmed);
+  return Number.isNaN(parsed) ? null : parsed;
+};
+
+/**
+ * Rewrite a stored calendar day into `YYYY-MM-DD`, or null if it already is.
+ *
+ * A full timestamp is narrowed to its UTC day. That is a real decision: seeded
+ * due dates were once written as `new Date(…).toISOString()`, so their day
+ * depended on the reader's timezone and could show as the 11th or the 12th for
+ * the same invoice. Fixing it on the UTC day makes it the same day for
+ * everyone, which is what a due date is.
+ */
+export const normalizeCalendarDay = (value: unknown): string | null => {
+  const timestamp = typeof value === 'string' ? value.trim() : '';
+  if (timestamp.length === 0) return null;
+
+  if (CALENDAR_DAY.test(timestamp)) return null;
+
+  const leading = /^(\d{4}-\d{2}-\d{2})[T ]/.exec(timestamp);
+  if (leading) return leading[1]!;
+
+  const parsed = new Date(timestamp);
+  if (Number.isNaN(parsed.getTime())) return null;
+
+  return utcCalendarDay(parsed);
+};
+
+/**
+ * The text timestamp helpers, kept for migration 014.
+ *
+ * 014 rewrote one text shape into another and shipped in 2.1.1, so it is
+ * recorded as applied on upgraded databases and cannot be edited away —
+ * a migration is history. Migration 015 converts those columns to integers,
+ * after which nothing else here uses these.
+ */
+
+/** Render a `Date` as `YYYY-MM-DDTHH:MM:SSZ`, the shape 2.1.1 stored. */
+export const utcTimestampText = (moment: Date): string =>
+  `${moment.toISOString().slice(0, 19)}Z`;
+
+/** Rewrite a stored text timestamp into 2.1.1's shape, or null if it already is. */
 export const normalizeUtcTimestamp = (value: unknown): string | null => {
   if (typeof value !== 'string') return null;
 
@@ -117,48 +229,5 @@ export const normalizeUtcTimestamp = (value: unknown): string | null => {
   const parsed = new Date(trimmed);
   if (Number.isNaN(parsed.getTime())) return null;
 
-  return utcTimestamp(parsed);
+  return utcTimestampText(parsed);
 };
-
-/**
- * Rewrite a stored calendar day into `YYYY-MM-DD`, or null if it already is.
- *
- * A full timestamp is narrowed to its UTC day. That is a real decision: seeded
- * due dates were written as `new Date(…).toISOString()`, so their day depended
- * on the reader's timezone and could show as the 11th or the 12th for the same
- * invoice. Fixing it on the UTC day makes it the same day for everyone, which
- * is what a due date is.
- */
-export const normalizeCalendarDay = (value: unknown): string | null => {
-  const timestamp = typeof value === 'string' ? value.trim() : '';
-  if (timestamp.length === 0) return null;
-
-  if (CALENDAR_DAY.test(timestamp)) return null;
-
-  const leading = /^(\d{4}-\d{2}-\d{2})[T ]/.exec(timestamp);
-  if (leading) return leading[1]!;
-
-  const parsed = new Date(timestamp);
-  if (Number.isNaN(parsed.getTime())) return null;
-
-  return utcCalendarDay(parsed);
-};
-
-/** Whether a value is already a canonical timestamp. */
-export const isUtcTimestamp = (value: unknown): boolean =>
-  typeof value === 'string' &&
-  value.length === TIMESTAMP_LENGTH &&
-  ISO_LIKE.test(value) &&
-  value.endsWith('Z') &&
-  value[10] === 'T';
-
-/**
- * The canonical form of a caller-supplied timestamp, or null if it is not one.
- *
- * Use this on anything arriving from outside — a request body, a webhook, a CSV
- * import. `normalizeUtcTimestamp` answers "does this row need rewriting", which
- * is a different question: it returns null for a value that is already
- * canonical, and that null must not be read as "unusable".
- */
-export const asUtcTimestamp = (value: unknown): string | null =>
-  isUtcTimestamp(value) ? (value as string) : normalizeUtcTimestamp(value);

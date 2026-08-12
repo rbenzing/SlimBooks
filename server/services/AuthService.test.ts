@@ -288,15 +288,15 @@ describe('authentication lookups', () => {
   });
 
   it('reports login statistics with the lock state resolved', async () => {
-    const future = new Date(Date.now() + 60_000).toISOString();
+    const future = Date.now() + 60_000;
     db.getOne.mockReturnValue({
-      last_login: '2026-07-01T00:00:00Z',
+      last_login: Date.parse('2026-07-01T00:00:00Z'),
       failed_login_attempts: 3,
       account_locked_until: future
     });
 
     await expect(authService.getUserLoginStats(1)).resolves.toEqual({
-      lastLogin: '2026-07-01T00:00:00Z',
+      lastLogin: Date.parse('2026-07-01T00:00:00Z'),
       failedAttempts: 3,
       isLocked: true,
       lockedUntil: future

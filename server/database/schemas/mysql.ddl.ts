@@ -132,6 +132,11 @@ export const mysqlColumnType = (
   indexedColumns: ReadonlySet<string>
 ): string => {
   switch (column.type) {
+    case 'TIMESTAMP':
+      // Epoch milliseconds. BIGINT rather than INT: epoch ms passed INT's
+      // 2.1-billion ceiling in 1970, and an overflowing INT does not warn, it
+      // saturates.
+      return 'BIGINT';
     case 'INTEGER':
       return 'INT';
     case 'REAL':
@@ -201,18 +206,19 @@ export const renderIndex = (sql: string): string | null => {
  * objects, so their MySQL form is declared here. Keeping it beside the renderer
  * means one file to check when either side changes.
  *
- * expires_at and used_at are VARCHAR because the active-token indexes cover
- * them; created_at is not indexed anywhere, so it stays TEXT — the same rule the
- * renderer applies to the schema objects, applied by hand.
+ * All three timestamps are BIGINT epoch milliseconds, like every other instant.
+ * The VARCHAR/TEXT split that used to be here — VARCHAR for the two columns the
+ * active-token indexes cover, TEXT for the one they do not — is gone with it:
+ * BIGINT indexes without a prefix length, so the distinction no longer exists.
  */
 const TOKEN_TABLES: readonly string[] = ['password_reset_tokens', 'email_verification_tokens'].map(
   table => `CREATE TABLE IF NOT EXISTS \`${table}\` (
   \`id\` INT AUTO_INCREMENT PRIMARY KEY,
   \`user_id\` INT NOT NULL,
   \`token_hash\` VARCHAR(255) NOT NULL UNIQUE,
-  \`expires_at\` VARCHAR(64) NOT NULL,
-  \`used_at\` VARCHAR(64) DEFAULT NULL,
-  \`created_at\` TEXT NOT NULL DEFAULT (${MYSQL_NOW}),
+  \`expires_at\` BIGINT NOT NULL,
+  \`used_at\` BIGINT DEFAULT NULL,
+  \`created_at\` BIGINT NOT NULL DEFAULT (${MYSQL_NOW}),
   FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`
 );

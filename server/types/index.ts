@@ -13,8 +13,8 @@ export type UserRole = 'admin' | 'user' | 'viewer';
 // Base entity interface for database entities
 export interface BaseEntity {
   id: number;
-  created_at: string;
-  updated_at: string;
+  created_at: number;
+  updated_at: number;
 }
 
 // Essential database entity types for server use
@@ -29,11 +29,11 @@ export interface User extends BaseEntity {
   two_factor_enabled?: number;
   two_factor_secret?: string;
   backup_codes?: string;
-  last_login?: string;
+  last_login?: number;
   failed_login_attempts: number;
-  account_locked_until?: string;
-  password_updated_at?: string;
-  email_verified_at?: string;
+  account_locked_until?: number;
+  password_updated_at?: number;
+  email_verified_at?: number;
 }
 
 export interface UserPublic extends Omit<User, 'password_hash' | 'two_factor_secret' | 'backup_codes'> {}
@@ -84,9 +84,9 @@ export interface Invoice extends BaseEntity {
   shipping_amount: number;
   shipping_rate_id?: string;
   email_status: string;
-  email_sent_at?: string;
+  email_sent_at?: number;
   email_error?: string;
-  last_email_attempt?: string;
+  last_email_attempt?: number;
 }
 
 export interface LineItem {
@@ -221,8 +221,8 @@ export interface ProjectSetting {
   setting_key: string;
   setting_value: string;
   category?: string;
-  created_at: string;
-  updated_at: string;
+  created_at: number;
+  updated_at: number;
   email?: Partial<ProjectSettings['email']>;
   google_oauth?: {
     enabled?: boolean;

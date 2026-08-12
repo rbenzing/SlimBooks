@@ -73,8 +73,8 @@ const anInvoice = (overrides: Record<string, unknown> = {}) => ({
   due_date: '2026-08-31',
   issue_date: '2026-08-01',
   type: 'one-time',
-  created_at: '2026-08-01',
-  updated_at: '2026-08-01',
+  created_at: Date.parse('2026-08-01'),
+  updated_at: Date.parse('2026-08-01'),
   ...overrides
 });
 

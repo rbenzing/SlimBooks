@@ -16,8 +16,8 @@ describe('ClientSelector Component', () => {
       email: 'contact@acme.com',
       phone: '555-0100',
       company: 'Acme Corporation',
-      created_at: '2026-02-16',
-      updated_at: '2026-02-16'
+      created_at: Date.parse('2026-02-16'),
+      updated_at: Date.parse('2026-02-16')
     },
     {
       id: 2,
@@ -25,8 +25,8 @@ describe('ClientSelector Component', () => {
       email: 'info@test.com',
       phone: '555-0200',
       company: 'Test Incorporated',
-      created_at: '2026-02-16',
-      updated_at: '2026-02-16'
+      created_at: Date.parse('2026-02-16'),
+      updated_at: Date.parse('2026-02-16')
     }
   ];
 

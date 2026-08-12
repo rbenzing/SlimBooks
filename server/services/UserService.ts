@@ -77,9 +77,9 @@ export class UserService {
     role?: 'user' | 'admin';
     email_verified?: boolean;
     google_id?: string;
-    last_login?: string;
+    last_login?: number;
     failed_login_attempts?: number;
-    account_locked_until?: string;
+    account_locked_until?: number;
   }): Promise<number> {
     const { 
       name, 

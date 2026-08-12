@@ -5,6 +5,9 @@ import { sqliteDialect } from '../dialects/sqlite.dialect.js';
  * Create token tables for password reset and email verification.
  * These are short-lived access corridors — designed for fast lookup,
  * automatic expiry, and clean cascade demolition when a user is removed.
+ *
+ * The SQLite half. MySQL renders its own from TOKEN_TABLES in mysql.ddl.ts,
+ * which is why STRICT and AUTOINCREMENT can be spelled plainly here.
  */
 export async function createTokenTables(db: IDatabase): Promise<void> {
   // Password reset tokens
@@ -13,11 +16,11 @@ export async function createTokenTables(db: IDatabase): Promise<void> {
       id          INTEGER PRIMARY KEY AUTOINCREMENT,
       user_id     INTEGER NOT NULL,
       token_hash  TEXT    NOT NULL UNIQUE,
-      expires_at  TEXT    NOT NULL,
-      used_at     TEXT    DEFAULT NULL,
-      created_at  TEXT    NOT NULL DEFAULT (${sqliteDialect.now()}),
+      expires_at  INTEGER NOT NULL,
+      used_at     INTEGER DEFAULT NULL,
+      created_at  INTEGER NOT NULL DEFAULT (${sqliteDialect.now()}),
       FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
-    )
+    ) STRICT
   `);
 
   // Arterial indexes
@@ -44,11 +47,11 @@ export async function createTokenTables(db: IDatabase): Promise<void> {
       id          INTEGER PRIMARY KEY AUTOINCREMENT,
       user_id     INTEGER NOT NULL,
       token_hash  TEXT    NOT NULL UNIQUE,
-      expires_at  TEXT    NOT NULL,
-      used_at     TEXT    DEFAULT NULL,
-      created_at  TEXT    NOT NULL DEFAULT (${sqliteDialect.now()}),
+      expires_at  INTEGER NOT NULL,
+      used_at     INTEGER DEFAULT NULL,
+      created_at  INTEGER NOT NULL DEFAULT (${sqliteDialect.now()}),
       FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
-    )
+    ) STRICT
   `);
 
   await db.executeQuery(`

@@ -13,8 +13,8 @@ interface Template {
   content: string;
   is_default: boolean;
   variables?: string;
-  created_at: string;
-  updated_at: string;
+  created_at: number;
+  updated_at: number;
 }
 
 /**

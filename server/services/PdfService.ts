@@ -463,7 +463,7 @@ export class PdfService {
     client_id: number;
     status: string;
     amount: number;
-    created_at: string;
+    created_at: number;
   } | null> {
     if (!invoiceId || typeof invoiceId !== 'number') {
       throw new Error('Valid invoice ID is required');
@@ -475,7 +475,7 @@ export class PdfService {
       client_id: number;
       status: string;
       amount: number;
-      created_at: string;
+      created_at: number;
     }>(`
       SELECT id, invoice_number, client_id, status, amount, created_at
       FROM invoices

@@ -17,8 +17,8 @@ export interface Expense {
   client_id?: number;
   project?: string;
   status?: ExpenseStatus; // Added for status tracking
-  created_at: string;
-  updated_at: string;
+  created_at: number;
+  updated_at: number;
 }
 
 export interface ExpenseFormData {

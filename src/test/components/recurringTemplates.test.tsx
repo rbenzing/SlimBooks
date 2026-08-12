@@ -31,8 +31,8 @@ const client = {
   id: 7,
   name: 'Acme Corporation',
   email: 'contact@acme.com',
-  created_at: '2026-07-25',
-  updated_at: '2026-07-25'
+  created_at: Date.parse('2026-07-25'),
+  updated_at: Date.parse('2026-07-25')
 };
 
 const recurringTemplate = {

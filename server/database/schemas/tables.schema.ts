@@ -4,6 +4,7 @@
 
 import type { IDatabase, TableSchema } from '../../types/database.types.js';
 import { sqliteDialect } from '../dialects/sqlite.dialect.js';
+import { renderCreateTable as renderSqliteCreateTable } from './sqlite.ddl.js';
 import { createTokenTables } from './tokenTables.schema.js';
 
 /**
@@ -32,14 +33,14 @@ const usersSchema: TableSchema = {
     { name: 'google_id', type: 'TEXT', constraints: ['UNIQUE'] },
     { name: 'two_factor_secret', type: 'TEXT' },
     { name: 'backup_codes', type: 'TEXT' },
-    { name: 'last_login', type: 'TEXT' },
+    { name: 'last_login', type: 'TIMESTAMP' },
     { name: 'failed_login_attempts', type: 'INTEGER', constraints: ['DEFAULT 0'] },
-    { name: 'account_locked_until', type: 'TEXT' },
-    { name: 'password_updated_at', type: 'TEXT' },
-    { name: 'email_verified_at', type: 'TEXT' },
-    { name: 'created_at', type: 'TEXT', constraints: [TIMESTAMP_DEFAULT] },
-    { name: 'updated_at', type: 'TEXT', constraints: [TIMESTAMP_DEFAULT] },
-    { name: 'deleted_at', type: 'TEXT' }
+    { name: 'account_locked_until', type: 'TIMESTAMP' },
+    { name: 'password_updated_at', type: 'TIMESTAMP' },
+    { name: 'email_verified_at', type: 'TIMESTAMP' },
+    { name: 'created_at', type: 'TIMESTAMP', constraints: [TIMESTAMP_DEFAULT] },
+    { name: 'updated_at', type: 'TIMESTAMP', constraints: [TIMESTAMP_DEFAULT] },
+    { name: 'deleted_at', type: 'TIMESTAMP' }
   ]
 };
 
@@ -65,9 +66,9 @@ const clientsSchema: TableSchema = {
     { name: 'notes', type: 'TEXT' },
     { name: 'stripe_customer_id', type: 'TEXT' },
     { name: 'is_active', type: 'INTEGER', constraints: ['DEFAULT 1'] },
-    { name: 'created_at', type: 'TEXT', constraints: [TIMESTAMP_DEFAULT] },
-    { name: 'updated_at', type: 'TEXT', constraints: [TIMESTAMP_DEFAULT] },
-    { name: 'deleted_at', type: 'TEXT' } // nullable soft-delete terrain
+    { name: 'created_at', type: 'TIMESTAMP', constraints: [TIMESTAMP_DEFAULT] },
+    { name: 'updated_at', type: 'TIMESTAMP', constraints: [TIMESTAMP_DEFAULT] },
+    { name: 'deleted_at', type: 'TIMESTAMP' } // nullable soft-delete terrain
   ]
 };
 
@@ -111,16 +112,16 @@ const invoicesSchema: TableSchema = {
     { name: 'shipping_amount', type: 'REAL', constraints: ['NOT NULL DEFAULT 0'] },
     { name: 'shipping_rate_id', type: 'TEXT' },
     { name: 'email_status', type: 'TEXT', constraints: ["NOT NULL DEFAULT 'not_sent'"] },
-    { name: 'email_sent_at', type: 'TEXT' },
+    { name: 'email_sent_at', type: 'TIMESTAMP' },
     { name: 'email_error', type: 'TEXT' },
-    { name: 'last_email_attempt', type: 'TEXT' },
+    { name: 'last_email_attempt', type: 'TIMESTAMP' },
     { name: 'is_recurring', type: 'INTEGER', constraints: ['DEFAULT 0'] },
     { name: 'recurring_frequency', type: 'TEXT' },
     { name: 'next_due_date', type: 'TEXT' },
     { name: 'recurring_period_date', type: 'TEXT' },
-    { name: 'created_at', type: 'TEXT', constraints: [TIMESTAMP_DEFAULT] },
-    { name: 'updated_at', type: 'TEXT', constraints: [TIMESTAMP_DEFAULT] },
-    { name: 'deleted_at', type: 'TEXT' }
+    { name: 'created_at', type: 'TIMESTAMP', constraints: [TIMESTAMP_DEFAULT] },
+    { name: 'updated_at', type: 'TIMESTAMP', constraints: [TIMESTAMP_DEFAULT] },
+    { name: 'deleted_at', type: 'TIMESTAMP' }
   ],
   constraints: [
     'FOREIGN KEY (client_id) REFERENCES clients (id) ON DELETE CASCADE',
@@ -143,9 +144,9 @@ const invoiceItemsSchema: TableSchema = {
     { name: 'total', type: 'REAL', constraints: ['NOT NULL DEFAULT 0'] },
     { name: 'tax_rate', type: 'REAL', constraints: ['DEFAULT 0'] },
     { name: 'sort_order', type: 'INTEGER', constraints: ['DEFAULT 0'] },
-    { name: 'created_at', type: 'TEXT', constraints: [TIMESTAMP_DEFAULT] },
-    { name: 'updated_at', type: 'TEXT', constraints: [TIMESTAMP_DEFAULT] },
-    { name: 'deleted_at', type: 'TEXT' }
+    { name: 'created_at', type: 'TIMESTAMP', constraints: [TIMESTAMP_DEFAULT] },
+    { name: 'updated_at', type: 'TIMESTAMP', constraints: [TIMESTAMP_DEFAULT] },
+    { name: 'deleted_at', type: 'TIMESTAMP' }
   ],
   constraints: [
     'FOREIGN KEY (invoice_id) REFERENCES invoices (id) ON DELETE CASCADE'
@@ -172,9 +173,9 @@ const paymentsSchema: TableSchema = {
     { name: 'description', type: 'TEXT' },
     { name: 'stripe_payment_id', type: 'TEXT' },
     { name: 'date', type: 'TEXT', constraints: ['NOT NULL'] },
-    { name: 'created_at', type: 'TEXT', constraints: [TIMESTAMP_DEFAULT] },
-    { name: 'updated_at', type: 'TEXT', constraints: [TIMESTAMP_DEFAULT] },
-    { name: 'deleted_at', type: 'TEXT' }
+    { name: 'created_at', type: 'TIMESTAMP', constraints: [TIMESTAMP_DEFAULT] },
+    { name: 'updated_at', type: 'TIMESTAMP', constraints: [TIMESTAMP_DEFAULT] },
+    { name: 'deleted_at', type: 'TIMESTAMP' }
   ],
   constraints: [
     'FOREIGN KEY (invoice_id) REFERENCES invoices (id) ON DELETE SET NULL'
@@ -201,9 +202,9 @@ const expensesSchema: TableSchema = {
     { name: 'is_billable', type: 'INTEGER', constraints: ['DEFAULT 0'] },
     { name: 'client_id', type: 'INTEGER' },
     { name: 'project', type: 'TEXT' },
-    { name: 'created_at', type: 'TEXT', constraints: [TIMESTAMP_DEFAULT] },
-    { name: 'updated_at', type: 'TEXT', constraints: [TIMESTAMP_DEFAULT] },
-    { name: 'deleted_at', type: 'TEXT' }
+    { name: 'created_at', type: 'TIMESTAMP', constraints: [TIMESTAMP_DEFAULT] },
+    { name: 'updated_at', type: 'TIMESTAMP', constraints: [TIMESTAMP_DEFAULT] },
+    { name: 'deleted_at', type: 'TIMESTAMP' }
   ],
   constraints: [
     'FOREIGN KEY (client_id) REFERENCES clients (id) ON DELETE SET NULL'
@@ -221,9 +222,9 @@ const invoiceDesignTemplatesSchema: TableSchema = {
     { name: 'content', type: 'TEXT', constraints: ['NOT NULL'] },
     { name: 'is_default', type: 'INTEGER', constraints: ['DEFAULT 0'] },
     { name: 'variables', type: 'TEXT' },
-    { name: 'created_at', type: 'TEXT', constraints: [TIMESTAMP_DEFAULT] },
-    { name: 'updated_at', type: 'TEXT', constraints: [TIMESTAMP_DEFAULT] },
-    { name: 'deleted_at', type: 'TEXT' }
+    { name: 'created_at', type: 'TIMESTAMP', constraints: [TIMESTAMP_DEFAULT] },
+    { name: 'updated_at', type: 'TIMESTAMP', constraints: [TIMESTAMP_DEFAULT] },
+    { name: 'deleted_at', type: 'TIMESTAMP' }
   ]
 };
 
@@ -248,9 +249,9 @@ const recurringInvoiceTemplatesSchema: TableSchema = {
     { name: 'shipping_amount', type: 'REAL', constraints: ['DEFAULT 0'] },
     { name: 'shipping_rate_id', type: 'TEXT' },
     { name: 'notes', type: 'TEXT' },
-    { name: 'created_at', type: 'TEXT', constraints: [TIMESTAMP_DEFAULT] },
-    { name: 'updated_at', type: 'TEXT', constraints: [TIMESTAMP_DEFAULT] },
-    { name: 'deleted_at', type: 'TEXT' }
+    { name: 'created_at', type: 'TIMESTAMP', constraints: [TIMESTAMP_DEFAULT] },
+    { name: 'updated_at', type: 'TIMESTAMP', constraints: [TIMESTAMP_DEFAULT] },
+    { name: 'deleted_at', type: 'TIMESTAMP' }
   ],
   constraints: [
     'FOREIGN KEY (client_id) REFERENCES clients (id) ON DELETE CASCADE'
@@ -272,8 +273,8 @@ const settingsSchema: TableSchema = {
     // Added by migration 002; declared here so a fresh database matches an
     // upgraded one.
     { name: 'category', type: 'TEXT' },
-    { name: 'created_at', type: 'TEXT', constraints: [TIMESTAMP_DEFAULT] },
-    { name: 'updated_at', type: 'TEXT', constraints: [TIMESTAMP_DEFAULT] }
+    { name: 'created_at', type: 'TIMESTAMP', constraints: [TIMESTAMP_DEFAULT] },
+    { name: 'updated_at', type: 'TIMESTAMP', constraints: [TIMESTAMP_DEFAULT] }
   ]
 };
 
@@ -287,8 +288,8 @@ const projectSettingsSchema: TableSchema = {
     { name: 'key', type: 'TEXT', constraints: ['UNIQUE NOT NULL'] },
     { name: 'value', type: 'TEXT' },
     { name: 'enabled', type: 'INTEGER', constraints: ['DEFAULT 1'] },
-    { name: 'created_at', type: 'TEXT', constraints: [TIMESTAMP_DEFAULT] },
-    { name: 'updated_at', type: 'TEXT', constraints: [TIMESTAMP_DEFAULT] }
+    { name: 'created_at', type: 'TIMESTAMP', constraints: [TIMESTAMP_DEFAULT] },
+    { name: 'updated_at', type: 'TIMESTAMP', constraints: [TIMESTAMP_DEFAULT] }
   ]
 };
 
@@ -304,8 +305,8 @@ const reportsSchema: TableSchema = {
     { name: 'date_range_start', type: 'TEXT' },
     { name: 'date_range_end', type: 'TEXT' },
     { name: 'data', type: 'TEXT' },
-    { name: 'created_at', type: 'TEXT', constraints: [TIMESTAMP_DEFAULT] },
-    { name: 'deleted_at', type: 'TEXT' }
+    { name: 'created_at', type: 'TIMESTAMP', constraints: [TIMESTAMP_DEFAULT] },
+    { name: 'deleted_at', type: 'TIMESTAMP' }
   ]
 };
 
@@ -318,9 +319,9 @@ const countersSchema: TableSchema = {
     { name: 'id', type: 'INTEGER', constraints: ['PRIMARY KEY AUTOINCREMENT'] },
     { name: 'name', type: 'TEXT', constraints: ['UNIQUE NOT NULL'] },
     { name: 'value', type: 'INTEGER', constraints: ['NOT NULL DEFAULT 0'] },
-    { name: 'created_at', type: 'TEXT', constraints: [TIMESTAMP_DEFAULT] },
-    { name: 'updated_at', type: 'TEXT', constraints: [TIMESTAMP_DEFAULT] },
-    { name: 'deleted_at', type: 'TEXT' }
+    { name: 'created_at', type: 'TIMESTAMP', constraints: [TIMESTAMP_DEFAULT] },
+    { name: 'updated_at', type: 'TIMESTAMP', constraints: [TIMESTAMP_DEFAULT] },
+    { name: 'deleted_at', type: 'TIMESTAMP' }
   ]
 };
 
@@ -334,8 +335,8 @@ const schedulerLeasesSchema: TableSchema = {
   columns: [
     { name: 'job_name', type: 'TEXT', constraints: ['PRIMARY KEY'] },
     { name: 'owner', type: 'TEXT', constraints: ['NOT NULL'] },
-    { name: 'acquired_at', type: 'TEXT', constraints: ['NOT NULL'] },
-    { name: 'expires_at', type: 'TEXT', constraints: ['NOT NULL'] }
+    { name: 'acquired_at', type: 'TIMESTAMP', constraints: ['NOT NULL'] },
+    { name: 'expires_at', type: 'TIMESTAMP', constraints: ['NOT NULL'] }
   ]
 };
 
@@ -348,7 +349,7 @@ const stripeEventsSchema: TableSchema = {
   columns: [
     { name: 'event_id', type: 'TEXT', constraints: ['PRIMARY KEY'] },
     { name: 'event_type', type: 'TEXT', constraints: ['NOT NULL'] },
-    { name: 'processed_at', type: 'TEXT', constraints: [TIMESTAMP_DEFAULT] }
+    { name: 'processed_at', type: 'TIMESTAMP', constraints: [TIMESTAMP_DEFAULT] }
   ]
 };
 
@@ -370,7 +371,7 @@ const storedObjectsSchema: TableSchema = {
     { name: 'content_type', type: 'TEXT' },
     { name: 'size', type: 'INTEGER', constraints: ['NOT NULL'] },
     { name: 'data', type: 'BLOB', constraints: ['NOT NULL'] },
-    { name: 'created_at', type: 'TEXT', constraints: [TIMESTAMP_DEFAULT] }
+    { name: 'created_at', type: 'TIMESTAMP', constraints: [TIMESTAMP_DEFAULT] }
   ]
 };
 
@@ -522,16 +523,9 @@ export const createTables = async (db: IDatabase): Promise<void> => {
   await db.executeQuery('PRAGMA cache_size = -64000'); // ~64 MB cache
 
   for (const schema of tableSchemas) {
-    const columnDefs = schema.columns
-      .map(col => `${col.name} ${col.type} ${col.constraints?.join(' ') || ''}`.trim())
-      .join(', ');
-
-    const constraints = schema.constraints
-      ? ', ' + schema.constraints.join(', ')
-      : '';
-
-    const createTableSQL = `CREATE TABLE IF NOT EXISTS ${schema.name} (${columnDefs}${constraints})`;
-    await db.executeQuery(createTableSQL);
+    // Rendered rather than interpolated: the schema's column types are logical,
+    // and TIMESTAMP is not a type SQLite has. See sqlite.ddl.ts.
+    await db.executeQuery(renderSqliteCreateTable(schema));
   }
 
   // Lay the arterial roads.

@@ -25,10 +25,21 @@ const MONTH_LABELS = [
 ] as const;
 
 /** Leading yyyy-MM-dd of a calendar date or ISO timestamp, as UTC parts. */
-const toCalendarParts = (value: string | null | undefined): { year: number; month: number } | null => {
-  if (!value) return null;
+const toCalendarParts = (
+  value: string | number | null | undefined
+): { year: number; month: number } | null => {
+  if (value === null || value === undefined || value === '') return null;
 
-  const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(value);
+  // Two kinds of value reach here. A calendar-day column (`expenses.date`) is
+  // already `YYYY-MM-DD`. A timestamp column (`invoices.created_at`) is epoch
+  // milliseconds, and its bucket is the UTC month — the same basis the day
+  // columns use, so the two reconcile inside one report.
+  const text =
+    typeof value === 'number'
+      ? (Number.isFinite(value) ? new Date(value).toISOString() : '')
+      : value;
+
+  const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(text);
   if (!match) return null;
 
   const year = Number(match[1]);
@@ -50,7 +61,7 @@ const lastDayOfMonth = (year: number, month: number): number =>
  * Used to group records into the buckets produced by `buildPeriodBuckets`.
  */
 export const periodKeyFor = (
-  value: string | null | undefined,
+  value: string | number | null | undefined,
   breakdownPeriod: BreakdownPeriod
 ): string | null => {
   const parts = toCalendarParts(value);

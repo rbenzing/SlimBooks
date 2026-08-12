@@ -165,8 +165,8 @@ export class EmailService {
         </div>
       `,
       text_content: `Welcome to Slimbooks!\n\nHi ${userName},\n\nPlease verify your email address by visiting: ${verificationLink}\n\nThis link will expire in 24 hours.\n\nIf you didn't create an account, please ignore this email.`,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
+      created_at: Date.now(),
+      updated_at: Date.now()
     };
 
     return await this.sendTemplateEmail(to, template, {
@@ -208,8 +208,8 @@ export class EmailService {
         </div>
       `,
       text_content: `Password Reset Request\n\nHi ${userName},\n\nYou requested to reset your password. Visit this link to set a new password: ${resetLink}\n\nThis link will expire in 1 hour.\n\nIf you didn't request this, please ignore this email.`,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
+      created_at: Date.now(),
+      updated_at: Date.now()
     };
 
     return await this.sendTemplateEmail(to, template, {
@@ -250,8 +250,8 @@ export class EmailService {
         </div>
       `,
       text_content: `Welcome to Slimbooks!\n\nHi ${userName},\n\nYour account has been successfully created and verified.\n\nYou can now start using all the features of Slimbooks.\n\nGet started: ${loginLink}`,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
+      created_at: Date.now(),
+      updated_at: Date.now()
     };
 
     return await this.sendTemplateEmail(to, template, {

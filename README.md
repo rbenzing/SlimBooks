@@ -186,6 +186,20 @@ be configured entirely from Settings instead if you prefer.
 See [docs/database-backends.md](docs/database-backends.md) for requirements, the
 differences at runtime, and the steps to move an existing install to MySQL.
 
+### Upgrading to 2.2.0
+
+Instants are stored as epoch milliseconds rather than text, and existing rows
+are converted on the first boot after the upgrade. **Take a backup first** — copy
+`data/slimbooks.db`, or `mysqldump` — as with any schema change. The conversion
+is idempotent and resumes correctly if interrupted, and nothing else is
+required.
+
+Two things to know before upgrading:
+
+- **The API now sends these fields as JSON numbers** rather than strings. The
+  bundled UI is updated; anything else reading the API needs the same change.
+- **A database dump taken with 2.1.x will not import.** Export again with 2.2.0.
+
 ## 🔄 Recurring Invoice System
 
 Slimbooks includes a powerful recurring invoice system for automated billing:

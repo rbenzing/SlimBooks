@@ -157,8 +157,8 @@ describe('sendTemplateEmail', () => {
     subject: 'Hello {{user_name}}',
     html_content: '<p>Hi {{user_name}}, visit {{link}}</p>',
     text_content: 'Hi {{user_name}}, visit {{link}}',
-    created_at: '',
-    updated_at: ''
+    created_at: 0,
+    updated_at: 0
   };
 
   it('substitutes every placeholder in subject and body', async () => {

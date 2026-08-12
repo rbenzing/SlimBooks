@@ -19,13 +19,13 @@ CREATE TABLE IF NOT EXISTS users (
     role TEXT NOT NULL DEFAULT 'user' CHECK (role IN ('admin', 'user', 'viewer')),
     email_verified INTEGER NOT NULL DEFAULT 0 CHECK (email_verified IN (0, 1)),
     google_id TEXT UNIQUE CHECK (google_id IS NULL OR length(google_id) <= 50),
-    last_login TEXT,
+    last_login INTEGER,
     failed_login_attempts INTEGER NOT NULL DEFAULT 0 CHECK (failed_login_attempts >= 0),
-    account_locked_until TEXT,
-    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
-    updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
-    deleted_at TEXT                                   -- nullable soft-delete
-);
+    account_locked_until INTEGER,
+    created_at INTEGER NOT NULL DEFAULT (CAST(unixepoch('now', 'subsec') * 1000 AS INTEGER)),
+    updated_at INTEGER NOT NULL DEFAULT (CAST(unixepoch('now', 'subsec') * 1000 AS INTEGER)),
+    deleted_at INTEGER                                   -- nullable soft-delete
+) STRICT;
 
 -- =====================================================
 -- CLIENTS TABLE - Customer information
@@ -44,10 +44,10 @@ CREATE TABLE IF NOT EXISTS clients (
     zipCode TEXT CHECK (zipCode IS NULL OR (length(trim(zipCode)) >= 3 AND length(zipCode) <= 10)),
     country TEXT DEFAULT 'US' CHECK (length(country) = 2),
     stripe_customer_id TEXT CHECK (stripe_customer_id IS NULL OR length(stripe_customer_id) <= 50),
-    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
-    updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
-    deleted_at TEXT
-);
+    created_at INTEGER NOT NULL DEFAULT (CAST(unixepoch('now', 'subsec') * 1000 AS INTEGER)),
+    updated_at INTEGER NOT NULL DEFAULT (CAST(unixepoch('now', 'subsec') * 1000 AS INTEGER)),
+    deleted_at INTEGER
+) STRICT;
 
 -- =====================================================
 -- INVOICE DESIGN TEMPLATES
@@ -58,10 +58,10 @@ CREATE TABLE IF NOT EXISTS invoice_design_templates (
     content TEXT NOT NULL,
     is_default INTEGER NOT NULL DEFAULT 0 CHECK (is_default IN (0, 1)),
     variables TEXT,
-    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
-    updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
-    deleted_at TEXT
-);
+    created_at INTEGER NOT NULL DEFAULT (CAST(unixepoch('now', 'subsec') * 1000 AS INTEGER)),
+    updated_at INTEGER NOT NULL DEFAULT (CAST(unixepoch('now', 'subsec') * 1000 AS INTEGER)),
+    deleted_at INTEGER
+) STRICT;
 
 -- =====================================================
 -- RECURRING INVOICE TEMPLATES
@@ -82,12 +82,12 @@ CREATE TABLE IF NOT EXISTS recurring_invoice_templates (
     shipping_amount REAL NOT NULL DEFAULT 0 CHECK (shipping_amount >= 0),
     shipping_rate_id TEXT CHECK (shipping_rate_id IS NULL OR length(shipping_rate_id) <= 50),
     notes TEXT,
-    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
-    updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
-    deleted_at TEXT,
+    created_at INTEGER NOT NULL DEFAULT (CAST(unixepoch('now', 'subsec') * 1000 AS INTEGER)),
+    updated_at INTEGER NOT NULL DEFAULT (CAST(unixepoch('now', 'subsec') * 1000 AS INTEGER)),
+    deleted_at INTEGER,
     
     FOREIGN KEY (client_id) REFERENCES clients (id) ON DELETE CASCADE
-);
+) STRICT;
 
 -- =====================================================
 -- INVOICES TABLE
@@ -123,18 +123,18 @@ CREATE TABLE IF NOT EXISTS invoices (
     shipping_amount REAL NOT NULL DEFAULT 0 CHECK (shipping_amount >= 0),
     shipping_rate_id TEXT CHECK (shipping_rate_id IS NULL OR length(shipping_rate_id) <= 50),
     email_status TEXT NOT NULL DEFAULT 'not_sent' CHECK (email_status IN ('not_sent', 'sent', 'failed', 'bounced')),
-    email_sent_at TEXT,
+    email_sent_at INTEGER,
     email_error TEXT CHECK (email_error IS NULL OR length(email_error) <= 500),
-    last_email_attempt TEXT,
+    last_email_attempt INTEGER,
     recurring_period_date TEXT,
-    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
-    updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
-    deleted_at TEXT,
+    created_at INTEGER NOT NULL DEFAULT (CAST(unixepoch('now', 'subsec') * 1000 AS INTEGER)),
+    updated_at INTEGER NOT NULL DEFAULT (CAST(unixepoch('now', 'subsec') * 1000 AS INTEGER)),
+    deleted_at INTEGER,
 
     FOREIGN KEY (client_id) REFERENCES clients (id) ON DELETE RESTRICT,
     FOREIGN KEY (design_template_id) REFERENCES invoice_design_templates (id) ON DELETE SET NULL,
     FOREIGN KEY (recurring_template_id) REFERENCES recurring_invoice_templates (id) ON DELETE SET NULL
-);
+) STRICT;
 
 -- =====================================================
 -- EXPENSES TABLE
@@ -153,12 +153,12 @@ CREATE TABLE IF NOT EXISTS expenses (
     is_billable INTEGER DEFAULT 0 CHECK (is_billable IN (0, 1)),
     client_id INTEGER,
     project TEXT,
-    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
-    updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
-    deleted_at TEXT,
+    created_at INTEGER NOT NULL DEFAULT (CAST(unixepoch('now', 'subsec') * 1000 AS INTEGER)),
+    updated_at INTEGER NOT NULL DEFAULT (CAST(unixepoch('now', 'subsec') * 1000 AS INTEGER)),
+    deleted_at INTEGER,
     
     FOREIGN KEY (client_id) REFERENCES clients (id) ON DELETE SET NULL
-);
+) STRICT;
 
 -- =====================================================
 -- PAYMENTS TABLE
@@ -175,12 +175,12 @@ CREATE TABLE IF NOT EXISTS payments (
     status TEXT NOT NULL DEFAULT 'received' CHECK (status IN ('received', 'pending', 'failed', 'refunded')),
     currency TEXT DEFAULT 'USD',
     stripe_payment_id TEXT,
-    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
-    updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
-    deleted_at TEXT,
+    created_at INTEGER NOT NULL DEFAULT (CAST(unixepoch('now', 'subsec') * 1000 AS INTEGER)),
+    updated_at INTEGER NOT NULL DEFAULT (CAST(unixepoch('now', 'subsec') * 1000 AS INTEGER)),
+    deleted_at INTEGER,
     
     FOREIGN KEY (invoice_id) REFERENCES invoices (id) ON DELETE SET NULL
-);
+) STRICT;
 
 -- =====================================================
 -- REPORTS TABLE
@@ -192,9 +192,9 @@ CREATE TABLE IF NOT EXISTS reports (
     date_range_start TEXT NOT NULL,
     date_range_end TEXT NOT NULL,
     data TEXT,
-    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
-    deleted_at TEXT
-);
+    created_at INTEGER NOT NULL DEFAULT (CAST(unixepoch('now', 'subsec') * 1000 AS INTEGER)),
+    deleted_at INTEGER
+) STRICT;
 
 -- =====================================================
 -- COUNTERS TABLE
@@ -202,7 +202,7 @@ CREATE TABLE IF NOT EXISTS reports (
 CREATE TABLE IF NOT EXISTS counters (
     name TEXT PRIMARY KEY CHECK (length(trim(name)) >= 2 AND length(name) <= 50),
     value INTEGER NOT NULL DEFAULT 0 CHECK (value >= 0)
-);
+) STRICT;
 
 -- =====================================================
 -- SCHEDULER_LEASES TABLE
@@ -210,9 +210,9 @@ CREATE TABLE IF NOT EXISTS counters (
 CREATE TABLE IF NOT EXISTS scheduler_leases (
     job_name TEXT PRIMARY KEY,
     owner TEXT NOT NULL,
-    acquired_at TEXT NOT NULL,
-    expires_at TEXT NOT NULL
-);
+    acquired_at INTEGER NOT NULL,
+    expires_at INTEGER NOT NULL
+) STRICT;
 
 -- =====================================================
 -- STRIPE_EVENTS TABLE
@@ -220,8 +220,8 @@ CREATE TABLE IF NOT EXISTS scheduler_leases (
 CREATE TABLE IF NOT EXISTS stripe_events (
     event_id TEXT PRIMARY KEY,
     event_type TEXT NOT NULL,
-    processed_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
-);
+    processed_at INTEGER NOT NULL DEFAULT (CAST(unixepoch('now', 'subsec') * 1000 AS INTEGER))
+) STRICT;
 
 -- =====================================================
 -- SETTINGS TABLE
@@ -230,7 +230,7 @@ CREATE TABLE IF NOT EXISTS settings (
     key TEXT PRIMARY KEY CHECK (length(trim(key)) >= 2 AND length(key) <= 100),
     value TEXT NOT NULL,
     category TEXT NOT NULL DEFAULT 'general' CHECK (length(trim(category)) >= 2 AND length(category) <= 50)
-);
+) STRICT;
 
 -- =====================================================
 -- PROJECT_SETTINGS TABLE
@@ -239,9 +239,9 @@ CREATE TABLE IF NOT EXISTS project_settings (
     key TEXT PRIMARY KEY CHECK (length(trim(key)) >= 2 AND length(key) <= 100),
     value TEXT NOT NULL,
     enabled INTEGER DEFAULT NULL CHECK (enabled IS NULL OR enabled IN (0, 1)),
-    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
-    updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
-);
+    created_at INTEGER NOT NULL DEFAULT (CAST(unixepoch('now', 'subsec') * 1000 AS INTEGER)),
+    updated_at INTEGER NOT NULL DEFAULT (CAST(unixepoch('now', 'subsec') * 1000 AS INTEGER))
+) STRICT;
 
 -- =====================================================
 -- TOKEN TABLES (password reset + email verification)
@@ -250,21 +250,21 @@ CREATE TABLE IF NOT EXISTS password_reset_tokens (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id     INTEGER NOT NULL,
     token_hash  TEXT    NOT NULL UNIQUE,
-    expires_at  TEXT    NOT NULL,
-    used_at     TEXT    DEFAULT NULL,
-    created_at  TEXT    NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
+    expires_at  INTEGER    NOT NULL,
+    used_at     INTEGER    DEFAULT NULL,
+    created_at  INTEGER    NOT NULL DEFAULT (CAST(unixepoch('now', 'subsec') * 1000 AS INTEGER)),
     FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
-);
+) STRICT;
 
 CREATE TABLE IF NOT EXISTS email_verification_tokens (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id     INTEGER NOT NULL,
     token_hash  TEXT    NOT NULL UNIQUE,
-    expires_at  TEXT    NOT NULL,
-    used_at     TEXT    DEFAULT NULL,
-    created_at  TEXT    NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
+    expires_at  INTEGER    NOT NULL,
+    used_at     INTEGER    DEFAULT NULL,
+    created_at  INTEGER    NOT NULL DEFAULT (CAST(unixepoch('now', 'subsec') * 1000 AS INTEGER)),
     FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
-);
+) STRICT;
 
 -- =====================================================
 -- PERFORMANCE INDEXES
@@ -354,54 +354,54 @@ CREATE TRIGGER IF NOT EXISTS update_users_timestamp
     AFTER UPDATE ON users
     FOR EACH ROW
     BEGIN
-        UPDATE users SET updated_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now') WHERE id = NEW.id;
+        UPDATE users SET updated_at = CAST(unixepoch('now', 'subsec') * 1000 AS INTEGER) WHERE id = NEW.id;
     END;
 
 CREATE TRIGGER IF NOT EXISTS update_clients_timestamp 
     AFTER UPDATE ON clients
     FOR EACH ROW
     BEGIN
-        UPDATE clients SET updated_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now') WHERE id = NEW.id;
+        UPDATE clients SET updated_at = CAST(unixepoch('now', 'subsec') * 1000 AS INTEGER) WHERE id = NEW.id;
     END;
 
 CREATE TRIGGER IF NOT EXISTS update_invoices_timestamp 
     AFTER UPDATE ON invoices
     FOR EACH ROW
     BEGIN
-        UPDATE invoices SET updated_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now') WHERE id = NEW.id;
+        UPDATE invoices SET updated_at = CAST(unixepoch('now', 'subsec') * 1000 AS INTEGER) WHERE id = NEW.id;
     END;
 
 CREATE TRIGGER IF NOT EXISTS update_invoice_design_templates_timestamp 
     AFTER UPDATE ON invoice_design_templates
     FOR EACH ROW
     BEGIN
-        UPDATE invoice_design_templates SET updated_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now') WHERE id = NEW.id;
+        UPDATE invoice_design_templates SET updated_at = CAST(unixepoch('now', 'subsec') * 1000 AS INTEGER) WHERE id = NEW.id;
     END;
 
 CREATE TRIGGER IF NOT EXISTS update_recurring_invoice_templates_timestamp 
     AFTER UPDATE ON recurring_invoice_templates
     FOR EACH ROW
     BEGIN
-        UPDATE recurring_invoice_templates SET updated_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now') WHERE id = NEW.id;
+        UPDATE recurring_invoice_templates SET updated_at = CAST(unixepoch('now', 'subsec') * 1000 AS INTEGER) WHERE id = NEW.id;
     END;
 
 CREATE TRIGGER IF NOT EXISTS update_expenses_timestamp 
     AFTER UPDATE ON expenses
     FOR EACH ROW
     BEGIN
-        UPDATE expenses SET updated_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now') WHERE id = NEW.id;
+        UPDATE expenses SET updated_at = CAST(unixepoch('now', 'subsec') * 1000 AS INTEGER) WHERE id = NEW.id;
     END;
 
 CREATE TRIGGER IF NOT EXISTS update_payments_timestamp 
     AFTER UPDATE ON payments
     FOR EACH ROW
     BEGIN
-        UPDATE payments SET updated_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now') WHERE id = NEW.id;
+        UPDATE payments SET updated_at = CAST(unixepoch('now', 'subsec') * 1000 AS INTEGER) WHERE id = NEW.id;
     END;
 
 CREATE TRIGGER IF NOT EXISTS update_project_settings_timestamp 
     AFTER UPDATE ON project_settings
     FOR EACH ROW
     BEGIN
-        UPDATE project_settings SET updated_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now') WHERE key = NEW.key;
+        UPDATE project_settings SET updated_at = CAST(unixepoch('now', 'subsec') * 1000 AS INTEGER) WHERE key = NEW.key;
     END;

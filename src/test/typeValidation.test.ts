@@ -26,8 +26,8 @@ describe('Type Validation - Invoice', () => {
       type: 'one-time',
       shipping_amount: 0,
       email_status: 'not_sent',
-      created_at: '2026-02-16',
-      updated_at: '2026-02-16'
+      created_at: Date.parse('2026-02-16'),
+      updated_at: Date.parse('2026-02-16')
     };
 
     expect(isInvoice(validInvoice)).toBe(true);
@@ -58,8 +58,8 @@ describe('Type Validation - Invoice', () => {
       type: 'one-time',
       shipping_amount: 0,
       email_status: 'not_sent',
-      created_at: '2026-02-16',
-      updated_at: '2026-02-16'
+      created_at: Date.parse('2026-02-16'),
+      updated_at: Date.parse('2026-02-16')
     };
 
     expect(validInvoice).not.toHaveProperty('template_id');
@@ -76,8 +76,8 @@ describe('Type Validation - Client', () => {
       phone: '555-0100',
       company: 'Test Corp',
       address: '123 Test St',
-      created_at: '2026-02-16',
-      updated_at: '2026-02-16'
+      created_at: Date.parse('2026-02-16'),
+      updated_at: Date.parse('2026-02-16')
     };
 
     expect(isClient(validClient)).toBe(true);
@@ -100,8 +100,8 @@ describe('Type Validation - Payment', () => {
       amount: 500,
       method: 'bank_transfer',
       status: 'received',
-      created_at: '2026-02-16',
-      updated_at: '2026-02-16'
+      created_at: Date.parse('2026-02-16'),
+      updated_at: Date.parse('2026-02-16')
     };
 
     expect(isPayment(validPayment)).toBe(true);
@@ -121,8 +121,8 @@ describe('Type Validation - Expense', () => {
       category: 'Office Supplies',
       amount: 150,
       description: 'Office chairs',
-      created_at: '2026-02-16',
-      updated_at: '2026-02-16'
+      created_at: Date.parse('2026-02-16'),
+      updated_at: Date.parse('2026-02-16')
     };
 
     expect(isExpense(validExpense)).toBe(true);
@@ -135,8 +135,8 @@ describe('Type Validation - Expense', () => {
       vendor: 'Test Vendor',
       amount: 100,
       description: 'Test expense',
-      created_at: '2026-02-16',
-      updated_at: '2026-02-16'
+      created_at: Date.parse('2026-02-16'),
+      updated_at: Date.parse('2026-02-16')
     };
 
     expect(isExpense(minimalExpense)).toBe(true);

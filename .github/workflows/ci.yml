@@ -9,6 +9,10 @@
 #   npm run build  server tsc build, then the Vite bundle
 #
 # `npm run lint` already chains typecheck, so it is not run twice.
+#
+# The `database` job runs the server suite a second and third time against real
+# MySQL and MariaDB servers. Without it, the two-backend claim would rest on
+# tests that skip themselves — and a suite that skips is reported green.
 
 name: CI
 
@@ -58,3 +62,79 @@ jobs:
 
       - name: Build
         run: npm run build
+
+  database:
+    name: Server suite on ${{ matrix.engine.name }}
+    runs-on: ubuntu-latest
+
+    strategy:
+      # Both engines are reported even when one fails: knowing a break is
+      # MySQL-only, or common to both, is most of the diagnosis.
+      fail-fast: false
+      matrix:
+        engine:
+          # MySQL is the deploy target. 8.0 is the oldest line still supported
+          # upstream, and it is where the expression-default floor (8.0.13)
+          # lives — testing only 8.4 would hide a break below it.
+          - name: MySQL 8.0
+            image: mysql:8.0
+          # MariaDB is a supported backend, not the target. It is here because
+          # the two disagree in exactly the places this adapter made a
+          # portability choice: VALUES() deprecation and CREATE INDEX
+          # IF NOT EXISTS.
+          - name: MariaDB 10.11
+            image: mariadb:10.11
+
+    services:
+      database:
+        image: ${{ matrix.engine.image }}
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: slimbooks_test
+          MARIADB_ROOT_PASSWORD: root
+          MARIADB_DATABASE: slimbooks_test
+        ports:
+          - 3306:3306
+        # Without a health gate the job races the server's first-boot
+        # initialisation and fails on connection refused.
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -proot"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=12
+
+    env:
+      TEST_MYSQL_URL: mysql://root:root@127.0.0.1:3306/slimbooks_test
+
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # A suite that skips itself passes. This asserts the MySQL half actually
+      # ran, so the job cannot go green having tested nothing.
+      - name: Confirm the MySQL suite is not skipped
+        run: |
+          npx vitest run server/database/twoDriver.test.ts server/database/MySQLDatabase.test.ts \
+            --reporter=json --outputFile=/tmp/result.json
+          node -e '
+            const report = require("/tmp/result.json");
+            const skipped = report.numPendingTests ?? 0;
+            const total = report.numTotalTests ?? 0;
+            if (total === 0 || skipped > 0) {
+              console.error(`MySQL suite did not run: ${total} total, ${skipped} skipped`);
+              process.exit(1);
+            }
+            console.log(`MySQL suite ran ${total} test(s) against ${process.env.TEST_MYSQL_URL}`);
+          '
+
+      - name: Server suite against ${{ matrix.engine.name }}
+        run: npx vitest run server/

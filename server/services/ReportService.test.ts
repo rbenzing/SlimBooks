@@ -22,7 +22,7 @@ const invoice = (over: Record<string, unknown> = {}) => ({
   client_id: 1,
   amount: 100,
   status: 'paid',
-  created_at: '2026-02-15T00:00:00.000Z',
+  created_at: Date.parse('2026-02-15T00:00:00.000Z'),
   ...over
 });
 
@@ -147,8 +147,8 @@ describe('generateProfitLossData', () => {
   it('breaks the period into columns that add up to the total', async () => {
     seed({
       invoices: [
-        invoice({ amount: 300, created_at: '2026-02-15T00:00:00.000Z' }),
-        invoice({ id: 2, amount: 200, created_at: '2026-05-15T00:00:00.000Z' })
+        invoice({ amount: 300, created_at: Date.parse('2026-02-15T00:00:00.000Z') }),
+        invoice({ id: 2, amount: 200, created_at: Date.parse('2026-05-15T00:00:00.000Z') })
       ],
       expenses: [
         expense({ amount: 40, date: '2026-02-20' }),
@@ -169,7 +169,7 @@ describe('generateProfitLossData', () => {
   });
 
   it('buckets by month when asked', async () => {
-    seed({ invoices: [invoice({ amount: 100, created_at: '2026-02-15T00:00:00.000Z' })] });
+    seed({ invoices: [invoice({ amount: 100, created_at: Date.parse('2026-02-15T00:00:00.000Z') })] });
 
     const report = await reportService.generateProfitLossData(
       '2026-01-01', '2026-03-31', 'accrual', undefined, 'monthly'
@@ -180,7 +180,7 @@ describe('generateProfitLossData', () => {
   });
 
   it('hides a breakdown that would just restate the total column', async () => {
-    seed({ invoices: [invoice({ amount: 100, created_at: '2026-02-15T00:00:00.000Z' })] });
+    seed({ invoices: [invoice({ amount: 100, created_at: Date.parse('2026-02-15T00:00:00.000Z') })] });
 
     const report = await reportService.generateProfitLossData(
       '2026-02-01', '2026-02-28', 'accrual', undefined, 'quarterly'
@@ -195,8 +195,8 @@ describe('generateProfitLossData', () => {
     // not reconcile with the total column beside them.
     seed({
       invoices: [
-        invoice({ amount: 300, created_at: '2026-02-15T00:00:00.000Z' }),
-        invoice({ id: 2, amount: 200, status: 'sent', created_at: '2026-02-16T00:00:00.000Z' })
+        invoice({ amount: 300, created_at: Date.parse('2026-02-15T00:00:00.000Z') }),
+        invoice({ id: 2, amount: 200, status: 'sent', created_at: Date.parse('2026-02-16T00:00:00.000Z') })
       ]
     });
 

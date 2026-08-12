@@ -14,8 +14,22 @@ import { join } from 'node:path';
 import { SQLiteDatabase } from '../SQLiteDatabase.js';
 import { createTables } from '../schemas/tables.schema.js';
 import { up as normalizeTimestamps } from './014_normalize_timestamps.js';
-import { isUtcTimestamp } from '../../utils/utcTime.util.js';
 import type { IDatabase } from '../../types/database.types.js';
+
+/**
+ * 2.1.1's stored shape, which is what this migration produced.
+ *
+ * Asserted with a local pattern rather than a shared helper: 015 has since
+ * moved these columns to integers and the helper went with them, but 014 is
+ * history and its test has to keep describing the world 014 lived in.
+ *
+ * The tables here come from the *current* schema, so their timestamp columns
+ * are declared INTEGER. SQLite is dynamically typed outside a STRICT table, so
+ * the text these tests write still stores as text and the rewrite still
+ * exercises exactly as it did — which is the only reason this remains a
+ * faithful test of 014 rather than a fiction.
+ */
+const UTC_TEXT = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/;
 
 let dir: string;
 let db: IDatabase;
@@ -53,7 +67,7 @@ describe('migration 014', () => {
     await normalizeTimestamps(db);
 
     for (const row of await clientRows()) {
-      expect(isUtcTimestamp(row.created_at)).toBe(true);
+      expect(row.created_at).toMatch(UTC_TEXT);
       expect(row.created_at).toBe('2026-08-12T13:54:13Z');
     }
   });

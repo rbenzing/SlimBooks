@@ -38,8 +38,8 @@ describe('Invoice Validation', () => {
     name: 'Test Client',
     email: 'test@example.com',
     phone: '5551234567',
-    created_at: '2026-02-16',
-    updated_at: '2026-02-16'
+    created_at: Date.parse('2026-02-16'),
+    updated_at: Date.parse('2026-02-16')
   };
 
   const mockLineItems: InvoiceItem[] = [

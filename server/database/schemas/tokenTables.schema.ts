@@ -13,9 +13,9 @@ export async function createTokenTables(db: IDatabase): Promise<void> {
       id          INTEGER PRIMARY KEY AUTOINCREMENT,
       user_id     INTEGER NOT NULL,
       token_hash  TEXT    NOT NULL UNIQUE,
-      expires_at  TEXT    NOT NULL,
-      used_at     TEXT    DEFAULT NULL,
-      created_at  TEXT    NOT NULL DEFAULT (${sqliteDialect.now()}),
+      expires_at  INTEGER NOT NULL,
+      used_at     INTEGER DEFAULT NULL,
+      created_at  INTEGER NOT NULL DEFAULT (${sqliteDialect.now()}),
       FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
     )
   `);
@@ -44,9 +44,9 @@ export async function createTokenTables(db: IDatabase): Promise<void> {
       id          INTEGER PRIMARY KEY AUTOINCREMENT,
       user_id     INTEGER NOT NULL,
       token_hash  TEXT    NOT NULL UNIQUE,
-      expires_at  TEXT    NOT NULL,
-      used_at     TEXT    DEFAULT NULL,
-      created_at  TEXT    NOT NULL DEFAULT (${sqliteDialect.now()}),
+      expires_at  INTEGER NOT NULL,
+      used_at     INTEGER DEFAULT NULL,
+      created_at  INTEGER NOT NULL DEFAULT (${sqliteDialect.now()}),
       FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
     )
   `);

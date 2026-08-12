@@ -15,6 +15,7 @@ import { up as migration011 } from './011_add_recurring_period_date.js';
 import { up as migration012 } from './012_add_runtime_tables.js';
 import { up as migration013 } from './013_add_stored_objects.js';
 import { up as migration014 } from './014_normalize_timestamps.js';
+import { up as migration015 } from './015_epoch_timestamps.js';
 
 interface Migration {
   id: string;
@@ -90,6 +91,11 @@ const migrations: Migration[] = [
     id: '014',
     name: 'normalize_timestamps',
     up: migration014
+  },
+  {
+    id: '015',
+    name: 'epoch_timestamps',
+    up: migration015
   }
 ];
 
@@ -106,7 +112,7 @@ const createMigrationsTable = async (db: IDatabase): Promise<void> => {
     CREATE TABLE IF NOT EXISTS migrations (
       id VARCHAR(64) PRIMARY KEY,
       name VARCHAR(255) NOT NULL,
-      applied_at TEXT NOT NULL DEFAULT (${db.dialect.now()})
+      applied_at BIGINT NOT NULL DEFAULT (${db.dialect.now()})
     )
   `);
 };

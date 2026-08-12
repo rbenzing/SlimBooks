@@ -113,9 +113,26 @@ export interface TableSchema {
   indexes?: IndexDefinition[];
 }
 
+/**
+ * The logical type of a column, rendered per backend by the DDL modules.
+ *
+ * `TIMESTAMP` is an instant, stored as epoch milliseconds — `INTEGER` on
+ * SQLite, `BIGINT` on MySQL. It is a distinct entry rather than plain
+ * `INTEGER` so the schema keeps saying what a column *is*: the difference
+ * between an instant and a calendar day is invisible once both are integers,
+ * and it is the difference migration 014 had to enumerate by hand.
+ *
+ * A calendar day is `TEXT` holding `YYYY-MM-DD`. SQLite has no DATE type — the
+ * word is accepted in a declaration and means nothing, and a STRICT table
+ * rejects it outright — so text is the honest representation, and encoding a
+ * day as an instant would pick a midnight in some timezone and shift the day
+ * for half the world.
+ */
+export type ColumnType = 'TEXT' | 'INTEGER' | 'REAL' | 'BLOB' | 'NUMERIC' | 'TIMESTAMP';
+
 export interface ColumnDefinition {
   name: string;
-  type: 'TEXT' | 'INTEGER' | 'REAL' | 'BLOB' | 'NUMERIC';
+  type: ColumnType;
   constraints?: string[];
 }
 

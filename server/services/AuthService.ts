@@ -101,7 +101,7 @@ export class AuthService {
     const maxAttempts = await settingsService.getSecuritySetting('max_failed_login_attempts') as number;
     const lockoutDuration = await settingsService.getSecuritySetting('account_lockout_duration') as number;
 
-    let lockedUntil: string | null = null;
+    let lockedUntil: number | null = null;
     if (newAttempts >= maxAttempts) {
       lockedUntil = utcTimestamp(new Date(Date.now() + lockoutDuration));
     }
@@ -330,19 +330,19 @@ export class AuthService {
    * Get user login statistics
    */
   async getUserLoginStats(userId: number): Promise<{
-    lastLogin: string | null;
+    lastLogin: number | null;
     failedAttempts: number;
     isLocked: boolean;
-    lockedUntil: string | null;
+    lockedUntil: number | null;
   }> {
     if (!userId || typeof userId !== 'number') {
       throw new Error('Valid user ID is required');
     }
 
     const user = await databaseService.getOne<{
-      last_login: string | null;
+      last_login: number | null;
       failed_login_attempts: number;
-      account_locked_until: string | null;
+      account_locked_until: number | null;
     }>(`
       SELECT last_login, failed_login_attempts, account_locked_until
       FROM users WHERE id = ?

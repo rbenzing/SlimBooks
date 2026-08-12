@@ -15,11 +15,11 @@ export interface User extends BaseEntity {
   two_factor_enabled?: number;
   two_factor_secret?: string;
   backup_codes?: string;
-  last_login?: string;
+  last_login?: number;
   failed_login_attempts: number;
-  account_locked_until?: string;
-  password_updated_at?: string;
-  email_verified_at?: string;
+  account_locked_until?: number;
+  password_updated_at?: number;
+  email_verified_at?: number;
 }
 
 // Public user interface without sensitive fields
@@ -30,27 +30,27 @@ export interface AuthSession {
   user_id: number;
   session_token: string;
   refresh_token: string;
-  expires_at: string;
+  expires_at: number;
   ip_address?: string;
   user_agent?: string;
-  created_at: string;
+  created_at: number;
 }
 
 export interface EmailVerificationToken {
   id: number;
   user_id: number;
   token: string;
-  expires_at: string;
-  created_at: string;
+  expires_at: number;
+  created_at: number;
 }
 
 export interface PasswordResetToken {
   id: number;
   user_id: number;
   token: string;
-  expires_at: string;
+  expires_at: number;
   used: boolean;
-  created_at: string;
+  created_at: number;
 }
 
 export interface OAuthCredentials {
@@ -59,8 +59,8 @@ export interface OAuthCredentials {
   client_id: string;
   client_secret: string;
   enabled: boolean;
-  created_at: string;
-  updated_at: string;
+  created_at: number;
+  updated_at: number;
 }
 
 export interface EmailTemplate {
@@ -70,8 +70,8 @@ export interface EmailTemplate {
   html_content: string;
   text_content?: string;
   variables?: string[];
-  created_at: string;
-  updated_at: string;
+  created_at: number;
+  updated_at: number;
 }
 
 export interface LoginCredentials {

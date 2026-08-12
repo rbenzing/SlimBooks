@@ -122,7 +122,7 @@ export const getDateRangeForPeriod = (period: DateRangePeriod): DateRange => {
  */
 const parseComparableDate = parseDisplayDate;
 
-export const filterByDateRange = <T extends { date?: string; created_at?: string; issue_date?: string }>(
+export const filterByDateRange = <T extends { date?: string; created_at?: string | number; issue_date?: string }>(
   items: T[],
   dateRange: DateRange,
   dateField: keyof T = 'date' as keyof T

@@ -22,7 +22,7 @@ const createTestDb = (): IDatabase => {
       job_name TEXT PRIMARY KEY,
       owner TEXT NOT NULL,
       acquired_at TEXT NOT NULL,
-      expires_at TEXT NOT NULL
+      expires_at INTEGER NOT NULL
     )
   `);
 
@@ -43,8 +43,8 @@ const createTestDb = (): IDatabase => {
 
 let db: IDatabase;
 
-const T0 = '2026-08-08T10:00:00.000Z';
-const T_LATER = '2026-08-08T10:00:30.000Z';
+const T0 = Date.parse('2026-08-08T10:00:00.000Z');
+const T_LATER = Date.parse('2026-08-08T10:00:30.000Z');
 const T_AFTER_EXPIRY = '2026-08-08T11:00:01.000Z';
 
 beforeEach(() => {

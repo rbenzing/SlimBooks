@@ -16,7 +16,7 @@ describe('mysqlDialect', () => {
     // Pinned as text only because there is no server here. What the server
     // actually returns for these is asserted in baselineLive.test.ts and
     // twoDriver.test.ts, which is the assertion that matters.
-    expect(mysqlDialect.now()).toBe("DATE_FORMAT(UTC_TIMESTAMP(),'%Y-%m-%dT%H:%i:%sZ')");
+    expect(mysqlDialect.now()).toBe('CAST(UNIX_TIMESTAMP(CURRENT_TIMESTAMP(3)) * 1000 AS SIGNED)');
     expect(mysqlDialect.today()).toBe("DATE_FORMAT(UTC_TIMESTAMP(),'%Y-%m-%d')");
   });
 
@@ -36,7 +36,7 @@ describe('mysqlDialect', () => {
     // The compared columns are TEXT on both backends, so a raw DATE_SUB would
     // compare a MySQL datetime against a string in a different format.
     expect(mysqlDialect.nowMinus(7, 'day')).toBe(
-      "DATE_FORMAT(DATE_SUB(UTC_TIMESTAMP(), INTERVAL 7 DAY),'%Y-%m-%dT%H:%i:%sZ')"
+      'CAST(UNIX_TIMESTAMP(DATE_SUB(CURRENT_TIMESTAMP(3), INTERVAL 7 DAY)) * 1000 AS SIGNED)'
     );
     expect(mysqlDialect.todayMinus(12, 'month')).toBe(
       "DATE_FORMAT(DATE_SUB(UTC_TIMESTAMP(), INTERVAL 12 MONTH),'%Y-%m-%d')"

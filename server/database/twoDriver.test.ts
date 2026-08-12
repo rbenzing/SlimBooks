@@ -20,7 +20,7 @@ import { MySQLDatabase } from './MySQLDatabase.js';
 import { claimExclusive } from './claim.util.js';
 import { mysqlDialect } from './dialects/mysql.dialect.js';
 import { sqliteDialect } from './dialects/sqlite.dialect.js';
-import { isUtcTimestamp, utcNow } from '../utils/utcTime.util.js';
+import { isEpochMillis, utcNow } from '../utils/utcTime.util.js';
 import type { IDatabase } from '../types/database.types.js';
 import type { MysqlSettings } from '../runtime/database.js';
 
@@ -74,8 +74,9 @@ const backends: Backend[] = [
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         label TEXT,
         amount REAL,
-        stamp TEXT NOT NULL DEFAULT (${sqliteDialect.now()}),
-        deleted_at TEXT
+        stamp INTEGER NOT NULL DEFAULT (${sqliteDialect.now()}),
+        day TEXT,
+        deleted_at INTEGER
       )`
     ]
   }
@@ -100,8 +101,9 @@ if (url !== undefined && url.length > 0) {
         id INT AUTO_INCREMENT PRIMARY KEY,
         label TEXT,
         amount DOUBLE,
-        stamp TEXT NOT NULL DEFAULT (${mysqlDialect.now()}),
-        deleted_at VARCHAR(64)
+        stamp BIGINT NOT NULL DEFAULT (${mysqlDialect.now()}),
+        day VARCHAR(32),
+        deleted_at BIGINT
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`
     ]
   });
@@ -160,29 +162,28 @@ describe.each(backends)('$name', backend => {
     expect(await db.getOne('SELECT * FROM ledger WHERE label = ?', ['nope'])).toBeNull();
   });
 
-  it('renders the default timestamp in the same shape on both backends', async () => {
-    // The columns are TEXT everywhere and compared lexicographically. A MySQL
-    // default of NOW() would carry a timezone offset and fractional seconds,
-    // and would not sort against SQLite's.
+  it('fills the default with an integer instant on both backends', async () => {
+    // A MySQL default of NOW() would carry a session-timezone offset and would
+    // not compare against what SQLite writes.
     await db.executeQuery('INSERT INTO ledger (label) VALUES (?)', ['stamped']);
 
-    const row = await db.getOne<{ stamp: string }>('SELECT stamp FROM ledger');
+    const row = await db.getOne<{ stamp: number }>('SELECT stamp FROM ledger');
 
-    expect(isUtcTimestamp(row?.stamp)).toBe(true);
+    expect(isEpochMillis(Number(row?.stamp))).toBe(true);
   });
 
   it('produces the same expression for "now" through the dialect', async () => {
-    const row = await db.getOne<{ n: string }>(`SELECT ${db.dialect.now()} as n`);
+    const row = await db.getOne<{ n: number }>(`SELECT ${db.dialect.now()} as n`);
 
-    expect(isUtcTimestamp(row?.n)).toBe(true);
+    expect(isEpochMillis(Number(row?.n))).toBe(true);
   });
 
   it('agrees with the timestamp the application writes', async () => {
-    // Half these values are written by SQL and half by Node; a column holding
-    // both shapes compares wrongly, which is the defect this format fixes.
-    const fromSql = await db.getOne<{ n: string }>(`SELECT ${db.dialect.now()} as n`);
+    // Half these values are written by SQL and half by Node into the same
+    // column. Two clocks there would order rows wrongly.
+    const fromSql = await db.getOne<{ n: number }>(`SELECT ${db.dialect.now()} as n`);
 
-    expect(Math.abs(Date.parse(fromSql!.n) - Date.parse(utcNow()))).toBeLessThanOrEqual(2000);
+    expect(Math.abs(Number(fromSql!.n) - utcNow())).toBeLessThanOrEqual(2000);
   });
 
   it('groups by month identically', async () => {
@@ -192,16 +193,16 @@ describe.each(backends)('$name', backend => {
     // Both shapes are checked: production only ever groups by a calendar-day
     // column, but a timestamp is the obvious next thing someone will group by,
     // and MySQL's DATE_FORMAT has to swallow the trailing Z for that to work.
-    await db.executeQuery('INSERT INTO ledger (label, stamp) VALUES (?, ?)', [
-      'day',
+    await db.executeQuery('INSERT INTO ledger (label, day) VALUES (?, ?)', [
+      'a',
       '2026-08-09'
     ]);
-    await db.executeQuery('INSERT INTO ledger (label, stamp) VALUES (?, ?)', [
-      'instant',
-      '2026-08-09T10:00:00Z'
+    await db.executeQuery('INSERT INTO ledger (label, day) VALUES (?, ?)', [
+      'b',
+      '2026-08-31'
     ]);
 
-    const month = db.dialect.formatMonth('stamp');
+    const month = db.dialect.formatMonth('day');
     const rows = await db.getMany<{ m: string }>(
       `SELECT ${month} as m FROM ledger ORDER BY label`
     );
@@ -212,11 +213,11 @@ describe.each(backends)('$name', backend => {
   it('filters on a relative-date cutoff', async () => {
     await db.executeQuery('INSERT INTO ledger (label, stamp) VALUES (?, ?)', [
       'old',
-      '2000-01-01T00:00:00Z'
+      Date.parse('2000-01-01T00:00:00Z')
     ]);
     await db.executeQuery('INSERT INTO ledger (label, stamp) VALUES (?, ?)', [
       'new',
-      '2999-01-01T00:00:00Z'
+      Date.parse('2999-01-01T00:00:00Z')
     ]);
 
     const rows = await db.getMany<{ label: string }>(
@@ -281,7 +282,7 @@ describe.each(backends)('$name', backend => {
         keyValue: 'recurring',
         ownerColumn: 'owner',
         owner,
-        values: { owner, expires_at: '2999-01-01T00:00:00.000Z' },
+        values: { owner, expires_at: Date.parse('2999-01-01T00:00:00.000Z') },
         takeoverCondition: 'expires_at <= ?',
         takeoverParams: ['2026-08-09T00:00:00.000Z']
       });
@@ -302,7 +303,7 @@ describe.each(backends)('$name', backend => {
         keyValue: 'recurring',
         ownerColumn: 'owner',
         owner: 'steady',
-        values: { owner: 'steady', expires_at: '2999-01-01T00:00:00.000Z' },
+        values: { owner: 'steady', expires_at: Date.parse('2999-01-01T00:00:00.000Z') },
         takeoverCondition: 'expires_at <= ? OR owner = ?',
         takeoverParams: ['2026-08-09T00:00:00.000Z', 'steady']
       });
@@ -355,7 +356,7 @@ describe.each(backends)('$name', backend => {
   it('reports the columns a table has', async () => {
     const columns = await db.dialect.columnsOf(db, 'ledger');
 
-    expect(columns).toEqual(['id', 'label', 'amount', 'stamp', 'deleted_at']);
+    expect(columns).toEqual(['id', 'label', 'amount', 'stamp', 'day', 'deleted_at']);
   });
 
   it('reports table existence for this schema only', async () => {

@@ -126,8 +126,8 @@ describe('InvoiceService - Email Functionality', () => {
       mockFetchSuccess({
         id: 1,
         email_status: 'sent',
-        email_sent_at: '2026-02-16T10:00:00Z',
-        last_email_attempt: '2026-02-16T10:00:00Z'
+        email_sent_at: Date.parse('2026-02-16T10:00:00Z'),
+        last_email_attempt: Date.parse('2026-02-16T10:00:00Z')
       });
 
       const status = await invoiceService.getEmailStatus(1);

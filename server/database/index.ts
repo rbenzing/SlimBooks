@@ -65,7 +65,7 @@ const acquireBootLock = async (owner: string): Promise<boolean> => {
     CREATE TABLE IF NOT EXISTS boot_locks (
       name VARCHAR(190) PRIMARY KEY,
       owner VARCHAR(190) NOT NULL,
-      expires_at VARCHAR(64) NOT NULL
+      expires_at BIGINT NOT NULL
     )
   `);
 

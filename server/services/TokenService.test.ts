@@ -94,10 +94,10 @@ describe.each(flows)('$kind tokens', ({ table, create, verify }) => {
 
     await create(42, HOUR);
 
-    const expiresAt = new Date(String(insertOf()?.params[2])).getTime();
-    // A second of slack: stored timestamps carry whole seconds, so an expiry
-    // computed from a sub-second `before` truncates down by up to 999ms.
-    expect(expiresAt).toBeGreaterThanOrEqual(before + HOUR - 1000);
+    // Epoch milliseconds, exactly as the column holds them — no truncation now,
+    // so no slack needed either.
+    const expiresAt = Number(insertOf()?.params[2]);
+    expect(expiresAt).toBeGreaterThanOrEqual(before + HOUR);
     expect(expiresAt).toBeLessThan(before + HOUR + 5000);
   });
 

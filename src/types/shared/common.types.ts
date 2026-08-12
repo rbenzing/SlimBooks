@@ -27,8 +27,8 @@ export interface ValidationError {
 
 // Database timestamps
 export interface Timestamps {
-  created_at: string;
-  updated_at: string;
+  created_at: number;
+  updated_at: number;
 }
 
 // Generic entity with ID and timestamps
@@ -115,8 +115,8 @@ export interface ProjectSettingRecord {
   key: string;
   value: string;
   enabled?: boolean;
-  created_at: string;
-  updated_at: string;
+  created_at: number;
+  updated_at: number;
 }
 
 // Complete project configuration structure
@@ -169,7 +169,7 @@ export interface Report {
   date_range_start: string;
   date_range_end: string;
   data: SavedReport['data']; // Generated report payload for this report type
-  created_at: string;
+  created_at: number;
 }
 
 // Dashboard data structure

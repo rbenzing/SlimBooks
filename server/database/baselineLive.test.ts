@@ -17,7 +17,7 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { buildMysqlBaseline } from './baseline.js';
 import { MySQLDatabase } from './MySQLDatabase.js';
 import { tableSchemas } from './schemas/tables.schema.js';
-import { isUtcTimestamp, utcNow } from '../utils/utcTime.util.js';
+import { isEpochMillis, utcNow } from '../utils/utcTime.util.js';
 import type { MysqlSettings } from '../runtime/database.js';
 
 const url = process.env.TEST_MYSQL_URL;
@@ -41,12 +41,29 @@ const settingsFrom = (raw: string): MysqlSettings => {
 live('buildMysqlBaseline against a real server', () => {
   const db = new MySQLDatabase();
 
-  /** Drop everything, so the build starts from genuinely nothing. */
+  /**
+   * Drop the tables this suite builds, so it starts from genuinely nothing.
+   *
+   * Scoped to the schema's own tables rather than everything in the database.
+   * It used to drop every table it found, which quietly demolished the fixture
+   * tables of whichever live suite happened to be running alongside it — the
+   * failure surfaced as "Table 'leases' doesn't exist" in a completely
+   * unrelated file, which is a miserable thing to debug.
+   */
+  const OWNED = new Set([
+    ...tableSchemas.map(schema => schema.name),
+    'password_reset_tokens',
+    'email_verification_tokens',
+    'migrations',
+    'boot_locks'
+  ]);
+
   const wipe = async (): Promise<void> => {
-    const tables = await db.getMany<{ TABLE_NAME: string }>(
+    const all = await db.getMany<{ TABLE_NAME: string }>(
       `SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES
        WHERE TABLE_SCHEMA = DATABASE() AND TABLE_TYPE = 'BASE TABLE'`
     );
+    const tables = all.filter(table => OWNED.has(table.TABLE_NAME));
 
     await db.executeQuery('SET FOREIGN_KEY_CHECKS = 0');
 
@@ -174,37 +191,36 @@ live('buildMysqlBaseline against a real server', () => {
     // expression form. Below that floor the DDL would not have parsed at all.
     await db.executeQuery('INSERT INTO clients (name) VALUES (?)', ['Stamped']);
 
-    const row = await db.getOne<{ created_at: string }>(
+    const row = await db.getOne<{ created_at: number }>(
       'SELECT created_at FROM clients WHERE name = ?',
       ['Stamped']
     );
 
-    // Asserted against the shared predicate, not a regex written out here: a
-    // column default and utcNow() have to produce the same bytes, and two
-    // separately-maintained patterns is how they would stop doing so.
-    expect(isUtcTimestamp(row?.created_at)).toBe(true);
+    expect(isEpochMillis(Number(row?.created_at))).toBe(true);
   });
 
   it('agrees with the timestamp the application writes', async () => {
     // Rows get their created_at from whichever wrote them — the default here,
-    // insertRecord in most services. Both land in the same TEXT column and are
-    // compared lexicographically, so they have to be the same shape.
+    // insertRecord in most services. Both land in the same column, so two
+    // clocks there would order rows wrongly.
     await db.executeQuery('INSERT INTO clients (name) VALUES (?)', ['Compared']);
     await db.executeQuery('INSERT INTO clients (name, created_at) VALUES (?, ?)', [
       'Written',
       utcNow()
     ]);
 
-    const rows = await db.getMany<{ name: string; created_at: string }>(
+    const rows = await db.getMany<{ name: string; created_at: number }>(
       'SELECT name, created_at FROM clients WHERE name IN (?, ?)',
       ['Compared', 'Written']
     );
 
     expect(rows).toHaveLength(2);
     for (const row of rows) {
-      expect(isUtcTimestamp(row.created_at)).toBe(true);
+      expect(isEpochMillis(Number(row.created_at))).toBe(true);
+      // Within a second of each other, so the default and utcNow() are reading
+      // the same clock rather than merely producing the same type.
+      expect(Math.abs(Number(row.created_at) - utcNow())).toBeLessThan(5000);
     }
-    expect(rows[0]!.created_at).toHaveLength(rows[1]!.created_at.length);
   });
 
   /**

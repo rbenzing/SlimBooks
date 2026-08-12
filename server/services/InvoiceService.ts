@@ -7,7 +7,7 @@ import { authConfig } from '../config/index.js';
 import { type ServiceOptions, type InvoiceWithClient, type InvoiceStatus } from '../types/index.js';
 import { type PublicInvoiceDisplay, type PublicInvoiceTokenPayload } from '../types/invoice.types.js';
 import { invoiceNumberService } from './InvoiceNumberService.js';
-import { asUtcTimestamp, utcNow } from '../utils/utcTime.util.js';
+import { toEpochMillis, utcNow } from '../utils/utcTime.util.js';
 
 /**
  * `key` is a reserved word in MySQL, so the column is backticked — a quoting
@@ -223,9 +223,9 @@ export class InvoiceService {
     shipping_amount?: number;
     shipping_rate_id?: number;
     email_status?: string;
-    email_sent_at?: string;
+    email_sent_at?: number;
     email_error?: string;
-    last_email_attempt?: string;
+    last_email_attempt?: number;
   }): Promise<number> {
     if (!invoiceData || !invoiceData.client_id || !invoiceData.amount) {
       throw new Error('Invalid invoice data - client_id and amount are required');
@@ -355,9 +355,9 @@ export class InvoiceService {
     shipping_amount: number;
     shipping_rate_id: number;
     email_status: string;
-    email_sent_at: string;
+    email_sent_at: number;
     email_error: string;
-    last_email_attempt: string;
+    last_email_attempt: number;
   }>): Promise<number> {
     if (!id || typeof id !== 'number') {
       throw new Error('Valid invoice ID is required');
@@ -540,7 +540,7 @@ export class InvoiceService {
 
     // Coerced, not trusted: the caller may pass anything, and a stray shape in
     // this column compares wrongly against every other timestamp in it.
-    const sentAt = asUtcTimestamp(emailSentAt) ?? utcNow();
+    const sentAt = toEpochMillis(emailSentAt) ?? utcNow();
 
     const result = await databaseService.executeQuery(`
       UPDATE invoices

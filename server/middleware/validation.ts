@@ -144,11 +144,32 @@ export const validationRules = {
  */
 export const validationSets = {
   // User validation sets
+  // POST /api/users takes a body of { userData }, not flat fields — see
+  // createClient below for the same nesting. validationRules.* validate
+  // body('name')/body('email')/etc, which is a different shape and always
+  // fails against this route, so these are written out nested instead of
+  // reusing those rules; constraints and messages are unchanged.
   createUser: [
-    validationRules.name,
-    validationRules.email,
-    validationRules.password,
-    validationRules.role
+    body('userData.name')
+      .trim()
+      .isLength({ min: 1, max: validationConfig.maxFieldLengths.name })
+      .withMessage(`Name must be between 1 and ${validationConfig.maxFieldLengths.name} characters`)
+      .escape(),
+    body('userData.email')
+      .isEmail()
+      .normalizeEmail()
+      .withMessage('Must be a valid email address')
+      .isLength({ max: validationConfig.maxFieldLengths.email })
+      .withMessage(`Email must be less than ${validationConfig.maxFieldLengths.email} characters`),
+    body('userData.password')
+      .isLength({
+        min: validationConfig.password.minLength,
+        max: validationConfig.password.maxLength
+      })
+      .withMessage(`Password must be between ${validationConfig.password.minLength} and ${validationConfig.password.maxLength} characters`),
+    body('userData.role')
+      .isIn(['user', 'admin'])
+      .withMessage('Role must be either user or admin')
   ] as ValidationChain[],
   
   updateUser: [

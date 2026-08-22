@@ -25,6 +25,37 @@ export interface User extends BaseEntity {
 // Public user interface without sensitive fields
 export type UserPublic = Omit<User, 'password_hash' | 'two_factor_secret' | 'backup_codes'>;
 
+/** A user as the management screen sees them. Never carries a password hash. */
+export interface ManagedUser {
+  id: number;
+  name: string;
+  email: string;
+  username: string;
+  role: 'admin' | 'user' | 'viewer';
+  email_verified: boolean;
+  /** Epoch milliseconds, or null when they have never signed in. */
+  last_login: number | null;
+  failed_login_attempts: number;
+  /** Epoch milliseconds while the account is locked, otherwise null. */
+  account_locked_until: number | null;
+  created_at: number;
+}
+
+/**
+ * What the form collects.
+ *
+ * `viewer` is absent on purpose: it is declared in the type union but no code
+ * treats it differently from `user`, so offering it would promise an access
+ * level that does not exist.
+ */
+export interface UserFormData {
+  name: string;
+  email: string;
+  username: string;
+  role: 'admin' | 'user';
+  password?: string;
+}
+
 export interface AuthSession {
   id: number;
   user_id: number;

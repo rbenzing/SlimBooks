@@ -15,10 +15,29 @@ the source.
 
 ## What has been done
 
-The Docker half is repaired and verified against a real engine: image built
-from a clean `git clone`, booted against MariaDB 10.11, container reaching
-`healthy`, 19 tables created, admin account seeded, SPA and API served over
-TLS. The findings below are kept as the record of what was wrong.
+The Docker half is repaired and verified against both real engines: image built
+from a clean `git clone`, then booted against **MariaDB 10.11.18** and
+**MySQL 8.4.11** in turn — container reaching `healthy` on each, 19 tables
+created, 14 migrations recorded as applied without running, admin account
+seeded, and a functional pass over HTTPS from the host (sign in, write a
+client, read it back, invoice statistics, a profit-and-loss report over a
+calendar-day range, currency settings).
+
+Switching engines was one line of `.env`, which is the property the whole
+portability programme exists to produce.
+
+The two servers built the same thing: **207 columns and 81 indexes, identical**
+once each server's `information_schema` rendering is normalised. The only
+residual differences are cosmetic — MariaDB reports display widths
+(`bigint(20)`) that MySQL 8 dropped, and MySQL prefixes a charset introducer on
+string defaults (`_utf8mb4'USD'` against `'USD'`). Column types confirm the
+decisions hold on both: `created_at` `bigint`, `due_date` `varchar`,
+`total_amount` `double`.
+
+The suite ran against each engine live: 60 files, 1337 tests, **0 skipped**,
+on both.
+
+The findings below are kept as the record of what was wrong.
 
 Two things the repair turned up that this design had not predicted:
 

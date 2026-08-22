@@ -153,9 +153,12 @@ DOCKER_DB_HOST=<db-container>
 DOCKER_DB_PORT=3306
 ```
 
-MariaDB is opened with `DB_DRIVER=mysql`; one driver serves both. Create the
-database and a user scoped to it before the first boot — the application builds
-its own schema, but it will not create the database:
+MariaDB is opened with `DB_DRIVER=mysql`; one driver serves both, and both are
+verified — MariaDB 10.11.18 and MySQL 8.4.11 build a schema of 207 columns and
+81 indexes that is identical bar each server's own metadata rendering.
+
+Create the database and a user scoped to it before the first boot — the
+application builds its own schema, but it will not create the database:
 
 ```sql
 CREATE DATABASE slimbooks CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;

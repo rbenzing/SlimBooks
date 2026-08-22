@@ -7,7 +7,7 @@ which is what keeps development and production running the same thing.
 
 | Host | Typical settings | Artifact |
 |---|---|---|
-| Docker (Linux/ARM) | `TLS_MODE=self` if exposed directly, `off` behind a mesh | `Dockerfile`, `docker-compose.yml` — see [known issues](#docker) |
+| Docker (Linux/ARM) | `TLS_MODE=self` if exposed directly, `off` behind a mesh | `Dockerfile`, `docker-compose.yml` |
 | Bare Linux (systemd) | `TLS_MODE=proxy` behind nginx or Caddy | Specified, **not yet shipped** |
 | Windows IIS | `TLS_MODE=proxy`; IIS may supply `PORT` as a named pipe | Specified, **not yet shipped** |
 | Node PaaS (e.g. Hostinger) | `TLS_MODE=proxy`, `DB_DRIVER=mysql`, `STORAGE_DRIVER=database`, `FEATURE_PDF=off` | Documented variable set |
@@ -114,24 +114,60 @@ capabilities dropped except `CHOWN`/`SETGID`/`SETUID`, `no-new-privileges`, and
 memory and CPU limits. `./data` and `./uploads` are bind-mounted; `./certs` is
 mounted read-only.
 
-### Known issues
+### Using MySQL or MariaDB
 
-These are real and unfixed at the time of writing. They are specified for
-repair in [spec 002](../specs/002-deployment-artifacts.md).
+The compose file names no database — that is environment, and it lives in
+`.env`. Set the credentials there:
 
-- **The build fails on a fresh clone.** The Dockerfile runs
-  `COPY certs ./certs`, and `certs/` contains no tracked files, so it does not
-  exist after `git clone`. Running `./scripts/generate-certificates.sh` first
-  creates the directory and works around it.
-- **The compose health check cannot run.** It calls `curl`, which is not
-  installed in `node:24-alpine` nor added by the Dockerfile, so the container
-  reports unhealthy indefinitely. The Dockerfile's own `HEALTHCHECK` (which
-  uses `node` and honours `TLS_MODE`) is the one that works.
-- **`EXPOSE 8080` disagrees with the port the process binds** (`PORT`, default
-  3002). Harmless, but misleading.
-- **`/app/logs` is created and mounted but nothing writes to it.** The runtime
-  resolves no log directory; container logs go to the Docker json-file driver,
-  capped at 3 × 10 MB.
+```env
+DB_DRIVER=mysql
+DB_NAME=slimbooks
+DB_USER=slimbooks
+DB_PASSWORD=...
+STORAGE_DRIVER=database
+```
+
+A container's view of the network is not the host's, so the *address* is set
+separately from the credentials. `DOCKER_DB_HOST` and `DOCKER_DB_PORT` are the
+container's route; `DB_HOST` and `DB_PORT` stay the host's, so `npm run dev`
+and `docker compose up` can both reach the same server.
+
+**Database container publishing a host port** — nothing else to do:
+
+```env
+DOCKER_DB_HOST=host.docker.internal
+DOCKER_DB_PORT=3308
+```
+
+`extra_hosts` in the compose file makes that name work on Linux as well as
+Docker Desktop.
+
+**Database container reached by name** — no published port needed:
+
+```bash
+docker network connect slimbooks_default <db-container>
+```
+
+```env
+DOCKER_DB_HOST=<db-container>
+DOCKER_DB_PORT=3306
+```
+
+MariaDB is opened with `DB_DRIVER=mysql`; one driver serves both. Create the
+database and a user scoped to it before the first boot — the application builds
+its own schema, but it will not create the database:
+
+```sql
+CREATE DATABASE slimbooks CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE USER 'slimbooks'@'%' IDENTIFIED BY '...';
+GRANT ALL PRIVILEGES ON slimbooks.* TO 'slimbooks'@'%';
+```
+
+With `STORAGE_DRIVER=database` the container holds no state of its own and can
+be destroyed and recreated freely.
+
+Leave `DB_DRIVER` unset to use SQLite instead; the database is then a file in
+`DATA_DIR`, which is a volume.
 
 ## Bare Linux (systemd)
 

@@ -1,6 +1,7 @@
 # Spec 002: Per-host deployment artifacts
 
-**Status:** Designed, not implemented
+**Status:** Docker implemented and verified. systemd, IIS and PaaS artifacts
+still designed only.
 
 ## Purpose
 
@@ -12,11 +13,31 @@ Spec 001 made the runtime host-agnostic, 003 made the database swappable, 005
 fixed what those exposed. None of it is reachable by anyone who has not read
 the source.
 
+## What has been done
+
+The Docker half is repaired and verified against a real engine: image built
+from a clean `git clone`, booted against MariaDB 10.11, container reaching
+`healthy`, 19 tables created, admin account seeded, SPA and API served over
+TLS. The findings below are kept as the record of what was wrong.
+
+Two things the repair turned up that this design had not predicted:
+
+- **`databaseController` built a multer instance at module load with
+  `dest: 'temp/'`** — a relative path resolved against the working directory,
+  which is path arithmetic outside the runtime. `read_only: true` turned it
+  into a boot crash loop, even under MySQL where those handlers decline to run
+  at all. It had survived because a `temp/` directory exists in the checkout.
+- **A container's route to the database is not the host's**, so compose cannot
+  carry database coordinates for both. `DOCKER_DB_HOST` / `DOCKER_DB_PORT`
+  override `DB_HOST` / `DB_PORT` for the container, which lets one `.env` serve
+  `npm run dev` and `docker compose up` while neither committed file names a
+  specific database container.
+
 ## Current state
 
 | Host | Present | State |
 |---|---|---|
-| Docker | `Dockerfile`, `docker-compose.yml`, `.dockerignore` | **Broken on a fresh clone** |
+| Docker | `Dockerfile`, `docker-compose.yml`, `.dockerignore` | ~~Broken on a fresh clone~~ — repaired |
 | Bare Linux | — | Documented as supported, no artifact |
 | Windows IIS | — | Documented as supported, no artifact |
 | Node PaaS | — | Documented as supported, no artifact |

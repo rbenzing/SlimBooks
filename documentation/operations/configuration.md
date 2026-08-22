@@ -84,6 +84,24 @@ relatively.
 A MySQL boot fails naming **every** missing variable at once, rather than
 erroring on the first query. See [database backends](database-backends.md).
 
+### The container's route to the database
+
+Read by `docker-compose.yml`, **not by the application**. A container's view of
+the network is not the host's — `127.0.0.1` inside a container is the container
+itself — so compose passes these in as `DB_HOST` and `DB_PORT`, overriding the
+two above for the container only.
+
+One `.env` then serves both `npm run dev` and `docker compose up`, and no
+committed file names a specific database container.
+
+| Variable | Default | Notes |
+|---|---|---|
+| `DOCKER_DB_HOST` | `host.docker.internal` | Use the container name instead if you attach the database to `slimbooks_default` |
+| `DOCKER_DB_PORT` | `3306` | The port as seen from the container — a published host port, or 3306 over a shared network |
+| `DOCKER_CLIENT_URL` | `https://localhost:8080` | Overrides `CLIENT_URL` for the container, which must match the scheme `TLS_MODE` produces |
+
+Ignored entirely under `DB_DRIVER=sqlite`.
+
 ## Uploaded files
 
 | Variable | Default | Read by | Notes |

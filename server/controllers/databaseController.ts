@@ -1,27 +1,52 @@
 // Database controller - handles database backup and restore operations
-import { type Request, type Response } from 'express';
+import { type NextFunction, type Request, type RequestHandler, type Response } from 'express';
 import { createReadStream, existsSync, unlinkSync, statSync } from 'fs';
 import { copyFile } from 'fs/promises';
+import { join } from 'node:path';
 import multer from 'multer';
 import { closeDatabase, initializeDatabase } from '../database/index.js';
 import { databaseService } from '../core/DatabaseService.js';
 import type { Runtime } from '../runtime/types.js';
 
-// Configure multer for file uploads
-const upload = multer({
-  dest: 'temp/',
-  limits: {
-    fileSize: 100 * 1024 * 1024, // 100MB limit
-  },
-  fileFilter: (req, file, cb) => {
-    // Accept only database files
-    if (file.originalname.match(/\.(db|sqlite|sqlite3)$/i)) {
-      cb(null, true);
-    } else {
-      cb(new Error('Only database files (.db, .sqlite, .sqlite3) are allowed'));
-    }
+/**
+ * Staging area for an uploaded database file, built on first use.
+ *
+ * It was `dest: 'temp/'` — a relative path resolved against the working
+ * directory, which is the kind of path arithmetic that belongs to the runtime
+ * and nowhere else. multer's disk storage creates that directory in its
+ * constructor, so the expression ran at module load: on a read-only container
+ * filesystem the process died with ENOENT before serving a request, and did so
+ * even under MySQL, where both handlers here refuse to run at all. It survived
+ * in development only because a `temp/` directory happens to exist in the
+ * checkout.
+ *
+ * DATA_DIR is the right home: what is being staged is the database, and that
+ * directory is writable wherever SQLite is in use.
+ */
+let stagedUpload: RequestHandler | null = null;
+
+const stageUpload = (req: Request, res: Response, next: NextFunction): void => {
+  if (stagedUpload === null) {
+    const runtime = req.app.locals.runtime as Runtime;
+
+    stagedUpload = multer({
+      dest: join(runtime.paths.dataDir, 'imports'),
+      limits: {
+        fileSize: 100 * 1024 * 1024, // 100MB limit
+      },
+      fileFilter: (_req, file, cb) => {
+        // Accept only database files
+        if (file.originalname.match(/\.(db|sqlite|sqlite3)$/i)) {
+          cb(null, true);
+        } else {
+          cb(new Error('Only database files (.db, .sqlite, .sqlite3) are allowed'));
+        }
+      }
+    }).single('database');
   }
-});
+
+  stagedUpload(req, res, next);
+};
 
 // Export database
 /**
@@ -105,7 +130,14 @@ export const exportDatabase = async (req: Request, res: Response): Promise<void>
 
 // Import database
 export const importDatabase = [
-  upload.single('database'),
+  // Refuse before staging, so a MySQL install never creates the directory for
+  // an upload it is about to decline.
+  (req: Request, res: Response, next: NextFunction): void => {
+    const runtime = req.app.locals.runtime as Runtime;
+    if (!refuseUnlessSqlite(runtime, res, 'upload')) return;
+
+    stageUpload(req, res, next);
+  },
   async (req: Request, res: Response): Promise<void> => {
     try {
       const runtime = req.app.locals.runtime as Runtime;

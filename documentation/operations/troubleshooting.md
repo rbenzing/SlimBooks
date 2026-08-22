@@ -129,8 +129,11 @@ uploads may be relevant — see above.
 
 ## No PDF button
 
-`FEATURE_PDF` resolved to false, meaning Chromium was not found. `/api/health`
-reports `providers.pdf` as `null`.
+Check `features.pdf` at `/api/health`. False means Chromium was not found.
+
+**Do not read `providers.pdf` for this** — it reports `runtime.pdf`, which
+nothing populates, so it is `null` even on installs where PDF rendering works
+perfectly.
 
 Under Docker, Chromium is in the image and this should not happen. On a PaaS it
 is expected and `FEATURE_PDF=off` is the correct setting.
@@ -146,27 +149,30 @@ and note that a report's range is inclusive of both named days.
 
 ## Docker
 
-### The image will not build
+### The container restarts in a loop with `ENOENT: mkdir 'temp/'`
 
-`COPY certs ./certs` fails on a fresh clone because `certs/` holds no tracked
-files. Create it first:
+Fixed. A multer instance in `databaseController` was created at module load
+with a relative `dest`, which a read-only container filesystem refuses — and it
+did so even under MySQL, where those handlers decline to run anyway. It
+survived in development only because a `temp/` directory happens to exist in
+the checkout. Rebuild the image.
 
-```bash
-cd scripts && ./generate-certificates.sh && cd ..
+### `Access denied` or `Unknown database` at boot under MySQL
+
+The application builds its own schema but does not create the database. Create
+it and a user scoped to it first — see
+[deployment](deployment.md#using-mysql-or-mariadb).
+
+### The container cannot reach the database
+
+`127.0.0.1` inside a container is the container itself, so a `DB_HOST` that
+works for `npm run dev` does not work for the container. Set `DOCKER_DB_HOST`
+and `DOCKER_DB_PORT`, which compose passes in as `DB_HOST`/`DB_PORT`. The boot
+banner prints what was resolved:
+
 ```
-
-Specified for repair in [spec 002](../specs/002-deployment-artifacts.md).
-
-### The container is permanently unhealthy
-
-The compose health check calls `curl`, which is not installed in
-`node:24-alpine`. The container may be perfectly fine — check it directly:
-
-```bash
-docker compose exec slimbooks node -e "require('http').get({host:'localhost',port:3002,path:'/api/health'},r=>console.log(r.statusCode))"
+database  mysql slimbooks@host.docker.internal:3308/slimbooks
 ```
-
-Also specified for repair in spec 002.
 
 ### Permission denied on data or uploads
 

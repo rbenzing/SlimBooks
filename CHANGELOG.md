@@ -8,6 +8,50 @@ and the project uses [semantic versioning](https://semver.org/spec/v2.0.0.html).
 Upgrade instructions live in
 [documentation/operations/upgrading.md](documentation/operations/upgrading.md).
 
+## [Unreleased]
+
+### Fixed
+
+- **The Docker image could not be built from a fresh clone.**
+  `COPY certs ./certs` referenced a directory holding no tracked files, so it
+  did not exist after `git clone`; the build only ever succeeded on a machine
+  where the directory happened to be on disk. Compose already bind-mounts
+  `./certs`, and a TLS key does not belong in a shared, pushed, cached layer.
+- **The compose health check could never execute.** It called `curl`, which is
+  not in `node:24-alpine` and is not installed by the Dockerfile, so the
+  container reported unhealthy indefinitely. It now runs the same `node` probe
+  as the image's own `HEALTHCHECK`, honouring `TLS_MODE` and `PORT`.
+- **The container crash-looped on a read-only filesystem.**
+  `databaseController` created a multer instance at module load with a relative
+  `dest: 'temp/'` — path arithmetic outside the runtime, executed before any
+  request and even under MySQL, where both handlers there decline to run. The
+  staging directory is now derived from `DATA_DIR` and created on first use.
+
+### Changed
+
+- **The compose file no longer names a database.** Backend, credentials and
+  storage driver come from `.env`; `DOCKER_DB_HOST` and `DOCKER_DB_PORT` give
+  the container its own route to the server, so the same `.env` serves
+  `npm run dev` and `docker compose up` and any database container works
+  without editing a committed file.
+- `HOST=0.0.0.0` is set for the container. Bound to `localhost` inside a
+  container, the process is unreachable through the port mapping and the
+  failure looks like it never started.
+- `EXPOSE` is `3002`, the port the process actually binds, rather than `8080`.
+- The dev-only `vite.config.ts` is no longer copied into a production image
+  whose dependencies are installed with `npm ci --omit=dev`.
+- `/app/logs` is gone from the image and from compose. Nothing under
+  `server/runtime/` resolves a log directory; container logs go to the Docker
+  logging driver.
+- The obsolete Compose `version:` key is removed.
+
+### Documentation
+
+Reorganised into `documentation/`, split by audience — user guide, operations,
+development, decision records and specifications — with sixteen ADRs, an API
+reference, a configuration reference, an architecture overview, this changelog
+and a security policy, none of which existed before.
+
 ## [2.2.0] — 2026-08-12
 
 Timestamps become a type the database enforces rather than a convention the

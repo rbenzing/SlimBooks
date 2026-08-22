@@ -1,4 +1,47 @@
-version: '3.8'
+# Slimbooks — Docker deployment.
+#
+# `version:` is deliberately absent. It is obsolete in current Compose and only
+# produces a warning.
+#
+# Before the first `docker compose up`:
+#
+#   ./scripts/generate-secrets.sh                       # creates .env
+#   cd scripts && ./generate-certificates.sh && cd ..    # TLS_MODE=self needs a pair
+#
+# ---------------------------------------------------------------------------
+# Choosing a database
+# ---------------------------------------------------------------------------
+# This file names no database. Which backend to open, and where it lives, is
+# environment — it belongs in .env, not in a committed artifact.
+#
+#   SQLite (default) — nothing to set. The database is a file in DATA_DIR,
+#   which is a volume below, so it survives the container.
+#
+#   MySQL or MariaDB, anywhere:
+#
+#       DB_DRIVER=mysql
+#       DB_NAME=slimbooks
+#       DB_USER=slimbooks
+#       DB_PASSWORD=...
+#
+# A container's view of the network is not the host's, so the address is set
+# separately from the credentials. DOCKER_DB_HOST and DOCKER_DB_PORT below are
+# the *container's* route to the database; DB_HOST and DB_PORT in .env stay the
+# host's, so `npm run dev` and `docker compose up` can both reach the same
+# server without either file naming a specific container.
+#
+#   Database container publishing a host port (no network changes needed):
+#
+#       DOCKER_DB_HOST=host.docker.internal
+#       DOCKER_DB_PORT=3308              # whatever it publishes
+#
+#   Database container reached by name (no published port needed):
+#
+#       docker network connect slimbooks_default <db-container>
+#       DOCKER_DB_HOST=<db-container>
+#       DOCKER_DB_PORT=3306
+#
+# MariaDB is opened with DB_DRIVER=mysql — one driver serves both.
 
 services:
   slimbooks:
@@ -7,7 +50,7 @@ services:
       dockerfile: Dockerfile
     container_name: slimbooks-app
     restart: unless-stopped
-    
+
     # Security settings
     user: "1001:1001"
     read_only: true
@@ -21,8 +64,8 @@ services:
       - CHOWN
       - SETGID
       - SETUID
-    
-    # Port mapping - expose on all interfaces for network access
+
+    # Host 8080 → the port the process binds (PORT, default 3002).
     ports:
       - "8080:3002"
 
@@ -33,24 +76,50 @@ services:
     # into the image, so secrets never end up in a layer and a key can be
     # rotated by restarting the container instead of rebuilding it.
     #
-    # Create it before the first `docker compose up`:  cp .env.example .env
+    # Everything that varies by install — the database, storage driver, mail,
+    # Stripe — is read from here.
     env_file:
       - .env
 
-    # Fixed for this deployment, so they override whatever .env says.
+    # Fixed by the *shape* of this deployment, not by the operator's choices.
+    # Nothing here selects a backend or a code path.
     environment:
       - NODE_ENV=production
+      # 0.0.0.0, not localhost. A process bound to 127.0.0.1 inside a container
+      # is unreachable through the port mapping above, and the failure looks
+      # like the application never started.
+      - HOST=0.0.0.0
+      # This container terminates TLS with the pair bind-mounted below. Set
+      # TLS_MODE=proxy in .env instead if something in front terminates it —
+      # and set TRUST_PROXY_HOPS with it.
       - TLS_MODE=self
       - TLS_KEY_PATH=certs/server.key
       - TLS_CERT_PATH=certs/server.crt
-    
-    # Volume mounts for persistent data
+      # Must match the scheme this container actually serves, which TLS_MODE
+      # above decides — .env's value is the development one and is http.
+      # Set DOCKER_CLIENT_URL in .env to the address users really reach.
+      - CLIENT_URL=${DOCKER_CLIENT_URL:-https://localhost:8080}
+      # The container's route to the database, overriding the host's own
+      # DB_HOST/DB_PORT from .env. Under DB_DRIVER=sqlite both are ignored.
+      - DB_HOST=${DOCKER_DB_HOST:-host.docker.internal}
+      - DB_PORT=${DOCKER_DB_PORT:-3306}
+
+    # Lets DB_HOST=host.docker.internal reach a database published on the host.
+    # Docker Desktop provides this name already; this line is what makes the
+    # same .env work on Linux.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+    # DATA_DIR and UPLOAD_DIR are the only directories that must survive a
+    # redeploy. Under DB_DRIVER=sqlite the database lives in the first of them.
+    # Under mysql with STORAGE_DRIVER=database neither holds anything and the
+    # container keeps no state of its own — but they stay mounted so that
+    # changing driver does not silently start writing to an ephemeral layer.
     volumes:
       - slimbooks_data:/app/data
       - slimbooks_uploads:/app/uploads
-      - slimbooks_logs:/app/logs
       - ./certs:/app/certs:ro
-    
+
     # Resource limits
     deploy:
       resources:
@@ -60,15 +129,25 @@ services:
         reservations:
           memory: 256M
           cpus: '0.25'
-    
-    # Health check
+
+    # One health check, matching the image's own.
+    #
+    # This previously ran `curl -f -k https://localhost:3002/api/health`, and
+    # curl is not in node:24-alpine nor installed by the Dockerfile — so it
+    # could never execute and the container reported unhealthy forever. node is
+    # guaranteed present, and honours TLS_MODE and PORT rather than assuming
+    # them.
     healthcheck:
-      test: ["CMD-SHELL", "curl -f -k https://localhost:3002/api/health || exit 1"]
+      test:
+        - CMD
+        - node
+        - -e
+        - "const secure = process.env.TLS_MODE === 'self'; const client = secure ? require('https') : require('http'); client.get({ hostname: 'localhost', port: process.env.PORT || 3002, path: '/api/health', rejectUnauthorized: false }, (res) => process.exit(res.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 40s
-    
+
     # Logging configuration
     logging:
       driver: "json-file"
@@ -90,17 +169,3 @@ volumes:
       type: none
       o: bind
       device: ./uploads
-  slimbooks_logs:
-    driver: local
-    driver_opts:
-      type: none
-      o: bind
-      device: ./logs
-
-# Network configuration
-networks:
-  default:
-    driver: bridge
-    ipam:
-      config:
-        - subnet: 172.20.0.0/16

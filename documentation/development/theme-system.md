@@ -1,4 +1,8 @@
-# Theme System Documentation
+# Theme system
+
+The reasoning behind this — and why ad-hoc light/dark Tailwind pairs are not
+acceptable — is in
+[ADR-0015](../adr/0015-theme-as-design-system.md).
 
 ## Overview
 
@@ -200,3 +204,11 @@ When updating existing components to use the theme system:
 3. Follow the dashboard design patterns for new components
 4. Test components in both light and dark modes
 5. Use semantic color names rather than specific color values
+
+## Related
+
+- [ADR-0015](../adr/0015-theme-as-design-system.md) — why the theme is a design
+  system rather than utility classes
+- [Architecture](architecture.md) — where the frontend layers sit
+- [Settings → Appearance](../user-guide/settings.md#appearance) — what the user
+  sees: `system` / `light` / `dark`, and the three colour presets

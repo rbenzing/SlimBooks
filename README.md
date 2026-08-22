@@ -8,322 +8,182 @@
 [![SQLite](https://img.shields.io/badge/SQLite-003B57?style=for-the-badge&logo=sqlite&logoColor=white)](https://www.sqlite.org/)
 [![Docker](https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white)](https://www.docker.com/)
 [![License: AGPL v3+](https://img.shields.io/badge/License-AGPL%20v3%2B-blue.svg?style=for-the-badge)](./LICENSE)
-[![Buy Me A Coffee](https://img.shields.io/badge/Buy%20Me%20A%20Coffee-FFDD00?style=for-the-badge&logo=buymeacoffee&logoColor=black)](https://buymeacoffee.com/russellbenzing)
 
 **A secure, self-hosted billing and invoice management application**
 
-🔒 **Security-First** • 🐳 **Docker Ready** • 🖥️ **Runs Anywhere Node Does**
+🔒 Security-first • 🐳 Docker ready • 🖥️ Runs anywhere Node does
 
-[Features](#-key-features) • [Quick Start](#-quick-start) • [Documentation](#-documentation) • [License](#-license)
+[Features](#features) • [Quick start](#quick-start) • [Documentation](#documentation) • [License](#license)
 
 </div>
 
 ---
 
-## ✨ Key Features
+Slimbooks is billing software you run on your own hardware. Clients, invoices,
+recurring billing, expenses, payments and reports — with no hosted tier, no
+telemetry, and no third party holding your books.
 
-### 💼 Business Management
-- **📊 Dashboard**: Real-time financial overview with interactive charts
-- **👥 Client Management**: Complete client profiles with contact details and history
-- **🧾 Professional Invoices**: Customizable templates with line items, taxes, and shipping
-- **🔄 Recurring Invoices**: Automated recurring billing with customizable schedules (weekly, monthly, quarterly, yearly)
-- **💰 Expense Tracking**: Categorized expenses with vendor, approval status and CSV import
-- **📈 Financial Reports**: Profit & loss, invoice, expense and client reports. P&L supports cash or accrual
-  accounting and breaks multi-period ranges into monthly or quarterly columns that reconcile with the totals
+## Features
 
-### 💳 Getting Paid
-- **🔗 Stripe Payment Links**: Generate a card payment link for any invoice. Optional — Slimbooks works
-  fully without it
-- **🔁 Automatic Reconciliation**: Stripe webhooks record the payment and mark the invoice paid, verified by
-  signature and safe against duplicate delivery
-- **🔑 Keys Stay Server-Side**: The Stripe secret key is read only by the server and never reaches the browser
+**Business management.** Dashboard with interactive charts. Client profiles
+with history. Customisable invoices with line items, tax and shipping.
+Recurring billing on weekly, monthly, quarterly, yearly or custom schedules.
+Categorised expense tracking with vendors and approval states. Profit & loss,
+invoice, expense and client reports — P&L supports cash or accrual accounting
+and breaks multi-period ranges into monthly or quarterly columns that reconcile
+with the totals.
 
-### 📧 Email
-- **✉️ Real SMTP Delivery**: Send invoices and reminders from your own mail server
-- **📋 Provider Presets**: Pick from Gmail, Outlook, Yahoo, iCloud, Zoho, Fastmail, SendGrid, Mailgun,
-  Postmark, Brevo or Amazon SES and the host, port and encryption are filled in together — or enter your own
-- **🔍 Connection Testing**: Test the connection before you rely on it; a wrong password fails there rather
-  than silently when an invoice goes out
+**Getting paid.** Optional Stripe payment links, with webhook reconciliation
+that marks the invoice paid — verified by signature and safe against duplicate
+delivery. The secret key never reaches the browser.
 
-### 🔒 Security & Privacy
-- **🛡️ Hardened by Default**: Rate limiting, input validation, and security headers
-- **🔐 JWT Authentication**: Access tokens with silent refresh and refresh-token rotation
-- **🔑 Password Hashing**: bcrypt, with configurable strength requirements
-- **🏠 Self-Hosted**: Complete data ownership - no third-party data sharing
-- **🚫 No Telemetry**: Nothing phones home; no analytics, no tracking
+**Email.** Real SMTP delivery from your own mail server, with presets for
+eleven providers and a connection test that actually connects.
 
-### 🚀 Deployment
-- **🐳 Docker Ready**: One-command deployment with Docker Compose
-- **🖥️ Host-Agnostic**: One artifact runs on Docker, bare Linux, Windows IIS or a Node PaaS — they differ only in environment variables
-- **🥧 Raspberry Pi**: Runs well on ARM devices and low-power systems
-- **⚡ Fast Setup**: Automated scripts for quick deployment
-- **📦 Portable**: SQLite database - easy backup and migration
+**Security and privacy.** Bearer-token auth with silent refresh and
+refresh-token rotation. bcrypt hashing, account lockout, rate limiting,
+security headers, server-side validation. Self-hosted, and nothing phones home.
 
-## 🛠️ Tech Stack
+**Deployment.** One artifact runs on Docker, bare Linux, Windows IIS or a Node
+PaaS — [they differ only in environment variables](documentation/adr/0002-environment-driven-not-host-detected.md).
+SQLite by default; MySQL or MariaDB when the host needs it.
+
+## Tech stack
 
 | Component | Technology |
-|-----------|-----------|
-| **Frontend** | React 18 + TypeScript + Vite |
-| **UI** | shadcn/ui + Tailwind CSS + Lucide Icons |
-| **Backend** | Node.js + Express + SQLite |
-| **Security** | Helmet + Rate Limiting + JWT + bcrypt |
-| **Deployment** | Docker + Docker Compose |
-| **Charts** | Recharts for analytics visualization |
+|---|---|
+| Frontend | React 18 + TypeScript + Vite |
+| UI | shadcn/ui + Tailwind CSS + Lucide |
+| Backend | Node.js 24 + Express |
+| Database | SQLite (default) or MySQL / MariaDB |
+| Charts | Recharts |
+| Deployment | Docker + Docker Compose |
 
-## 🚀 Quick Start
+## Quick start
 
-### 🐳 Docker Deployment (Recommended)
+### Docker
 
 ```bash
-# Clone the repository
 git clone https://github.com/rbenzing/SlimBooks.git
 cd slimbooks
 
-# Generate secure secrets
-./scripts/generate-secrets.sh
+./scripts/generate-secrets.sh                        # fills .env from .env.example
+cd scripts && ./generate-certificates.sh && cd ..     # compose sets TLS_MODE=self
 
-# Deploy with Docker
-./scripts/deploy.sh
+docker compose up -d
 ```
 
-Access your app at `http://localhost:8080`. In production one process serves both the API and the UI on a single port.
+Reachable at `https://localhost:8080`. Full instructions, including the other
+three hosts, are in the [deployment guide](documentation/operations/deployment.md).
 
-### 🥧 Raspberry Pi Setup
-
-```bash
-# Prepare your Raspberry Pi
-curl -fsSL https://raw.githubusercontent.com/rbenzing/slimbooks/main/scripts/setup-raspberry-pi.sh | bash
-
-# Deploy the application
-./scripts/deploy.sh
-```
-
-### 💻 Development Setup
+### Development
 
 ```bash
-# Install dependencies
 npm install
-
-# Start development servers
+cp .env.example .env    # set CLIENT_URL — the server will not start without it
 npm run dev
 ```
 
-Frontend: `http://localhost:8080` • Backend: `http://localhost:3002`
+Frontend on `http://localhost:8080`, API on `http://localhost:3002`. Migrations
+run automatically at boot. The frontend hot-reloads; **restart the server after
+backend changes**.
 
-> Backend changes need a manual restart; the frontend hot-reloads via Vite HMR.
-> Database migrations run automatically on server start.
+See [getting started](documentation/development/getting-started.md).
 
-### ✅ Quality Gates
+### Quality gates
 
 ```bash
-npm run typecheck   # TypeScript across frontend, vite config, and server
+npm run typecheck   # frontend + vite config + server
 npm run lint        # ESLint (0 errors, 0 warnings) + typecheck
-npm test            # Vitest suite
-npm run build       # Production build
+npm test            # Vitest
+npm run build
 ```
 
-## ⚙️ Configuration
-
-### Environment Variables
+## Configuration
 
 `.env.example` is the single environment template and lists every variable the
-application reads, with comments. Copy it and edit the copy:
+application reads, with comments. Copy it and edit the copy.
 
-```bash
-cp .env.example .env
-```
+Three things are worth knowing before a first deployment:
 
-```env
-# Security (REQUIRED — blank means a published default is used)
-JWT_SECRET=
-JWT_REFRESH_SECRET=
-SESSION_SECRET=
+- **`CLIENT_URL` is required.** The server refuses to start without it.
+- **Set the three signing secrets.** Left blank, the application signs tokens
+  with values published in this repository.
+- **Anything saved in the Settings screens wins over `.env`.** The file sets
+  the defaults an install starts from.
 
-# Network
-CORS_ORIGIN=http://localhost:8080
-PORT=3002
+Every variable, its default and which module reads it:
+[configuration reference](documentation/operations/configuration.md).
 
-# Email — note SMTP_*, not EMAIL_*
-SMTP_HOST=
-SMTP_PORT=587
-SMTP_USER=
-SMTP_PASS=
-EMAIL_FROM=noreply@slimbooks.app
+## Documentation
 
-# Stripe (optional). Setting both keys switches the integration on.
-STRIPE_PUBLISHABLE_KEY=
-STRIPE_SECRET_KEY=
-STRIPE_WEBHOOK_SECRET=
+| | |
+|---|---|
+| [Documentation index](documentation/) | Everything, by audience |
+| [User guide](documentation/user-guide/) | Using Slimbooks to bill clients |
+| [Deployment guide](documentation/operations/deployment.md) | The four supported hosts |
+| [Configuration reference](documentation/operations/configuration.md) | Every environment variable |
+| [Database backends](documentation/operations/database-backends.md) | SQLite, MySQL and MariaDB |
+| [Architecture](documentation/development/architecture.md) | How the pieces fit |
+| [API reference](documentation/development/api-reference.md) | Every HTTP endpoint |
+| [Decision records](documentation/adr/) | Why it is built this way |
+| [Specifications](documentation/specs/) | What each subsystem guarantees |
+| [CHANGELOG](CHANGELOG.md) | What changed, and what breaks |
+| [Contributing](CONTRIBUTING.md) | Development and contribution guidelines |
+| [Security policy](SECURITY.md) | Reporting a vulnerability |
 
-# Deployment — how TLS reaches this process: off | self | proxy
-TLS_MODE=off
-TRUST_PROXY_HOPS=1
+## Upgrading
 
-# Features — each is auto | on | off. `on` refuses to boot if unavailable.
-FEATURE_PDF=
-FEATURE_SCHEDULER=
-FEATURE_DEBUG=off
-```
+Migrations run automatically at boot. **Take a backup first**, every time.
 
-Use `./scripts/generate-secrets.sh` to build `.env` from the template with the
-three secrets filled in automatically.
+2.2.0 converts stored timestamps and changes the API to send them as JSON
+numbers; a dump taken with 2.1.x will not import. Version-by-version notes are
+in [upgrading](documentation/operations/upgrading.md).
 
-Anything configured in the Settings screens takes precedence over the values
-here, so `.env` sets the defaults an install starts from. Email and Stripe can
-be configured entirely from Settings instead if you prefer.
+## License
 
-### Database
+Slimbooks is free software: you can redistribute it and/or modify it under the
+terms of the **GNU Affero General Public License** as published by the Free
+Software Foundation, either version 3 of the License, or (at your option) any
+later version.
 
-- **SQLite by default**: lightweight, serverless, perfect for self-hosting
-- **MySQL or MariaDB optional**: set `DB_DRIVER=mysql`. Required on hosts whose
-  filesystem is wiped on redeploy — Hostinger's Node cloud among them — where a
-  SQLite install loses its data on every deploy
-- **Versioned Schema**: migrations run automatically on server start
-- **Data Portability**: copy `data/slimbooks.db` to back up SQLite, or use
-  `npm run db:export` / `npm run db:import` to move between backends
-- **No External Dependencies**: with the defaults, everything runs locally
+It is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+PARTICULAR PURPOSE. See the [LICENSE](./LICENSE) for details.
 
-See [docs/database-backends.md](docs/database-backends.md) for requirements, the
-differences at runtime, and the steps to move an existing install to MySQL.
-
-### Upgrading to 2.2.0
-
-Instants are stored as epoch milliseconds rather than text, and existing rows
-are converted on the first boot after the upgrade. **Take a backup first** — copy
-`data/slimbooks.db`, or `mysqldump` — as with any schema change. The conversion
-is idempotent and resumes correctly if interrupted, and nothing else is
-required.
-
-Two things to know before upgrading:
-
-- **The API now sends these fields as JSON numbers** rather than strings. The
-  bundled UI is updated; anything else reading the API needs the same change.
-- **A database dump taken with 2.1.x will not import.** Export again with 2.2.0.
-
-## 🔄 Recurring Invoice System
-
-Slimbooks includes a powerful recurring invoice system for automated billing:
-
-### Features
-- **📅 Flexible Scheduling**: Weekly, monthly, quarterly, yearly, or custom frequencies
-- **🤖 Automated Processing**: Cron job integration for hands-off billing
-- **👥 Client-Specific Templates**: Create recurring templates for each client
-- **💰 Dynamic Pricing**: Support for line items, taxes, and shipping
-- **📊 Processing Statistics**: Monitor template performance and processing status
-- **⚡ Manual Triggers**: Process individual templates or all due templates on-demand
-
-### API Endpoints
-
-```
-/api/recurring-templates/*    - Template CRUD operations
-/api/cron/recurring-invoices  - Only when FEATURE_SCHEDULER=off, admin auth required
-```
-
-## 💳 Taking Payments with Stripe
-
-Stripe is optional; every other feature works without it.
-
-1. Put your keys in `.env` (`STRIPE_SECRET_KEY`, `STRIPE_PUBLISHABLE_KEY`) or
-   enter them under **Settings → Stripe**. Keys in `.env` switch the
-   integration on automatically.
-2. Add a webhook endpoint in the Stripe dashboard pointing at
-   `https://your-host/api/webhooks/stripe`, subscribed to
-   `checkout.session.completed` and `payment_intent.succeeded`.
-3. Paste the signing secret it gives you into `STRIPE_WEBHOOK_SECRET` or the
-   Stripe settings tab.
-4. Use **Test Connection** to check the keys against Stripe before relying on
-   them.
-
-Without the webhook secret, clients can still pay, but invoices will not be
-marked paid automatically — there is no verified way to know the payment
-happened.
-
-```
-/api/stripe/status                       - Integration state (no credentials)
-/api/stripe/test-connection              - Verify keys against Stripe
-/api/stripe/invoices/:id/payment-link    - Create or return an invoice's link
-/api/webhooks/stripe                     - Payment notifications from Stripe
-```
-
-The webhook endpoint is public because Stripe cannot authenticate; every
-delivery is verified against the signing secret before anything is written.
-
-### Template Management
-- Create recurring templates with client association
-- Set payment terms and due date calculations
-- Activate/deactivate templates as needed
-- Track next invoice dates automatically
-- Monitor processing history and errors
-
-## 🔒 Security Features
-
-- **🛡️ Rate Limiting**: Protection against brute force attacks (100 req/15min)
-- **🔐 JWT Authentication**: Secure token-based auth with configurable expiration
-- **🚫 Input Validation**: Server-side validation prevents injection attacks
-- **🔒 Security Headers**: Comprehensive protection with Helmet.js
-- **👤 Account Lockout**: Automatic lockout after failed login attempts
-- **🔄 Token Rotation**: Expired access tokens refresh silently; refresh tokens rotate in place
-- **📝 Request Logging**: Every request logged with timing, on your own box
-
-## 📚 Documentation
-
-- **[Deployment Guide](./documentation/DEPLOYMENT.md)**: Complete deployment instructions
-- **[Theme System](./documentation/THEME_SYSTEM.md)**: Customization and theming guide
-- **[Generating Secrets](./documentation/GENERATE_SECRETS.md)**: Producing secure secrets
-- **[Contributing](./CONTRIBUTING.md)**: Development and contribution guidelines
-
-## 🔧 Management Commands
-
-```bash
-# Update deployment
-./scripts/deploy.sh
-
-# Generate new secrets
-./scripts/generate-secrets.sh
-
-# Recurring invoices run in-process — no cron setup needed.
-# Set FEATURE_SCHEDULER=off only if an external scheduler owns them.
-```
-
-## 📄 License
-
-Slimbooks is free software: you can redistribute it and/or modify it under the terms of the
-**GNU Affero General Public License** as published by the Free Software Foundation, either
-version 3 of the License, or (at your option) any later version.
-
-It is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even
-the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-[LICENSE](./LICENSE) for details.
-
-> **What AGPL means for a self-hosted app:** if you modify Slimbooks and let others use it
-> over a network, you must offer those users the source of your modified version. Running it
-> privately for your own business places no obligation on you.
+> **What AGPL means for a self-hosted app:** if you modify Slimbooks and let
+> others use it over a network, you must offer those users the source of your
+> modified version. Running it privately for your own business places no
+> obligation on you.
 
 SPDX identifier: `AGPL-3.0-or-later`
 
 ---
 
-## 👤 About the Author
+## About the author
 
 Slimbooks is built by **[Russell Benzing](https://github.com/rbenzing)**.
 
-It's developed with heavy use of AI coding assistants — architecture, implementation, tests and
-this documentation. That's a deliberate choice, and worth stating plainly: it means the project
-moves quickly, and it means every change still gets reviewed, type-checked, linted and covered by
-the test suite before it lands. The full history is public; judge the code, not the tooling.
+It's developed with heavy use of AI coding assistants — architecture,
+implementation, tests and this documentation. That's a deliberate choice, and
+worth stating plainly: it means the project moves quickly, and it means every
+change still gets reviewed, type-checked, linted and covered by the test suite
+before it lands. The full history is public; judge the code, not the tooling.
 
-It's released free and open source under the AGPL so that freelancers and small businesses can
-run their own billing on their own hardware, and own their data outright rather than rent access
-to it. There's no hosted tier, no telemetry, and nothing held back for a paid version.
+It's released free and open source under the AGPL so that freelancers and small
+businesses can run their own billing on their own hardware, and own their data
+outright rather than rent access to it. There's no hosted tier, no telemetry,
+and nothing held back for a paid version.
 
 Bug reports, feature requests and pull requests are all welcome — see
 [CONTRIBUTING.md](./CONTRIBUTING.md).
 
----
+## Support
 
-## 💬 Support & Community
-
-Found a bug? Have a feature request? Please open an [issue](https://github.com/rbenzing/SlimBooks/issues).
+Found a bug? Have a feature request? Please open an
+[issue](https://github.com/rbenzing/SlimBooks/issues). For anything
+security-related, use [the security policy](SECURITY.md) rather than a public
+issue.
 
 If Slimbooks is useful to you, you can support its development:
 

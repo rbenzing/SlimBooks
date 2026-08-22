@@ -202,3 +202,13 @@ conversion was verified by a live probe of the conversion expression and still
 shipped a statement MySQL 8.4 rejects outright — the probe had been given a
 value MySQL already liked. Only running the migration against a table holding
 the real legacy values found it.
+
+## Related
+
+- [ADR-0007](../adr/0007-two-backends-one-schema.md) — why there are two
+  backends and one schema
+- [ADR-0008](../adr/0008-dialect-differences-in-one-place.md) — where dialect
+  differences live
+- [Spec 003](../specs/003-database-adapter.md) — the adapter's full contract
+- [Backup and restore](backup-and-restore.md)
+- [Configuration reference](configuration.md#database)

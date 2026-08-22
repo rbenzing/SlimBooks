@@ -21,7 +21,7 @@ This project and everyone participating in it is governed by our [Code of Conduc
 
 ### Prerequisites
 
-- Node.js 18+ and npm
+- Node.js 24 — `package.json` declares `engines: { node: ">=24 <25" }` and `.nvmrc` pins 24 — and npm
 - Git
 - A code editor (VS Code recommended)
 
@@ -123,9 +123,10 @@ chore: update dependencies
 
 ### Styling
 
-- Use Tailwind CSS classes
-- Follow our theme system (see `THEME_SYSTEM.md`)
-- Use semantic color variables
+- Colour and surface come from `themeClasses` in `src/utils/themeUtils.util.ts`, never ad-hoc light/dark pairs — see the [theme system](./documentation/development/theme-system.md)
+- Check `src/components/ui/` before building a component; it is already themed
+- All date display goes through `src/utils/formatting/date.util.ts`
+- Honour the settings objects — currency, number and date formatting, language
 - Ensure responsive design
 
 ### File Organization
@@ -133,14 +134,18 @@ chore: update dependencies
 ```
 src/
 ├── components/
-│   ├── ui/              # Reusable UI components
-│   ├── feature/         # Feature-specific components
-│   └── layout/          # Layout components
+│   ├── ui/              # shadcn/ui design system
+│   └── <feature>/       # clients, invoices, expenses, payments, reports, settings
+├── pages/               # Unauthenticated pages (login, register, reset)
+├── contexts/            # React contexts
 ├── hooks/               # Custom React hooks
-├── lib/                 # Utility libraries
+├── services/            # API clients
 ├── types/               # TypeScript type definitions
 └── utils/               # Helper functions
 ```
+
+The server side is mapped in
+[documentation/development/architecture.md](./documentation/development/architecture.md).
 
 ### Naming Conventions
 
@@ -149,6 +154,9 @@ src/
 - **Variables**: camelCase (`invoiceData`)
 - **Constants**: UPPER_SNAKE_CASE (`MAX_INVOICE_ITEMS`)
 - **CSS Classes**: kebab-case (following Tailwind)
+
+New files carry a suffix naming their kind: `.svc.ts` service, `.types.ts`
+types, `.util.ts` utility, `.hook.ts` hook, `.cpt.ts` component.
 
 ## 🔍 Pull Request Process
 
@@ -294,10 +302,27 @@ describe('InvoiceCalculator', () => {
 - Document complex algorithms and business logic
 - Keep comments up-to-date with code changes
 
-### README Updates
+### Which document to update
 
-- Update README.md for new features
-- Add examples for new functionality
+Documentation lives in [`documentation/`](./documentation/), organised by
+audience. Match the change to the document:
+
+| Change | Update |
+|---|---|
+| A user-visible feature | [`documentation/user-guide/`](./documentation/user-guide/) |
+| A new or changed environment variable | [`configuration.md`](./documentation/operations/configuration.md) |
+| Anything about deploying or running | [`documentation/operations/`](./documentation/operations/) |
+| A new or changed endpoint | [`api-reference.md`](./documentation/development/api-reference.md) |
+| A structural decision, with a reason | a new [ADR](./documentation/adr/) |
+| A subsystem's contract | [`documentation/specs/`](./documentation/specs/) |
+| Anything user-visible or breaking | [`CHANGELOG.md`](./CHANGELOG.md) |
+
+README.md is the front door only — detail belongs in the tree.
+
+**Documentation must match the code.** If a document names a variable, an
+endpoint or a default, read that name from the source rather than recalling it.
+A document that contradicts the runtime is the same defect as a script that
+does.
 - Update installation instructions if needed
 
 ## 🎉 Recognition

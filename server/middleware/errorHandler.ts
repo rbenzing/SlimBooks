@@ -287,8 +287,8 @@ const logError = (err: Error, req: Request): void => {
 export const asyncHandler = <T extends Request, U extends Response>(
   fn: (req: T, res: U, next: NextFunction) => Promise<void>
 ) => {
-  return (req: T, res: U, next: NextFunction): void => {
-    Promise.resolve(fn(req, res, next)).catch(next);
+  return (req: T, res: U, next: NextFunction): Promise<void> => {
+    return Promise.resolve(fn(req, res, next)).catch(next);
   };
 };
 

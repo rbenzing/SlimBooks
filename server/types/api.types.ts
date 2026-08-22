@@ -67,7 +67,7 @@ export interface CreateUserRequest {
     name: string;
     email: string;
     username?: string;
-    password_hash?: string;
+    password?: string;
     role?: 'user' | 'admin';
     email_verified?: boolean;
     google_id?: string;
@@ -83,9 +83,20 @@ export interface UpdateUserRequest {
 
 export interface UpdateUserResponse {
   success: boolean;
-  data: {
-    changes: number;
-  };
+  message: string;
+}
+
+export interface ResetUserPasswordRequest {
+  newPassword: string;
+}
+
+export interface ResetUserPasswordResponse {
+  success: boolean;
+  message: string;
+}
+
+export interface UnlockUserResponse {
+  success: boolean;
   message: string;
 }
 

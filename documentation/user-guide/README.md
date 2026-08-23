@@ -32,6 +32,7 @@ A sidebar down the left, one screen per area:
 | **Expenses** | What you spend — [guide](expenses.md) |
 | **Payments** | What you have been paid — [guide](payments.md) |
 | **Reports** | Profit & loss and three others — [guide](reports.md) |
+| **Users** | Accounts and roles, administrators only — [guide](users.md) |
 | **Settings** | Company details, tax, email, appearance — [guide](settings.md) |
 
 Recurring invoices are created from the Invoices screen and have their own

@@ -2,8 +2,15 @@
 // Handles user CRUD operations and user profile management
 
 import { databaseService } from '../core/DatabaseService.js';
-import { type User, type UserPublic, type ServiceOptions } from '../types/index.js';
+import {
+  type User,
+  type UserPublic,
+  type ServiceOptions,
+  type MutationOutcome,
+  type SQLParameter
+} from '../types/index.js';
 import { utcNow } from '../utils/utcTime.util.js';
+import { deleteUserSql, guardedUpdateSql } from '../utils/adminInvariant.util.js';
 
 /**
  * User Management Service
@@ -147,8 +154,7 @@ export class UserService {
     role: 'user' | 'admin';
     email_verified: boolean;
     google_id: string;
-    password_hash: string;
-  }>): Promise<number> {
+  }>): Promise<MutationOutcome> {
     if (!id || typeof id !== 'number') {
       throw new Error('Valid user ID is required');
     }
@@ -163,10 +169,13 @@ export class UserService {
       throw new Error('User not found');
     }
 
-    // Filter allowed fields and build update data
-    const allowedFields = ['name', 'email', 'username', 'role', 'email_verified', 'google_id', 'password_hash'];
+    // Filter allowed fields and build update data. `password_hash` is
+    // deliberately absent: passwords change through resetPassword, which
+    // validates strength and applies the configured cost, and a
+    // caller-supplied hash here would bypass both.
+    const allowedFields = ['name', 'email', 'username', 'role', 'email_verified', 'google_id'];
     const updateData: Record<string, unknown> = {};
-    
+
     allowedFields.forEach(field => {
       if (userData[field as keyof typeof userData] !== undefined) {
         updateData[field] = userData[field as keyof typeof userData];
@@ -177,15 +186,13 @@ export class UserService {
       throw new Error('No valid fields to update');
     }
 
-    // Validate email if being updated
     if (updateData.email) {
       if (!this.isValidEmail(updateData.email as string)) {
         throw new Error('Invalid email format');
       }
 
-      // Check email uniqueness if email is being changed
       if (updateData.email !== existingUser.email) {
-        const emailExists = await databaseService.getOne<{id: number}>(
+        const emailExists = await databaseService.getOne<{ id: number }>(
           'SELECT id FROM users WHERE email = ? AND id != ?',
           [updateData.email, id]
         );
@@ -195,40 +202,76 @@ export class UserService {
       }
     }
 
-    // Convert boolean to SQLite format
     if (updateData.email_verified !== undefined) {
       updateData.email_verified = updateData.email_verified ? 1 : 0;
     }
 
-    const success = await databaseService.updateRecord('users', id, updateData);
-    return success ? 1 : 0;
+    updateData.updated_at = utcNow();
+
+    // Only a role change can break the invariant. Changing a name cannot, and
+    // promoting to administrator cannot — guarding those would refuse edits to
+    // the sole administrator's own profile for no reason.
+    //
+    // The decision reads the *requested* role, never its type. Deciding from
+    // `typeof role === 'string'` is what shipped broken: `{ role: 123 }` is
+    // still a role change away from 'admin', it was classified as harmless,
+    // and the resulting UPDATE carried no predicate — it demoted the only
+    // administrator and left the install with none.
+    //
+    // Attaching the guard to a row that is not an administrator costs nothing:
+    // `NOT('admin' = role AND ...)` is simply true. That also removes the
+    // window between reading `existingUser` and writing, in which the row
+    // could have been promoted.
+    const guarded = updateData.role !== undefined && updateData.role !== 'admin';
+
+    const columns = Object.keys(updateData);
+    const params = [...columns.map(column => updateData[column]), id] as SQLParameter[];
+
+    const result = await databaseService.executeQuery(
+      guardedUpdateSql(columns, guarded),
+      params
+    );
+
+    // Zero affected rows only means "refused" when a guard was attached.
+    //
+    // The engines disagree about the unguarded case: `changes` is mysql2's
+    // affectedRows, which counts rows whose values actually CHANGED, while
+    // SQLite counts every row the statement wrote. So an update that sets the
+    // values a row already holds is 0 on MySQL and 1 on SQLite. Reading 0 as a
+    // refusal would turn a harmless no-op into a 409 on one backend only.
+    //
+    // A guarded update always changes the role — it is only guarded when the
+    // role is genuinely moving away from 'admin' — so 0 there is unambiguous.
+    //
+    // `existingUser.role` belongs here and only here. The guard is attached to
+    // every role change, but it can only *fire* on an administrator; on any
+    // other row 0 affected rows is the harmless MySQL no-op above, not a
+    // refusal.
+    return guarded && existingUser.role === 'admin' && result.changes === 0
+      ? 'refused'
+      : 'applied';
   }
 
   /**
-   * Delete user
+   * Delete a user, unless that would leave the install without an administrator.
+   *
+   * The guard is part of the statement, so there is no count to race against;
+   * zero affected rows means the database declined. See
+   * `server/utils/adminInvariant.util.ts`.
    */
-  async deleteUser(id: number): Promise<number> {
+  async deleteUser(id: number): Promise<MutationOutcome> {
     if (!id || typeof id !== 'number') {
       throw new Error('Valid user ID is required');
     }
 
-    // Check if user exists
     const existingUser = await this.getUserById(id);
     if (!existingUser) {
-      throw new Error('User not found');
+      return 'missing';
     }
 
-    // Don't allow deletion of the last admin
-    const adminCount = await databaseService.getOne<{count: number}>(
-      "SELECT COUNT(*) as count FROM users WHERE role = 'admin'"
-    );
+    const result = await databaseService.executeQuery(deleteUserSql(), [id]);
 
-    if (existingUser.role === 'admin' && (adminCount?.count || 0) <= 1) {
-      throw new Error('Cannot delete the last administrator');
-    }
-
-    const success = await databaseService.deleteById('users', id);
-    return success ? 1 : 0;
+    return result.changes > 0 ? 'applied' : 'refused';
   }
 
   /**

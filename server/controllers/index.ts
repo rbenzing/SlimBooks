@@ -14,7 +14,9 @@ export {
   updateUserLastLogin,
   updateLoginAttemptsByUserId,
   updateLastLoginByUserId,
-  verifyUserEmail
+  verifyUserEmail,
+  resetUserPassword,
+  unlockUserAccount
 } from './userController.js';
 
 // Client controller

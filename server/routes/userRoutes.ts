@@ -14,7 +14,9 @@ import {
   updateUserLastLogin,
   updateLoginAttemptsByUserId,
   updateLastLoginByUserId,
-  verifyUserEmail
+  verifyUserEmail,
+  resetUserPassword,
+  unlockUserAccount
 } from '../controllers/index.js';
 import {
   requireAuth,
@@ -130,12 +132,32 @@ router.put('/:id',
 );
 
 // Delete user (admin only)
-router.delete('/:id', 
-  requireAuth, 
-  requireAdmin, 
+router.delete('/:id',
+  requireAuth,
+  requireAdmin,
   validationSets.updateUser.slice(0, 1), // Just ID validation
   validateRequest,
   deleteUser
+);
+
+// Set another user's password (admin only)
+// `parseInt('0')` is not NaN, so without the id rule /api/users/0/password
+// reached the service and came back 500 instead of 400.
+router.post('/:id/password',
+  requireAuth,
+  requireAdmin,
+  validationSets.updateUser.slice(0, 1), // Just ID validation
+  validateRequest,
+  resetUserPassword
+);
+
+// Clear an account lockout (admin only)
+router.post('/:id/unlock',
+  requireAuth,
+  requireAdmin,
+  validationSets.updateUser.slice(0, 1), // Just ID validation
+  validateRequest,
+  unlockUserAccount
 );
 
 // Update user login attempts (internal use)

@@ -154,6 +154,19 @@ export interface QueryResult {
   lastInsertRowid: number;
 }
 
+// Query parameter type, re-exported here so services building parameterised
+// SQL do not need a separate import from database.types.js.
+export type { SQLParameter } from './database.types.js';
+
+/**
+ * What a guarded mutation did.
+ *
+ * `refused` is not an error — it is the database declining to break an
+ * invariant, and the caller turns it into 409. Distinguishing it from
+ * `missing` is what stops a refusal being reported as a 404.
+ */
+export type MutationOutcome = 'applied' | 'refused' | 'missing';
+
 // Value stored against a settings key (JSON-encoded in the database)
 export type SettingValue = string | number | boolean | object | null;
 

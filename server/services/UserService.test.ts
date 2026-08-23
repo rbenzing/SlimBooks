@@ -179,15 +179,13 @@ describe('updateUser', () => {
   it('writes only whitelisted fields', async () => {
     await userService.updateUser(1, { name: 'Ada L.', id: 999, created_at: 'x' } as never);
 
-    const [, , updateData] = db.updateRecord.mock.calls[0];
-    expect(updateData).toMatchObject({ name: 'Ada L.' });
-    expect(updateData).not.toHaveProperty('id');
-    expect(updateData).not.toHaveProperty('created_at');
+    const sql = flattenSql(db.executeQuery.mock.calls[0][0] as string);
+    expect(sql).toBe('UPDATE users SET name = ?, updated_at = ? WHERE id = ?');
   });
 
   it('rejects an update with nothing whitelisted left to write', async () => {
     await expect(userService.updateUser(1, { id: 999 } as never)).rejects.toThrow(/no valid fields/i);
-    expect(db.updateRecord).not.toHaveBeenCalled();
+    expect(db.executeQuery).not.toHaveBeenCalled();
   });
 
   it('rejects a malformed email', async () => {
@@ -206,14 +204,16 @@ describe('updateUser', () => {
   it('does not re-check the email a user already owns', async () => {
     await userService.updateUser(1, { email: 'ada@example.com' });
 
-    expect(db.updateRecord).toHaveBeenCalled();
+    expect(db.executeQuery).toHaveBeenCalled();
   });
 
   it('converts email_verified to the 0/1 SQLite stores', async () => {
     await userService.updateUser(1, { email_verified: true });
 
-    const [, , updateData] = db.updateRecord.mock.calls[0];
-    expect(updateData.email_verified).toBe(1);
+    const sql = flattenSql(db.executeQuery.mock.calls[0][0] as string);
+    const params = db.executeQuery.mock.calls[0][1] as unknown[];
+    expect(sql).toContain('email_verified = ?');
+    expect(params[0]).toBe(1);
   });
 
   it('rejects an update to a user that does not exist', async () => {
@@ -228,41 +228,124 @@ describe('updateUser', () => {
 });
 
 describe('deleteUser', () => {
-  it('will not delete the last administrator', async () => {
-    // Deleting them would leave nobody able to administer the install.
-    db.getOne.mockImplementation((sql: string) =>
-      /COUNT/.test(sql) ? { count: 1 } : { id: 1, role: 'admin' }
-    );
+  it('reports a refusal when the guard declines, rather than throwing', async () => {
+    // The database refused to remove the last administrator. Zero affected
+    // rows is the whole signal — there is no count to consult.
+    db.getOne.mockResolvedValue({ id: 1, role: 'admin' });
+    db.executeQuery.mockResolvedValue({ changes: 0, lastInsertRowid: 0 });
 
-    await expect(userService.deleteUser(1)).rejects.toThrow(/last administrator/i);
-    expect(db.deleteById).not.toHaveBeenCalled();
+    await expect(userService.deleteUser(1)).resolves.toBe('refused');
   });
 
-  it('deletes an administrator while another remains', async () => {
-    db.getOne.mockImplementation((sql: string) =>
-      /COUNT/.test(sql) ? { count: 2 } : { id: 1, role: 'admin' }
-    );
+  it('reports applied when a row was removed', async () => {
+    db.getOne.mockResolvedValue({ id: 1, role: 'admin' });
+    db.executeQuery.mockResolvedValue({ changes: 1, lastInsertRowid: 0 });
 
-    await expect(userService.deleteUser(1)).resolves.toBe(1);
+    await expect(userService.deleteUser(1)).resolves.toBe('applied');
   });
 
-  it('deletes a regular user regardless of the admin count', async () => {
-    db.getOne.mockImplementation((sql: string) =>
-      /COUNT/.test(sql) ? { count: 1 } : { id: 2, role: 'user' }
-    );
+  it('reports missing for a user that is not there', async () => {
+    db.getOne.mockResolvedValue(null);
 
-    await expect(userService.deleteUser(2)).resolves.toBe(1);
-    expect(db.deleteById).toHaveBeenCalledWith('users', 2);
+    await expect(userService.deleteUser(404)).resolves.toBe('missing');
+    expect(db.executeQuery).not.toHaveBeenCalled();
   });
 
-  it('rejects a user that does not exist', async () => {
-    db.getOne.mockReturnValue(undefined);
+  it('sends the guarded statement, not a bare delete', async () => {
+    db.getOne.mockResolvedValue({ id: 1, role: 'admin' });
+    db.executeQuery.mockResolvedValue({ changes: 1, lastInsertRowid: 0 });
 
-    await expect(userService.deleteUser(1)).rejects.toThrow(/not found/i);
+    await userService.deleteUser(1);
+
+    expect(flattenSql(db.executeQuery.mock.calls[0][0])).toMatch(/deleted_at IS NULL/);
+  });
+});
+
+describe('updateUser', () => {
+  it('guards an update that demotes an administrator', async () => {
+    db.getOne.mockResolvedValue({ id: 1, role: 'admin', email: 'ada@example.com' });
+    db.executeQuery.mockResolvedValue({ changes: 0, lastInsertRowid: 0 });
+
+    await expect(userService.updateUser(1, { role: 'user' })).resolves.toBe('refused');
+    expect(flattenSql(db.executeQuery.mock.calls[0][0])).toMatch(/live_admins/);
   });
 
-  it('rejects an invalid id', async () => {
-    await expect(userService.deleteUser(0)).rejects.toThrow(/id/i);
+  it('does not guard an update that leaves the role alone', async () => {
+    db.getOne.mockResolvedValue({ id: 1, role: 'admin', email: 'ada@example.com' });
+    db.executeQuery.mockResolvedValue({ changes: 1, lastInsertRowid: 0 });
+
+    await expect(userService.updateUser(1, { name: 'Ada L' })).resolves.toBe('applied');
+    expect(flattenSql(db.executeQuery.mock.calls[0][0])).not.toMatch(/live_admins/);
+  });
+
+  it('guards a role change whatever type the role arrives as', async () => {
+    // The regression. `demotesAdmin` decided from `typeof role === 'string'`,
+    // so `{ role: 123 }` was classified as "not a demotion" and the UPDATE
+    // went out with no predicate at all — a live PUT against the sole
+    // administrator returned 200 and left the install with zero admins.
+    // Deciding from the requested value instead makes every one of these
+    // carry the guard.
+    for (const role of [123, null, true, '', 'viewer', 'user']) {
+      db.reset();
+      db.getOne.mockResolvedValue({ id: 1, role: 'admin', email: 'ada@example.com' });
+      db.executeQuery.mockResolvedValue({ changes: 0, lastInsertRowid: 0 });
+
+      await expect(userService.updateUser(1, { role } as never)).resolves.toBe('refused');
+      expect(flattenSql(db.executeQuery.mock.calls[0][0])).toMatch(/live_admins/);
+    }
+  });
+
+  it('guards a demotion of someone who is not the last administrator', async () => {
+    // The predicate is a no-op on a row that is not an administrator, so it is
+    // attached to every role change rather than to the ones a stale read
+    // thinks are dangerous. Zero affected rows on such a row is the MySQL
+    // no-op, not a refusal — which is the only thing `existingUser.role` is
+    // still consulted for.
+    db.getOne.mockResolvedValue({ id: 2, role: 'user', email: 'grace@example.com' });
+    db.executeQuery.mockResolvedValue({ changes: 0, lastInsertRowid: 0 });
+
+    await expect(userService.updateUser(2, { role: 'user' })).resolves.toBe('applied');
+    expect(flattenSql(db.executeQuery.mock.calls[0][0])).toMatch(/live_admins/);
+  });
+
+  it('does not guard a promotion to administrator', async () => {
+    db.getOne.mockResolvedValue({ id: 2, role: 'user', email: 'grace@example.com' });
+    db.executeQuery.mockResolvedValue({ changes: 1, lastInsertRowid: 0 });
+
+    await expect(userService.updateUser(2, { role: 'admin' })).resolves.toBe('applied');
+    expect(flattenSql(db.executeQuery.mock.calls[0][0])).not.toMatch(/live_admins/);
+  });
+
+  it('refuses to set a password hash directly', async () => {
+    // Passwords change through resetPassword, which validates strength and
+    // applies the configured cost. A caller-supplied hash bypasses both.
+    db.getOne.mockResolvedValue({ id: 1, role: 'admin', email: 'ada@example.com' });
+
+    await expect(
+      userService.updateUser(1, { password_hash: 'not-a-real-hash' } as never)
+    ).rejects.toThrow(/no valid fields/i);
+  });
+
+  it('does not read a no-op unguarded update as a refusal', async () => {
+    // mysql2 reports affectedRows as rows CHANGED, so setting the values a row
+    // already holds gives 0 — while SQLite reports 1 for the same statement.
+    // Only a guarded statement may read 0 as a refusal.
+    db.getOne.mockResolvedValue({ id: 1, role: 'admin', email: 'ada@example.com' });
+    db.executeQuery.mockResolvedValue({ changes: 0, lastInsertRowid: 0 });
+
+    await expect(userService.updateUser(1, { name: 'Ada' })).resolves.toBe('applied');
+  });
+
+  it('writes updated_at as epoch milliseconds', async () => {
+    db.getOne.mockResolvedValue({ id: 1, role: 'admin', email: 'ada@example.com' });
+    db.executeQuery.mockResolvedValue({ changes: 1, lastInsertRowid: 0 });
+
+    await userService.updateUser(1, { name: 'Ada L' });
+
+    const params = db.executeQuery.mock.calls[0][1] as unknown[];
+    const updatedAt = params[params.length - 2];
+
+    expect(Number.isInteger(updatedAt)).toBe(true);
   });
 });
 

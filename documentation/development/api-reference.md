@@ -60,14 +60,14 @@ Public. Used by container and load-balancer probes.
 | Method | Path | Auth | Returns |
 |---|---|---|---|
 | GET | `/api/health` | — | Status, database connectivity, version, environment, resolved `features`, and `providers` (`pdf`, `scheduler`, `tls`) |
+| GET | `/api/health/detailed` | — | The above plus uptime, heap usage, Node version, platform |
+| GET | `/api/health/ready` | — | Readiness |
+| GET | `/api/health/live` | — | Liveness |
 
 > **`providers.pdf` is always `null`, including when PDF rendering works.** It
 > reports `runtime.pdf`, and nothing calls `createPdfProvider()` — `PdfService`
 > loads Puppeteer through its own dynamic import instead. Read `features.pdf`
 > to know whether PDF is available.
-| GET | `/api/health/detailed` | — | The above plus uptime, heap usage, Node version, platform |
-| GET | `/api/health/ready` | — | Readiness |
-| GET | `/api/health/live` | — | Liveness |
 
 ## Config — `/api/config`
 

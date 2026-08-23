@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  LayoutDashboard, 
-  Users, 
-  FileText, 
+import {
+  LayoutDashboard,
+  Users,
+  FileText,
   Settings as SettingsIcon,
   CreditCard,
   LogOut,
@@ -12,7 +12,9 @@ import {
   Menu,
   X,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  UserCog,
+  type LucideIcon
 } from 'lucide-react';
 import { cn } from '@/utils/themeUtils.util';
 import { useAuth } from '@/contexts/AuthContext';
@@ -20,7 +22,16 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useFormNavigation } from '@/hooks/useFormNavigation';
 import { useCompanySettings } from '@/hooks/useSettings.hook';
 
-const navigation = [
+interface NavigationItem {
+  id: string;
+  name: string;
+  icon: LucideIcon;
+  path: string;
+  /** Present only on entries whose route the API itself gates to admins. */
+  adminOnly?: boolean;
+}
+
+const navigation: NavigationItem[] = [
   { id: 'dashboard', name: 'Dashboard', icon: LayoutDashboard, path: '/dashboard' },
   { id: 'clients', name: 'Clients', icon: Users, path: '/clients' },
   {
@@ -32,10 +43,11 @@ const navigation = [
   { id: 'expenses', name: 'Expenses', icon: Receipt, path: '/expenses' },
   { id: 'payments', name: 'Payments', icon: Banknote, path: '/payments' },
   { id: 'reports', name: 'Reports', icon: BarChart, path: '/reports' },
-  { 
-    id: 'settings', 
-    name: 'Settings', 
-    icon: SettingsIcon, 
+  { id: 'users', name: 'Users', icon: UserCog, path: '/users', adminOnly: true },
+  {
+    id: 'settings',
+    name: 'Settings',
+    icon: SettingsIcon,
     path: '/settings'
   },
 ];
@@ -45,11 +57,16 @@ interface ResponsiveSidebarProps {
 }
 
 export const ResponsiveSidebar: React.FC<ResponsiveSidebarProps> = ({ onNavigationAttempt }) => {
-  const { logout } = useAuth();
+  const { user, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const { settings: companySettings } = useCompanySettings();
-  
+
+  // Hiding the entry is presentation only. The API returns 403 to a
+  // non-admin who navigates to /users directly, and that is the real
+  // access control.
+  const visibleNavigation = navigation.filter(item => !item.adminOnly || user?.role === 'admin');
+
   // Responsive state
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -167,7 +184,7 @@ export const ResponsiveSidebar: React.FC<ResponsiveSidebarProps> = ({ onNavigati
 
       {/* Navigation */}
       <nav className={cn("flex-1 space-y-1 px-4 py-6 overflow-y-auto", isCollapsed && "px-2")}>
-        {navigation.map((item) => {
+        {visibleNavigation.map((item) => {
           const Icon = item.icon;
           const itemActive = isActive(item.path);
           

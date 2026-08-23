@@ -14,6 +14,7 @@ import './App.css';
 // Lazy load route components
 const DashboardOverview = lazy(() => import('./components/DashboardOverview').then(m => ({ default: m.DashboardOverview })));
 const ClientManagement = lazy(() => import('./components/ClientManagement').then(m => ({ default: m.ClientManagement })));
+const UserManagement = lazy(() => import('./components/UserManagement').then(m => ({ default: m.UserManagement })));
 const EditClientPage = lazy(() => import('./components/clients/EditClientPage').then(m => ({ default: m.EditClientPage })));
 const InvoiceManagement = lazy(() => import('./components/InvoiceManagement').then(m => ({ default: m.InvoiceManagement })));
 const CreateInvoicePage = lazy(() => import('./components/invoices/CreateInvoicePage').then(m => ({ default: m.CreateInvoicePage })));
@@ -118,6 +119,14 @@ const App = () => {
               <ProtectedRoute>
                 <ResponsiveLayout>
                   <ClientManagement />
+                </ResponsiveLayout>
+              </ProtectedRoute>
+            } />
+
+            <Route path="/users" element={
+              <ProtectedRoute>
+                <ResponsiveLayout>
+                  <UserManagement />
                 </ResponsiveLayout>
               </ProtectedRoute>
             } />

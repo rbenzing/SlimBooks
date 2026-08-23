@@ -50,6 +50,7 @@ Consequences  What follows — good, bad, and the rules everyone now has to foll
 |---|---|---|
 | [0014](0014-dual-type-declarations.md) | Domain types are declared twice and kept in sync by hand | Accepted |
 | [0015](0015-theme-as-design-system.md) | The theme is a design system, not ad-hoc utility classes | Accepted |
+| [0017](0017-last-admin-invariant.md) | The last-administrator invariant lives in the statement, not around it | Accepted |
 
 ## Adding one
 

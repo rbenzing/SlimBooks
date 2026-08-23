@@ -31,6 +31,7 @@ Obtain it from `POST /api/auth/login`. Access tokens expire after
 | 401 | No token, an invalid token, or the user no longer exists |
 | 403 | Authenticated but not permitted — usually an admin-only route |
 | 404 | Not found, **or a route behind a disabled feature toggle** |
+| 409 | The change would leave the install with no administrator |
 | 423 | Account temporarily locked after repeated failed logins |
 | 429 | Rate limited |
 | 500 | Server error |
@@ -94,24 +95,35 @@ anywhere, so it cannot know its host's capabilities until it asks.
 
 Administrative. Most routes require admin.
 
-| Method | Path | Auth |
-|---|---|---|
-| GET | `/api/users/admin-exists` | — |
-| GET | `/api/users` | Admin |
-| GET | `/api/users/:id` | Admin |
-| GET | `/api/users/email/:email` | Admin |
-| GET | `/api/users/google/:googleId` | Admin |
-| POST | `/api/users` | Admin |
-| PUT | `/api/users/:id` | Admin |
-| DELETE | `/api/users/:id` | Admin |
-| POST | `/api/users/update-login-attempts` | Admin |
-| POST | `/api/users/update-last-login` | Admin |
-| PUT | `/api/users/:id/login-attempts` | Admin |
-| PUT | `/api/users/:id/last-login` | Admin |
-| PUT | `/api/users/:id/verify-email` | Admin |
+| Method | Path | Auth | Purpose |
+|---|---|---|---|
+| GET | `/api/users/admin-exists` | — | Whether an administrator has been configured yet |
+| GET | `/api/users` | Admin | List |
+| GET | `/api/users/:id` | Admin | One user |
+| GET | `/api/users/email/:email` | Admin | Look up by email |
+| GET | `/api/users/google/:googleId` | Admin | Look up by Google ID |
+| POST | `/api/users` | Admin | Create |
+| PUT | `/api/users/:id` | Admin | Update name, email, username or role |
+| DELETE | `/api/users/:id` | Admin | Delete |
+| POST | `/api/users/:id/password` | Admin | Set another user's password |
+| POST | `/api/users/:id/unlock` | Admin | Clear an account lockout |
+| POST | `/api/users/update-login-attempts` | — | Record a failed/successful attempt (internal) |
+| POST | `/api/users/update-last-login` | — | Record last login (internal) |
+| PUT | `/api/users/:id/login-attempts` | — | Set login attempts by id (used during sign-in) |
+| PUT | `/api/users/:id/last-login` | — | Set last login by id (used during sign-in) |
+| PUT | `/api/users/:id/verify-email` | Admin | Mark email verified |
 
 `GET /api/users/admin-exists` is public so the SPA can decide whether to offer
 first-run setup.
+
+> **The four login-bookkeeping routes carry no `requireAuth`.** They exist so
+> the login flow can record an attempt or a lockout before a session exists,
+> and are not gated behind admin the way the rest of this section is.
+
+> `DELETE /api/users/:id` and `PUT /api/users/:id` return **409** when the
+> change would leave the install with no administrator. The response carries
+> a message intended for display.
+> ([ADR-0017](../adr/0017-last-admin-invariant.md))
 
 ## Clients — `/api/clients`
 

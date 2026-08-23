@@ -10,6 +10,20 @@ Upgrade instructions live in
 
 ## [Unreleased]
 
+### Added
+
+- **A Users screen**, administrator-only, for managing accounts: create, edit,
+  reset another user's password, unlock a locked account, and delete. Roles
+  offered are `admin` and `user`; `viewer` exists in the type union but no
+  code treats it differently from `user`, so it is not offered.
+- `POST /api/users/:id/password` — an administrator sets another user's
+  password. Plaintext in, validated against the configured length bounds,
+  hashed server-side.
+- `POST /api/users/:id/unlock` — an administrator clears an account lockout.
+- **The install can no longer be left without an administrator.** Deleting or
+  demoting the last one is refused at the database level, not just by a
+  disabled button — see [ADR-0017](documentation/adr/0017-last-admin-invariant.md).
+
 ### Fixed
 
 - **The Docker image could not be built from a fresh clone.**
@@ -44,6 +58,12 @@ Upgrade instructions live in
   `server/runtime/` resolves a log directory; container logs go to the Docker
   logging driver.
 - The obsolete Compose `version:` key is removed.
+- **`password_hash` is no longer accepted by `PUT /api/users/:id`.** It could
+  previously be set through the general update endpoint, bypassing the
+  password-strength check and bcrypt cost that setting a password anywhere
+  else applies. A caller that used it needs
+  `POST /api/users/:id/password` instead. Any other change to a user still
+  goes through `PUT /api/users/:id`.
 
 ### Documentation
 

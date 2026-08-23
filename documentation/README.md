@@ -27,6 +27,7 @@ For the person doing the invoicing.
 - [Expenses](user-guide/expenses.md) — categories, vendors, approval states, CSV import
 - [Payments](user-guide/payments.md) — recording payments, Stripe payment links
 - [Reports](user-guide/reports.md) — profit & loss, invoice, expense and client reports
+- [Users](user-guide/users.md) — accounts, roles, password resets, the last-administrator rule
 - [Settings](user-guide/settings.md) — company details, tax, email, appearance, backups
 
 ### [Operations](operations/)

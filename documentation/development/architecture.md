@@ -70,6 +70,15 @@ mounts through `server/routes/index.ts`.
 **React Query owns API state.** Don't duplicate server data into component
 state or a context.
 
+> **This is the stated rule, not the observed one.** `useRuntimeConfig.hook.ts`
+> is the only hook that calls `useQuery`. Every management screen —
+> `ClientManagement`, `DashboardOverview`, `ExpenseManagement`,
+> `PaymentManagement`, `ReportsManagement`, and `UserManagement` — loads data
+> with `useState` + `authenticatedFetch`, paginating the result through
+> `usePagination`. The users screen followed the existing screens rather than
+> this rule. Left for a maintainer decision — bring the guidance in line with
+> the code, or migrate the screens to match it — and not resolved here.
+
 **Check `src/components/ui/` before building a component** — it is already
 themed. Colour and surface come from `themeClasses`
 ([ADR-0015](../adr/0015-theme-as-design-system.md)), and all date display goes

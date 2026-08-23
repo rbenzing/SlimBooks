@@ -16,10 +16,20 @@ interface SQLSanitizeResult {
 export const validateRequest = (req: Request, res: Response, next: NextFunction): void => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
+    // `errors.array()` carries the submitted `value` alongside the message,
+    // and on a password field that value is the plaintext — a rejected reset
+    // echoed it straight back to the caller. Nothing downstream needs it: the
+    // caller knows what it sent, and `path` already says which field failed.
     res.status(400).json({
       success: false,
       error: 'Validation failed',
-      details: errors.array()
+      details: errors.array().map(error => {
+        if ('value' in error) {
+          const { value: _value, ...withoutValue } = error;
+          return withoutValue;
+        }
+        return error;
+      })
     });
     return;
   }
@@ -161,22 +171,51 @@ export const validationSets = {
       .withMessage('Must be a valid email address')
       .isLength({ max: validationConfig.maxFieldLengths.email })
       .withMessage(`Email must be less than ${validationConfig.maxFieldLengths.email} characters`),
+    // Optional because the API says they are: `CreateUserRequest` marks both
+    // optional, the controller only hashes a password when one is present —
+    // a Google account has none — and the service defaults the role to `user`.
+    // Requiring them here would have refused the accounts the API accepts.
     body('userData.password')
+      .optional()
       .isLength({
         min: validationConfig.password.minLength,
         max: validationConfig.password.maxLength
       })
       .withMessage(`Password must be between ${validationConfig.password.minLength} and ${validationConfig.password.maxLength} characters`),
     body('userData.role')
+      .optional()
       .isIn(['user', 'admin'])
       .withMessage('Role must be either user or admin')
   ] as ValidationChain[],
-  
+
+  // PUT /api/users/:id takes { userData } too. These validated flat
+  // `body('role')` while the controller reads `req.body.userData.role`, so the
+  // flat fields passed vacuously and the role was never checked at all: a
+  // non-string `role` reached the service, which decided from its type whether
+  // to guard, and demoted the last administrator. `validationRules.id` must
+  // stay first — DELETE and GET /:id reuse it as `.slice(0, 1)`.
   updateUser: [
     validationRules.id,
-    body('name').optional().trim().isLength({ min: 1, max: 100 }).escape(),
-    body('email').optional().isEmail().normalizeEmail(),
-    body('role').optional().isIn(['user', 'admin'])
+    body('userData.name')
+      .optional()
+      .trim()
+      .isLength({ min: 1, max: validationConfig.maxFieldLengths.name })
+      .withMessage(`Name must be between 1 and ${validationConfig.maxFieldLengths.name} characters`)
+      .escape(),
+    // `normalizeEmail` is not cosmetic: login normalises before matching, so an
+    // un-normalised address stored here signs in on MySQL and never on SQLite,
+    // which compares case-sensitively.
+    body('userData.email')
+      .optional()
+      .isEmail()
+      .normalizeEmail()
+      .withMessage('Must be a valid email address')
+      .isLength({ max: validationConfig.maxFieldLengths.email })
+      .withMessage(`Email must be less than ${validationConfig.maxFieldLengths.email} characters`),
+    body('userData.role')
+      .optional()
+      .isIn(['user', 'admin'])
+      .withMessage('Role must be either user or admin')
   ] as ValidationChain[],
   
   // Client validation sets

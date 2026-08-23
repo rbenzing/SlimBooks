@@ -32,7 +32,7 @@ export interface ManagedUser {
   email: string;
   username: string;
   role: 'admin' | 'user' | 'viewer';
-  email_verified: boolean;
+  email_verified: number; // SQLite uses INTEGER for boolean (0 or 1)
   /** Epoch milliseconds, or null when they have never signed in. */
   last_login: number | null;
   failed_login_attempts: number;
@@ -55,6 +55,18 @@ export interface UserFormData {
   role: 'admin' | 'user';
   password?: string;
 }
+
+/**
+ * What the form actually sends.
+ *
+ * `role` is optional because an edit omits it unless the operator moved it. A
+ * `viewer` account is displayed as `user` — `viewer` is not offered — so
+ * sending the field back on every save silently rewrote those accounts on an
+ * edit that never touched the role. `password` is only ever set while
+ * creating; an existing account's password changes through the reset dialog.
+ */
+export type UserSubmission = Omit<UserFormData, 'role' | 'password'> &
+  Partial<Pick<UserFormData, 'role' | 'password'>>;
 
 export interface AuthSession {
   id: number;

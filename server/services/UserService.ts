@@ -10,7 +10,7 @@ import {
   type SQLParameter
 } from '../types/index.js';
 import { utcNow } from '../utils/utcTime.util.js';
-import { deleteUserSql, guardedUpdateSql, demotesAdmin } from '../utils/adminInvariant.util.js';
+import { deleteUserSql, guardedUpdateSql } from '../utils/adminInvariant.util.js';
 
 /**
  * User Management Service
@@ -208,10 +208,21 @@ export class UserService {
 
     updateData.updated_at = utcNow();
 
-    // Only a demotion can break the invariant. Promoting to administrator, or
-    // changing a name, cannot — guarding those would refuse edits to the sole
-    // administrator's own profile for no reason.
-    const guarded = demotesAdmin(updateData.role) && existingUser.role === 'admin';
+    // Only a role change can break the invariant. Changing a name cannot, and
+    // promoting to administrator cannot — guarding those would refuse edits to
+    // the sole administrator's own profile for no reason.
+    //
+    // The decision reads the *requested* role, never its type. Deciding from
+    // `typeof role === 'string'` is what shipped broken: `{ role: 123 }` is
+    // still a role change away from 'admin', it was classified as harmless,
+    // and the resulting UPDATE carried no predicate — it demoted the only
+    // administrator and left the install with none.
+    //
+    // Attaching the guard to a row that is not an administrator costs nothing:
+    // `NOT('admin' = role AND ...)` is simply true. That also removes the
+    // window between reading `existingUser` and writing, in which the row
+    // could have been promoted.
+    const guarded = updateData.role !== undefined && updateData.role !== 'admin';
 
     const columns = Object.keys(updateData);
     const params = [...columns.map(column => updateData[column]), id] as SQLParameter[];
@@ -231,7 +242,14 @@ export class UserService {
     //
     // A guarded update always changes the role — it is only guarded when the
     // role is genuinely moving away from 'admin' — so 0 there is unambiguous.
-    return guarded && result.changes === 0 ? 'refused' : 'applied';
+    //
+    // `existingUser.role` belongs here and only here. The guard is attached to
+    // every role change, but it can only *fire* on an administrator; on any
+    // other row 0 affected rows is the harmless MySQL no-op above, not a
+    // refusal.
+    return guarded && existingUser.role === 'admin' && result.changes === 0
+      ? 'refused'
+      : 'applied';
   }
 
   /**

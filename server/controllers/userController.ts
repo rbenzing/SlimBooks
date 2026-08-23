@@ -11,15 +11,33 @@ import {
   ValidationError,
   asyncHandler
 } from '../middleware/index.js';
-import { type CreateUserRequest, type UpdateUserRequest, type UpdateUserResponse } from '../types/api.types.js';
+import {
+  type CreateUserRequest,
+  type UpdateUserRequest,
+  type UpdateUserResponse,
+  type ResetUserPasswordRequest,
+  type ResetUserPasswordResponse,
+  type UnlockUserResponse
+} from '../types/api.types.js';
 import { type MutationOutcome } from '../types/index.js';
+
+/**
+ * How many accounts the management screen may see.
+ *
+ * `getAllUsers` defaults to 100 and the screen paginates in the browser, so an
+ * install with more than 100 accounts simply lost the rest: invisible, and
+ * unmanageable, including in the administrator count the screen computes from
+ * what it received. Server-side pagination is the right answer and a larger
+ * change; this stops the silent truncation.
+ */
+const USER_LIST_LIMIT = 10_000;
 
 /**
  * Get all users
  */
 export const getAllUsers = asyncHandler(async (req: Request, res: Response): Promise<void> => {
-  const users = await userService.getAllUsers();
-  
+  const users = await userService.getAllUsers({ limit: USER_LIST_LIMIT });
+
   res.json({ success: true, data: users });
 });
 
@@ -145,6 +163,14 @@ export const updateUser = asyncHandler(async (req: Request<{id: string}, UpdateU
     throw new ValidationError('Invalid user ID');
   }
 
+  // A caller-supplied hash bypasses the configured cost factor and the
+  // password policy, and resetting a password is an operation rather than a
+  // field assignment. `createUser` refuses it outright; so does this, rather
+  // than accepting it and silently dropping it as it used to.
+  if ('password_hash' in userData) {
+    throw new ValidationError('Send a password to /api/users/:id/password, not a hash');
+  }
+
   // Convert and validate user data for service layer
   const convertedUserData: Partial<{
     name: string;
@@ -153,7 +179,6 @@ export const updateUser = asyncHandler(async (req: Request<{id: string}, UpdateU
     role: 'user' | 'admin';
     email_verified: boolean;
     google_id: string;
-    password_hash: string;
   }> = {};
 
   // Copy all defined properties except email_verified
@@ -360,14 +385,19 @@ export const verifyUserEmail = asyncHandler(async (req: Request, res: Response):
  * The plaintext is never logged — the request logger records method, path and
  * timing only, and this handler adds nothing.
  */
-export const resetUserPassword = asyncHandler(async (req: Request, res: Response): Promise<void> => {
+export const resetUserPassword = asyncHandler(async (
+  req: Request<{ id: string }, ResetUserPasswordResponse, Partial<ResetUserPasswordRequest>>,
+  res: Response<ResetUserPasswordResponse>
+): Promise<void> => {
   const userId = parseInt(req.params.id ?? '', 10);
 
   if (isNaN(userId)) {
     throw new ValidationError('Invalid user ID');
   }
 
-  const { newPassword } = req.body as { newPassword?: string };
+  // `Partial` on the body, because a declared shape is what the caller was
+  // asked for, not what arrived — the check below is the one that decides.
+  const { newPassword } = req.body;
 
   if (typeof newPassword !== 'string' || newPassword.length === 0) {
     throw new ValidationError('A new password is required');
@@ -394,7 +424,10 @@ export const resetUserPassword = asyncHandler(async (req: Request, res: Response
 });
 
 /** Clear a lockout so the account can be signed into again. */
-export const unlockUserAccount = asyncHandler(async (req: Request, res: Response): Promise<void> => {
+export const unlockUserAccount = asyncHandler(async (
+  req: Request<{ id: string }>,
+  res: Response<UnlockUserResponse>
+): Promise<void> => {
   const userId = parseInt(req.params.id ?? '', 10);
 
   if (isNaN(userId)) {

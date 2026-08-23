@@ -32,8 +32,6 @@ const statusOf = (user: ManagedUser): { label: string; tone: 'locked' | 'pending
     return { label: 'Locked', tone: 'locked' };
   }
 
-  // The wire value is 0/1, not a real boolean, so this must stay a
-  // truthiness check — `=== false` would never match.
   if (!user.email_verified) {
     return { label: 'Unverified', tone: 'pending' };
   }

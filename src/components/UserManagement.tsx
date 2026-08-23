@@ -11,7 +11,7 @@ import { themeClasses, getButtonClasses } from '@/utils/themeUtils.util';
 import { StatCard, StatCardGrid } from '@/components/ui/StatCard';
 import { useAuth } from '@/contexts/AuthContext';
 import { usersService } from '@/services/users.svc';
-import { type ManagedUser, type UserFormData } from '@/types';
+import { type ManagedUser, type UserSubmission } from '@/types';
 
 export const UserManagement: React.FC = () => {
   const { user: currentUser, logout } = useAuth();
@@ -86,10 +86,13 @@ export const UserManagement: React.FC = () => {
     setActiveItem({ editing: null });
   };
 
-  const handleSaveUser = async (formData: UserFormData) => {
+  const handleSaveUser = async (formData: UserSubmission) => {
     const editing = activeItem.editing;
     const isSelf = editing?.id === currentUser?.id;
-    const isSelfDemotion = isSelf && editing?.role === 'admin' && formData.role !== 'admin';
+    // `role` is absent when the operator did not touch it, and an absent role
+    // is not a demotion.
+    const isSelfDemotion =
+      isSelf && editing?.role === 'admin' && formData.role !== undefined && formData.role !== 'admin';
 
     if (isSelfDemotion) {
       const confirmed = window.confirm(
@@ -159,7 +162,6 @@ export const UserManagement: React.FC = () => {
     user => user.account_locked_until !== null && user.account_locked_until > Date.now()
   ).length;
 
-  // Truthiness only: the wire value is 0/1, not a real boolean.
   const unverifiedCount = users.filter(user => !user.email_verified).length;
 
   if (uiState.showForm) {

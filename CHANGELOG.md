@@ -61,7 +61,8 @@ Upgrade instructions live in
 - **`password_hash` is no longer accepted by `PUT /api/users/:id`.** It could
   previously be set through the general update endpoint, bypassing the
   password-strength check and bcrypt cost that setting a password anywhere
-  else applies. A caller that used it needs
+  else applies. Sending it now fails with **400**, rather than being accepted
+  and silently dropped. A caller that used it needs
   `POST /api/users/:id/password` instead. Any other change to a user still
   goes through `PUT /api/users/:id`.
 

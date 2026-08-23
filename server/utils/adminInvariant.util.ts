@@ -14,6 +14,15 @@
 /** The role that the guard protects. */
 const ADMIN_ROLE = 'admin';
 
+/** A table or column name safe to interpolate; a placeholder cannot stand in. */
+const IDENTIFIER = /^[a-z_][a-z0-9_]*$/i;
+
+const assertIdentifier = (name: string): void => {
+  if (!IDENTIFIER.test(name)) {
+    throw new Error(`"${name}" is not a plain identifier.`);
+  }
+};
+
 /**
  * Refuses any statement that would remove or demote the last live administrator.
  *
@@ -31,17 +40,6 @@ const ADMIN_ROLE = 'admin';
  * `deleted_at IS NULL` matters for the same reason it always does here: a
  * soft-deleted administrator cannot administer anything, so counting one would
  * let the last live administrator be removed.
- */
-const IDENTIFIER = /^[a-z_][a-z0-9_]*$/i;
-
-const assertIdentifier = (name: string): void => {
-  if (!IDENTIFIER.test(name)) {
-    throw new Error(`"${name}" is not a plain identifier.`);
-  }
-};
-
-/**
- * The guard predicate for one table.
  *
  * `table` exists so the live suite can prove this against a fixture table of
  * its own. `baselineLive.test.ts` drops every table in `tableSchemas` —
@@ -77,7 +75,9 @@ export const deleteUserSql = (table = 'users'): string => {
  * Values stay bound.
  *
  * @param columns Columns to SET, in the order their parameters are bound.
- * @param guarded Whether this update would demote an administrator.
+ * @param guarded Whether this update changes the role. Decide that from the
+ *   requested value, not its type — a non-string role is still a role change,
+ *   and reading `typeof` once let one through with no predicate at all.
  */
 export const guardedUpdateSql = (
   columns: string[],
@@ -96,7 +96,3 @@ export const guardedUpdateSql = (
 
   return `UPDATE ${table} SET ${assignments} WHERE id = ?${guard}`;
 };
-
-/** Whether setting this role would take administrator rights away. */
-export const demotesAdmin = (role: unknown): boolean =>
-  typeof role === 'string' && role !== ADMIN_ROLE;

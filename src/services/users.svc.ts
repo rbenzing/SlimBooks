@@ -1,5 +1,5 @@
 import { authenticatedFetch } from '@/utils/api';
-import { type ManagedUser, type UserFormData } from '@/types';
+import { type ManagedUser, type UserSubmission } from '@/types';
 
 /**
  * The users API.
@@ -24,7 +24,7 @@ export const usersService = {
     return body.data;
   },
 
-  async create(userData: UserFormData): Promise<number> {
+  async create(userData: UserSubmission): Promise<number> {
     const response = await authenticatedFetch('/api/users', {
       method: 'POST',
       body: JSON.stringify({ userData })
@@ -36,7 +36,7 @@ export const usersService = {
     return body.data.id;
   },
 
-  async update(id: number, userData: Partial<UserFormData>): Promise<void> {
+  async update(id: number, userData: UserSubmission): Promise<void> {
     const response = await authenticatedFetch(`/api/users/${id}`, {
       method: 'PUT',
       body: JSON.stringify({ userData })

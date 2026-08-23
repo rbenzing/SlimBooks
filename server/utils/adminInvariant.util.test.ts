@@ -10,8 +10,7 @@ import { describe, it, expect } from 'vitest';
 import {
   LAST_ADMIN_GUARD,
   deleteUserSql,
-  guardedUpdateSql,
-  demotesAdmin
+  guardedUpdateSql
 } from './adminInvariant.util.js';
 
 describe('LAST_ADMIN_GUARD', () => {
@@ -79,17 +78,5 @@ describe('the table parameter', () => {
 
   it('defaults to users, so production call sites pass nothing', () => {
     expect(deleteUserSql()).toBe(deleteUserSql('users'));
-  });
-});
-
-describe('demotesAdmin', () => {
-  it('is true for any role that is not admin', () => {
-    expect(demotesAdmin('user')).toBe(true);
-    expect(demotesAdmin('viewer')).toBe(true);
-  });
-
-  it('is false for admin, and for an absent role', () => {
-    expect(demotesAdmin('admin')).toBe(false);
-    expect(demotesAdmin(undefined)).toBe(false);
   });
 });

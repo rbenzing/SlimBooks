@@ -10,8 +10,13 @@ someone who reaches the URL directly.
 
 | Role | Can |
 |---|---|
-| **Administrator** | Everything, including this screen |
-| **User** | Everything except user management |
+| **Administrator** | Everything |
+| **User** | Day-to-day work: clients, invoices, expenses, payments, reports |
+
+A User cannot manage accounts, and cannot reach the administration surfaces
+either: changing settings, project settings, the email and Stripe connection
+tests, deactivating a payment link, or the scheduled-job routes. Those all
+answer **403** for anyone who is not an administrator.
 
 The API also recognises a `viewer` role, but nothing in the application
 currently treats it differently from `user`, and this screen does not offer

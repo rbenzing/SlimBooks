@@ -278,6 +278,36 @@ describe('updateUser', () => {
     expect(flattenSql(db.executeQuery.mock.calls[0][0])).not.toMatch(/live_admins/);
   });
 
+  it('guards a role change whatever type the role arrives as', async () => {
+    // The regression. `demotesAdmin` decided from `typeof role === 'string'`,
+    // so `{ role: 123 }` was classified as "not a demotion" and the UPDATE
+    // went out with no predicate at all — a live PUT against the sole
+    // administrator returned 200 and left the install with zero admins.
+    // Deciding from the requested value instead makes every one of these
+    // carry the guard.
+    for (const role of [123, null, true, '', 'viewer', 'user']) {
+      db.reset();
+      db.getOne.mockResolvedValue({ id: 1, role: 'admin', email: 'ada@example.com' });
+      db.executeQuery.mockResolvedValue({ changes: 0, lastInsertRowid: 0 });
+
+      await expect(userService.updateUser(1, { role } as never)).resolves.toBe('refused');
+      expect(flattenSql(db.executeQuery.mock.calls[0][0])).toMatch(/live_admins/);
+    }
+  });
+
+  it('guards a demotion of someone who is not the last administrator', async () => {
+    // The predicate is a no-op on a row that is not an administrator, so it is
+    // attached to every role change rather than to the ones a stale read
+    // thinks are dangerous. Zero affected rows on such a row is the MySQL
+    // no-op, not a refusal — which is the only thing `existingUser.role` is
+    // still consulted for.
+    db.getOne.mockResolvedValue({ id: 2, role: 'user', email: 'grace@example.com' });
+    db.executeQuery.mockResolvedValue({ changes: 0, lastInsertRowid: 0 });
+
+    await expect(userService.updateUser(2, { role: 'user' })).resolves.toBe('applied');
+    expect(flattenSql(db.executeQuery.mock.calls[0][0])).toMatch(/live_admins/);
+  });
+
   it('does not guard a promotion to administrator', async () => {
     db.getOne.mockResolvedValue({ id: 2, role: 'user', email: 'grace@example.com' });
     db.executeQuery.mockResolvedValue({ changes: 1, lastInsertRowid: 0 });

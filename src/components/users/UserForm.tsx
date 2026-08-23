@@ -1,7 +1,17 @@
 
 import React, { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
-import { type ManagedUser, type UserFormData } from '@/types';
+import { type ManagedUser, type UserFormData, type UserSubmission } from '@/types';
+
+/**
+ * The role as the form shows it.
+ *
+ * Only `admin` and `user` are offered, so a `viewer` account is displayed as
+ * `user`. That is presentation, not a decision to change their role — which is
+ * why an edit sends `role` only when this value actually moved.
+ */
+const displayedRole = (user: ManagedUser): UserFormData['role'] =>
+  user.role === 'admin' ? 'admin' : 'user';
 
 interface UserFormProps {
   user?: ManagedUser | null;
@@ -11,7 +21,7 @@ interface UserFormProps {
    * anyway — the courtesy lives here, the guard lives in the users service.
    */
   isLastAdmin: boolean;
-  onSave: (userData: UserFormData) => void;
+  onSave: (userData: UserSubmission) => void;
   onCancel: () => void;
 }
 
@@ -32,9 +42,7 @@ export const UserForm: React.FC<UserFormProps> = ({ user, isLastAdmin, onSave, o
         name: user.name,
         email: user.email,
         username: user.username,
-        // `viewer` is a valid wire value but never a form choice; an
-        // account that already carries it is treated as `user` here.
-        role: user.role === 'admin' ? 'admin' : 'user',
+        role: displayedRole(user),
         password: undefined
       });
     } else {
@@ -47,11 +55,23 @@ export const UserForm: React.FC<UserFormProps> = ({ user, isLastAdmin, onSave, o
 
     const { name, email, username, role, password } = formData;
 
-    // Editing a password happens through the reset dialog, never here — an
+    if (!user) {
+      onSave({ name, email, username, role, password });
+      return;
+    }
+
+    // Editing. A password changes through the reset dialog, never here — an
     // edit never sends one, whatever the field last held while creating.
-    const submissionData: UserFormData = user
-      ? { name, email, username, role }
-      : { name, email, username, role, password };
+    //
+    // `role` goes only when the operator moved it. It is shown normalised
+    // (`viewer` displays as `user`), so sending it unconditionally rewrote a
+    // viewer to a user on any unrelated edit — a name change silently changed
+    // their role.
+    const submissionData: UserSubmission = { name, email, username };
+
+    if (role !== displayedRole(user)) {
+      submissionData.role = role;
+    }
 
     onSave(submissionData);
   };

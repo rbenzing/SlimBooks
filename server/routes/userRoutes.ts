@@ -141,9 +141,13 @@ router.delete('/:id',
 );
 
 // Set another user's password (admin only)
+// `parseInt('0')` is not NaN, so without the id rule /api/users/0/password
+// reached the service and came back 500 instead of 400.
 router.post('/:id/password',
   requireAuth,
   requireAdmin,
+  validationSets.updateUser.slice(0, 1), // Just ID validation
+  validateRequest,
   resetUserPassword
 );
 
@@ -151,6 +155,8 @@ router.post('/:id/password',
 router.post('/:id/unlock',
   requireAuth,
   requireAdmin,
+  validationSets.updateUser.slice(0, 1), // Just ID validation
+  validateRequest,
   unlockUserAccount
 );
 

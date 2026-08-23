@@ -52,6 +52,7 @@ For whoever changes the code.
 - [Testing](development/testing.md) — the gate, and why a green suite is not enough
 - [API reference](development/api-reference.md) — every HTTP endpoint
 - [Theme system](development/theme-system.md) — the design tokens the UI is built from
+- [Releasing](development/releasing.md) — what a version number promises, and how to cut one
 
 ### [Decisions](adr/)
 

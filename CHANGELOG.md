@@ -3,12 +3,21 @@
 All notable changes to Slimbooks are recorded here.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
-and the project uses [semantic versioning](https://semver.org/spec/v2.0.0.html).
+and the project uses [semantic versioning](https://semver.org/spec/v2.0.0.html)
+as [documentation/development/releasing.md](documentation/development/releasing.md)
+defines it for a self-hosted application.
 
 Upgrade instructions live in
 [documentation/operations/upgrading.md](documentation/operations/upgrading.md).
 
 ## [Unreleased]
+
+Nothing yet.
+
+## [2.3.0] — 2026-08-23
+
+An install can no longer be left without an administrator, and the Docker
+deployment builds and boots from a clean clone.
 
 ### Added
 
@@ -21,8 +30,10 @@ Upgrade instructions live in
   hashed server-side.
 - `POST /api/users/:id/unlock` — an administrator clears an account lockout.
 - **The install can no longer be left without an administrator.** Deleting or
-  demoting the last one is refused at the database level, not just by a
-  disabled button — see [ADR-0017](documentation/adr/0017-last-admin-invariant.md).
+  demoting the last one is refused by the `DELETE`/`UPDATE` statement itself,
+  so the check and the write are one statement and a concurrent pair cannot
+  both pass it — see
+  [ADR-0017](documentation/adr/0017-last-admin-invariant.md).
 
 ### Fixed
 
@@ -43,6 +54,14 @@ Upgrade instructions live in
 
 ### Changed
 
+- **`password_hash` is no longer accepted by `PUT /api/users/:id`.** It was in
+  that endpoint's allowed-field list, so a caller could write a hash straight
+  into the column, bypassing both the password-strength check and the bcrypt
+  cost that setting a password anywhere else applies. Sending it now fails
+  with **400** rather than being ignored, so a caller still relying on it finds
+  out instead of silently having no effect. Use
+  `POST /api/users/:id/password` instead; every other user field still goes
+  through `PUT /api/users/:id`.
 - **The compose file no longer names a database.** Backend, credentials and
   storage driver come from `.env`; `DOCKER_DB_HOST` and `DOCKER_DB_PORT` give
   the container its own route to the server, so the same `.env` serves
@@ -58,20 +77,13 @@ Upgrade instructions live in
   `server/runtime/` resolves a log directory; container logs go to the Docker
   logging driver.
 - The obsolete Compose `version:` key is removed.
-- **`password_hash` is no longer accepted by `PUT /api/users/:id`.** It could
-  previously be set through the general update endpoint, bypassing the
-  password-strength check and bcrypt cost that setting a password anywhere
-  else applies. Sending it now fails with **400**, rather than being accepted
-  and silently dropped. A caller that used it needs
-  `POST /api/users/:id/password` instead. Any other change to a user still
-  goes through `PUT /api/users/:id`.
 
 ### Documentation
 
 Reorganised into `documentation/`, split by audience — user guide, operations,
-development, decision records and specifications — with sixteen ADRs, an API
-reference, a configuration reference, an architecture overview, this changelog
-and a security policy, none of which existed before.
+development, decision records and specifications — with seventeen ADRs, an API
+reference, a configuration reference, an architecture overview, a release
+procedure, this changelog and a security policy, none of which existed before.
 
 ## [2.2.0] — 2026-08-12
 
@@ -204,6 +216,7 @@ Earlier history is in the git log.
 
 ---
 
+[2.3.0]: https://github.com/rbenzing/SlimBooks/releases/tag/v2.3.0
 [2.2.0]: https://github.com/rbenzing/SlimBooks/releases/tag/v2.2.0
 [2.1.1]: https://github.com/rbenzing/SlimBooks/releases/tag/v2.1.1
 [2.1.0]: https://github.com/rbenzing/SlimBooks/releases/tag/v2.1.0

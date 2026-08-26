@@ -124,7 +124,7 @@ chore: update dependencies
 ### Styling
 
 - Colour and surface come from `themeClasses` in `src/utils/themeUtils.util.ts`, never ad-hoc light/dark pairs — see the [theme system](./documentation/development/theme-system.md)
-- Check `src/components/ui/` before building a component; it is already themed
+- Check `src/components/ui/` before building a component; it is already themed. It holds only what is in use — `npx shadcn@latest add <name>` brings back any other shadcn/ui component
 - All date display goes through `src/utils/formatting/date.util.ts`
 - Honour the settings objects — currency, number and date formatting, language
 - Ensure responsive design

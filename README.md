@@ -136,9 +136,11 @@ Every variable, its default and which module reads it:
 
 Migrations run automatically at boot. **Take a backup first**, every time.
 
-2.2.0 converts stored timestamps and changes the API to send them as JSON
-numbers; a dump taken with 2.1.x will not import. Version-by-version notes are
-in [upgrading](documentation/operations/upgrading.md).
+2.3.0 needs no operator action — no migration, no environment change — but
+`PUT /api/users/:id` no longer accepts `password_hash`. Coming from 2.1.x, note
+that 2.2.0 converts stored timestamps and changes the API to send them as JSON
+numbers, and a dump taken with 2.1.x will not import. Version-by-version notes
+are in [upgrading](documentation/operations/upgrading.md).
 
 ## License
 

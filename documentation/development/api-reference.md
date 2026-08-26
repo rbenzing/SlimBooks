@@ -100,7 +100,7 @@ Administrative. Most routes require admin.
 | GET | `/api/users/admin-exists` | — | Whether an administrator has been configured yet |
 | GET | `/api/users` | Admin | List |
 | GET | `/api/users/:id` | Admin | One user |
-| GET | `/api/users/email/:email` | Admin | Look up by email |
+| GET | `/api/users/email/:email` | Admin\* | Look up by email |
 | GET | `/api/users/google/:googleId` | Admin | Look up by Google ID |
 | POST | `/api/users` | Admin | Create |
 | PUT | `/api/users/:id` | Admin | Update name, email, username or role |
@@ -115,6 +115,11 @@ Administrative. Most routes require admin.
 
 `GET /api/users/admin-exists` is public so the SPA can decide whether to offer
 first-run setup.
+
+> **\*`GET /api/users/email/:email` is unauthenticated for one address.** A
+> request for `admin@slimbooks.app` is answered without a token, for the same
+> first-run check, and the handler returns the row `SELECT *` produced —
+> `password_hash` included. Every other address requires auth and admin.
 
 > **The four login-bookkeeping routes carry no `requireAuth`.** They exist so
 > the login flow can record an attempt or a lockout before a session exists,

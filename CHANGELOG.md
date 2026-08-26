@@ -12,7 +12,32 @@ Upgrade instructions live in
 
 ## [Unreleased]
 
-Nothing yet.
+### Removed
+
+- **Forty shadcn/ui components that nothing imported**, along with three barrel
+  files (`src/utils/index.ts` and the `business` and `validation` equivalents)
+  that no module imported either — `src/utils/index.ts` opened by instructing
+  readers to import through it, which nothing in the codebase did.
+- **Thirty-six packages that existed only to serve them**: twenty-three
+  `@radix-ui/*`, `react-hook-form` with `@hookform/resolvers`,
+  `react-day-picker`, `react-resizable-panels`, and `@radix-ui/react-toast`
+  (the app uses `sonner`). Also `crypto-js` and `@react-oauth/google`, neither
+  of which any module imports, `jsdom` (the suite runs on `happy-dom`),
+  `@tailwindcss/typography` (not in the Tailwind plugin list), `nodemon` and
+  `ts-node` (dev runs on `tsx watch`), and three `@types/*` packages whose
+  runtimes now ship their own declarations. The vestigial `ts-node` block in
+  `server/tsconfig.json` went with them.
+
+  The built bundle is byte-identical, so none of this ever reached a browser —
+  it was install size, audit surface and search noise. `npx shadcn@latest add
+  <name>` brings any component back.
+
+### Fixed
+
+- **The API reference described `GET /api/users/email/:email` as admin-only.**
+  It is not: a request for `admin@slimbooks.app` is answered without a token,
+  and the handler returns what `SELECT *` produced — `password_hash` included.
+  Documented as it behaves.
 
 ## [2.3.0] — 2026-08-23
 

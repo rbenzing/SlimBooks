@@ -22,7 +22,10 @@ Helper functions cover the parametric cases: `getIconColorClasses(color)`,
 `getButtonClasses(variant)`, `getStatusColor(status)`.
 
 Before building a new component, check `src/components/ui/` — it is shadcn/ui,
-already themed.
+already themed. It carries only the components actually in use: 2.3.0 deleted
+the forty that nothing imported, on the grounds that an unused component is a
+themed surface nobody checks and a dependency nobody audits.
+`npx shadcn@latest add <name>` restores any of them.
 
 ## Consequences
 

@@ -88,7 +88,9 @@ camelCase, with a suffix naming the kind:
 
 ### Frontend
 
-- Check `src/components/ui/` before building a component.
+- Check `src/components/ui/` before building a component. It holds only the
+  components in use; 2.3.0 removed the forty shadcn/ui files nothing imported,
+  so reach for `npx shadcn@latest add <name>` rather than hand-rolling one.
 - Colour and surface come from `themeClasses`
   ([theme system](theme-system.md)).
 - All date display goes through `src/utils/formatting/date.util.ts`.

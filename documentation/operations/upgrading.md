@@ -28,6 +28,23 @@ features are what you expect.
 
 ## Version-specific notes
 
+### To 2.3.0
+
+**No operator action.** No migration runs, no environment variable changed and
+the dump format is unchanged.
+
+One thing that affects anything outside the bundled UI: **`PUT /api/users/:id`
+no longer accepts `password_hash`** and returns **400** if it is sent. It was
+previously in that endpoint's allowed-field list, so a caller could write a
+hash straight into the column and bypass the password-strength check and the
+bcrypt cost applied everywhere else. Use `POST /api/users/:id/password`, which
+takes plaintext and hashes it server-side.
+
+If you deploy with Docker, rebuild the image rather than reusing a cached one:
+the build previously depended on a `certs/` directory that a fresh clone does
+not have, and the compose health check called a `curl` the image does not
+contain.
+
 ### To 2.2.0
 
 **Instants are now stored as epoch milliseconds** rather than text

@@ -42,7 +42,7 @@ Including if you set it to `true`. TLS is a three-state fact, not a boolean
 `TLS_CERT_PATH`. Generate a pair:
 
 ```bash
-cd scripts && ./generate-certificates.sh && cd ..
+./scripts/generate-certificates.sh
 ```
 
 ### `FEATURE_X is set to "on" but its dependency is unavailable on this host.`

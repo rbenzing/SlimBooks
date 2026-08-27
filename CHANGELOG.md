@@ -34,6 +34,15 @@ Upgrade instructions live in
 
 ### Fixed
 
+- **`scripts/generate-certificates.sh` failed on a fresh clone**, which broke
+  the documented Docker quick start at its second step. It wrote the key pair
+  into `../certs/`, a directory `.gitignore` keeps empty and a clone therefore
+  does not have, and it read `cert.conf` from the working directory, so it only
+  worked when invoked from inside `scripts/`. It now locates itself, creates
+  `certs/`, and stops on error. The docs drop the `cd scripts && … && cd ..`
+  dance for a plain `./scripts/generate-certificates.sh`. This is the same
+  fresh-clone assumption 2.3.0 removed from the `Dockerfile`; the script kept
+  it.
 - **The API reference described `GET /api/users/email/:email` as admin-only.**
   It is not: a request for `admin@slimbooks.app` is answered without a token,
   and the handler returns what `SELECT *` produced — `password_hash` included.

@@ -60,7 +60,7 @@ Two things the repair turned up that this design had not predicted:
 | Bare Linux | — | Documented as supported, no artifact |
 | Windows IIS | — | Documented as supported, no artifact |
 | Node PaaS | — | Documented as supported, no artifact |
-| Certificates | `scripts/generate-certificates.sh`, `scripts/cert.conf` | Fine, but unreferenced by the Docker quick start |
+| Certificates | `scripts/generate-certificates.sh`, `scripts/cert.conf` | ~~Unreferenced by the Docker quick start~~ — referenced, and it now creates `certs/` itself rather than assuming a directory a fresh clone does not have |
 
 ### Known defects
 

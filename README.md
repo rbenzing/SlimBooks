@@ -67,8 +67,8 @@ SQLite by default; MySQL or MariaDB when the host needs it.
 git clone https://github.com/rbenzing/SlimBooks.git
 cd slimbooks
 
-./scripts/generate-secrets.sh                        # fills .env from .env.example
-cd scripts && ./generate-certificates.sh && cd ..     # compose sets TLS_MODE=self
+./scripts/generate-secrets.sh        # fills .env from .env.example
+./scripts/generate-certificates.sh   # compose sets TLS_MODE=self
 
 docker compose up -d
 ```

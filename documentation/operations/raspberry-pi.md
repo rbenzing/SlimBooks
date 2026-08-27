@@ -45,7 +45,7 @@ git clone https://github.com/rbenzing/slimbooks.git .
 ./scripts/generate-secrets.sh
 nano .env                                            # review CLIENT_URL, CORS_ORIGIN
 
-cd scripts && ./generate-certificates.sh && cd ..     # compose sets TLS_MODE=self
+./scripts/generate-certificates.sh     # compose sets TLS_MODE=self
 
 ./scripts/deploy.sh
 ```

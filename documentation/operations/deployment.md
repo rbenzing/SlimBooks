@@ -62,7 +62,7 @@ For `TLS_MODE=self`, generate a certificate pair. **The script uses relative
 paths, so it must be run from inside `scripts/`:**
 
 ```bash
-cd scripts && ./generate-certificates.sh && cd ..
+./scripts/generate-certificates.sh
 ```
 
 It reads `cert.conf` from the working directory and writes `../certs/server.key`
@@ -100,7 +100,7 @@ git clone https://github.com/rbenzing/SlimBooks.git
 cd slimbooks
 
 ./scripts/generate-secrets.sh              # fills .env from .env.example
-cd scripts && ./generate-certificates.sh && cd ..   # compose sets TLS_MODE=self
+./scripts/generate-certificates.sh   # compose sets TLS_MODE=self
 
 docker compose up -d
 ```

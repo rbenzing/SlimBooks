@@ -2,7 +2,7 @@
 // Handles all expense-related endpoints
 
 import { Router, type Request, type Response } from 'express';
-import { type BulkImportExpensesRequest, type ExpenseRequest } from '../types/api.types.js';
+import { type BulkImportExpensesRequest, type BulkImportResult, type ExpenseRequest } from '../types/api.types.js';
 import {
   getAllExpenses,
   getExpenseById,
@@ -82,6 +82,7 @@ router.post('/bulk-import',
       let successCount = 0;
       let errorCount = 0;
       const errors: string[] = [];
+      const importedDays: string[] = [];
 
       // Import the expense service
       const { expenseService } = await import('../services/ExpenseService.js');
@@ -92,6 +93,7 @@ router.post('/bulk-import',
           // Use the expense service directly instead of the controller
           await expenseService.createExpense(expenseData);
           successCount++;
+          if (expenseData.date) importedDays.push(expenseData.date);
         } catch (error) {
           errorCount++;
           const errorMessage = (error as Error).message;
@@ -99,13 +101,18 @@ router.post('/bulk-import',
         }
       }
 
-      res.json({
-        success: true,
-        data: {
-          imported: successCount,
-          failed: errorCount,
-          errors
-        },
+      const span = importedDays.length > 0
+        ? {
+            earliest: importedDays.reduce((a, b) => (a < b ? a : b)),
+            latest: importedDays.reduce((a, b) => (a > b ? a : b))
+          }
+        : null;
+
+      const data: BulkImportResult = { imported: successCount, failed: errorCount, errors, span };
+
+      res.status(errorCount > 0 && successCount === 0 ? 422 : 200).json({
+        success: successCount > 0,
+        data,
         message: `Import completed: ${successCount} expenses imported, ${errorCount} failed`
       });
     } catch (error) {

@@ -2,7 +2,7 @@
 // Handles all client-related endpoints
 
 import { Router, type Request, type Response } from 'express';
-import { type BulkImportClientsRequest, type ClientRequest } from '../types/api.types.js';
+import { type BulkImportClientsRequest, type BulkImportResult, type ClientRequest } from '../types/api.types.js';
 import {
   getAllClients,
   getClientById,
@@ -102,13 +102,13 @@ router.post('/bulk-import',
         }
       }
 
-      res.json({
-        success: true,
-        data: {
-          imported: successCount,
-          failed: errorCount,
-          errors
-        },
+      // Clients have no accounting day of their own, so there is never a span
+      // of landed rows to report — unlike expenses and payments.
+      const data: BulkImportResult = { imported: successCount, failed: errorCount, errors, span: null };
+
+      res.status(errorCount > 0 && successCount === 0 ? 422 : 200).json({
+        success: successCount > 0,
+        data,
         message: `Import completed: ${successCount} clients imported, ${errorCount} failed`
       });
     } catch (error) {

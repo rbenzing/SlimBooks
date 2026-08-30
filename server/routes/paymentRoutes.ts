@@ -2,7 +2,7 @@
 // Handles all payment-related endpoints
 
 import { Router, type Request, type Response } from 'express';
-import { type BulkImportPaymentsRequest, type PaymentRequest } from '../types/api.types.js';
+import { type BulkImportPaymentsRequest, type BulkImportResult, type PaymentRequest } from '../types/api.types.js';
 import {
   getAllPayments,
   getPaymentById,
@@ -61,6 +61,7 @@ router.post('/bulk-import',
       let successCount = 0;
       let errorCount = 0;
       const errors: string[] = [];
+      const importedDays: string[] = [];
 
       // Import the payment service
       const { paymentService } = await import('../services/PaymentService.js');
@@ -71,6 +72,7 @@ router.post('/bulk-import',
           // Use the payment service directly instead of the controller
           await paymentService.createPayment(paymentData);
           successCount++;
+          if (paymentData.date) importedDays.push(paymentData.date);
         } catch (error) {
           errorCount++;
           const errorMessage = (error as Error).message;
@@ -78,13 +80,18 @@ router.post('/bulk-import',
         }
       }
 
-      res.json({
-        success: true,
-        data: {
-          imported: successCount,
-          failed: errorCount,
-          errors
-        },
+      const span = importedDays.length > 0
+        ? {
+            earliest: importedDays.reduce((a, b) => (a < b ? a : b)),
+            latest: importedDays.reduce((a, b) => (a > b ? a : b))
+          }
+        : null;
+
+      const data: BulkImportResult = { imported: successCount, failed: errorCount, errors, span };
+
+      res.status(errorCount > 0 && successCount === 0 ? 422 : 200).json({
+        success: successCount > 0,
+        data,
         message: `Import completed: ${successCount} payments imported, ${errorCount} failed`
       });
     } catch (error) {

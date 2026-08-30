@@ -582,6 +582,20 @@ export interface BulkImportPaymentsRequest {
   payments?: PaymentRequest[];
 }
 
+/**
+ * Response payload shared by the expense, payment and client bulk-import
+ * endpoints — all three shapes are identical. `span` is the calendar-day range
+ * of the rows that actually landed, computed from the accounting day of each
+ * successfully inserted row (`date` for expenses/payments; clients have no
+ * such field, so their span is always null). Failed rows never widen it.
+ */
+export interface BulkImportResult {
+  imported: number;
+  failed: number;
+  errors: string[];
+  span: { earliest: string; latest: string } | null;
+}
+
 // Express Request extensions
 declare global {
   namespace Express {

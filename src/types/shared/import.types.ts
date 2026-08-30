@@ -52,6 +52,20 @@ export interface ImportExportProps {
   onImportComplete: () => void;
 }
 
+/**
+ * What a bulk-import call actually did. `span` is the calendar-day range of the
+ * rows that landed — computed server-side, from the rows the database actually
+ * accepted, not from what the browser submitted. The two differ by exactly the
+ * failed rows, which is the case this exists to explain.
+ */
+export interface ImportOutcome {
+  imported: number;
+  failed: number;
+  errors: string[];
+  /** Calendar days of the rows that landed, or null when none did. */
+  span: { earliest: string; latest: string } | null;
+}
+
 // Note: ClientImportData and ExpenseImportData are now defined in their respective domain types
 // to avoid duplication and keep domain-specific types together
 

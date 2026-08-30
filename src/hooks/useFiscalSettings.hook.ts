@@ -30,7 +30,11 @@ export const useFiscalSettings = (): FiscalSettings => {
 
     const load = async (): Promise<void> => {
       try {
-        const settings = await sqliteService.getAllSettings('company');
+        // Unfiltered: seeded rows carry a NULL category (a category-scoped
+        // query never matches them, seed or no seed) and an already-installed
+        // database has no way to gain one retroactively. Reading everything
+        // and picking the two keys off it works regardless of category.
+        const settings = await sqliteService.getAllSettings();
         if (cancelled) return;
         setFiscalYearStartMonth(toFiscalMonth(settings?.fiscal_year_start_month));
         setAccountingMethod(toAccountingMethod(settings?.accounting_method));

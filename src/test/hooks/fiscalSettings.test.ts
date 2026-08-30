@@ -10,6 +10,13 @@ vi.mock('@/services/sqlite.svc', () => ({
 describe('useFiscalSettings', () => {
   beforeEach(() => getAllSettings.mockReset());
 
+  it('reads settings unfiltered, because seeded and legacy rows carry no category', async () => {
+    getAllSettings.mockResolvedValue({});
+    const { result } = renderHook(() => useFiscalSettings());
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    expect(getAllSettings).toHaveBeenCalledWith();
+  });
+
   it('defaults to a January fiscal year and accrual basis when nothing is stored', async () => {
     getAllSettings.mockResolvedValue({});
     const { result } = renderHook(() => useFiscalSettings());
@@ -45,5 +52,21 @@ describe('useFiscalSettings', () => {
     const { result } = renderHook(() => useFiscalSettings());
     await waitFor(() => expect(result.current.isLoading).toBe(false));
     expect(result.current.accountingMethod).toBe('accrual');
+  });
+
+  it('picks the two fiscal keys out of an unfiltered settings object holding every category', async () => {
+    getAllSettings.mockResolvedValue({
+      app_name: 'Slimbooks',
+      app_version: '2.3.0',
+      default_currency: 'USD',
+      'general.theme': 'dark',
+      'company.company_settings': { companyName: 'Acme Corp' },
+      fiscal_year_start_month: 7,
+      accounting_method: 'cash'
+    });
+    const { result } = renderHook(() => useFiscalSettings());
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    expect(result.current.fiscalYearStartMonth).toBe(7);
+    expect(result.current.accountingMethod).toBe('cash');
   });
 });

@@ -93,20 +93,6 @@ export const initializeSettings = async (db: IDatabase): Promise<void> => {
           is_public: 1
         },
         {
-          key: 'fiscal_year_start_month',
-          value: '1',
-          type: 'number',
-          description: 'Month the fiscal year opens, 1-12',
-          is_public: 1
-        },
-        {
-          key: 'accounting_method',
-          value: 'accrual',
-          type: 'string',
-          description: 'Cash or accrual accounting basis',
-          is_public: 1
-        },
-        {
           key: 'default_currency',
           value: 'USD',
           type: 'string',
@@ -145,6 +131,36 @@ export const initializeSettings = async (db: IDatabase): Promise<void> => {
     };
 
     await seedData(db, defaultSettings);
+
+    // A separate insert, not two more entries above: `seedData` derives its
+    // column list from the first row in the batch, and none of the rows
+    // above set `category` — adding it only here would be silently dropped
+    // from every row's INSERT, not just these two. Giving these their own
+    // batch, where the first row also carries `category`, is what makes it
+    // actually reach the column.
+    const fiscalSettings: SeedData = {
+      table: 'settings',
+      data: [
+        {
+          key: 'fiscal_year_start_month',
+          value: '1',
+          type: 'number',
+          description: 'Month the fiscal year opens, 1-12',
+          is_public: 1,
+          category: 'company'
+        },
+        {
+          key: 'accounting_method',
+          value: 'accrual',
+          type: 'string',
+          description: 'Cash or accrual accounting basis',
+          is_public: 1,
+          category: 'company'
+        }
+      ]
+    };
+
+    await seedData(db, fiscalSettings);
   }
 };
 

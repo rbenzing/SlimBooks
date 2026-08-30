@@ -88,7 +88,7 @@ export interface PaginationSettings {
 
 // Date range filtering
 export interface DateRangeFilterOption {
-  value: string; // TimePeriod type
+  value: string; // DateRangePeriod value, from '@/utils/data'
   label: string;
   getDateRange: () => { start: Date; end: Date };
 }

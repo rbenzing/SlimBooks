@@ -6,23 +6,18 @@ import { authenticatedFetch } from '@/utils/api';
 import { themeClasses, getIconColorClasses, getStatusColor } from '@/utils/themeUtils.util';
 import { StatCard, StatCardGrid } from '@/components/ui/StatCard';
 import { FormattedCurrency } from '@/components/ui/FormattedCurrency';
-import { type TimePeriod, type Invoice, type Expense } from '@/types';
+import { useFiscalSettings } from '@/hooks/useFiscalSettings.hook';
+import { getDateRangeForPeriod, filterByDateRange, dateRangeFilterOptions, type DateRangePeriod } from '@/utils/data';
+import { type Invoice, type Expense } from '@/types';
 
 export const DashboardOverview = () => {
-  const [selectedPeriod, setSelectedPeriod] = useState<TimePeriod>('year-to-date');
+  const { fiscalYearStartMonth } = useFiscalSettings();
+  const [selectedPeriod, setSelectedPeriod] = useState<DateRangePeriod>('this_year');
   const [loadedData, setLoadedData] = useState({
     allInvoices: [] as Invoice[],
     allExpenses: [] as Expense[],
     totalClients: 0
   });
-  
-  const timePeriodOptions = [
-    { value: 'last-week', label: 'Last Week' },
-    { value: 'last-month', label: 'Last Month' },
-    { value: 'last-year', label: 'Last Year' },
-    { value: 'year-to-date', label: 'Year to Date' },
-    { value: 'month-to-date', label: 'Month to Date' }
-  ];
 
   const loadDashboardData = async () => {
     try {
@@ -50,50 +45,20 @@ export const DashboardOverview = () => {
     }
   };
 
-  const dateRange = useMemo(() => {
-    const currentDate = new Date();
-    let startDate: Date;
-    let endDate: Date = currentDate;
+  const dateRange = useMemo(
+    () => getDateRangeForPeriod(selectedPeriod, fiscalYearStartMonth, new Date()),
+    [selectedPeriod, fiscalYearStartMonth]
+  );
 
-    switch (selectedPeriod) {
-      case 'last-week':
-        startDate = new Date(currentDate);
-        startDate.setDate(currentDate.getDate() - 7);
-        break;
-      case 'last-month':
-        startDate = new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1);
-        endDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), 0, 23, 59, 59);
-        break;
-      case 'last-year':
-        startDate = new Date(currentDate.getFullYear() - 1, 0, 1);
-        endDate = new Date(currentDate.getFullYear() - 1, 11, 31, 23, 59, 59);
-        break;
-      case 'year-to-date':
-        startDate = new Date(currentDate.getFullYear(), 0, 1);
-        break;
-      case 'month-to-date':
-        startDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
-        break;
-      default:
-        startDate = new Date(currentDate.getFullYear(), 0, 1);
-    }
+  const filteredInvoices = useMemo(
+    () => filterByDateRange(loadedData.allInvoices, dateRange, 'issue_date'),
+    [loadedData.allInvoices, dateRange]
+  );
 
-    return { startDate, endDate };
-  }, [selectedPeriod]);
-
-  const filteredInvoices = useMemo(() => {
-    return loadedData.allInvoices.filter(invoice => {
-      const invoiceDate = new Date(invoice.created_at);
-      return invoiceDate >= dateRange.startDate && invoiceDate <= dateRange.endDate;
-    });
-  }, [loadedData.allInvoices, dateRange]);
-
-  const filteredExpenses = useMemo(() => {
-    return loadedData.allExpenses.filter(expense => {
-      const expenseDate = new Date(expense.created_at);
-      return expenseDate >= dateRange.startDate && expenseDate <= dateRange.endDate;
-    });
-  }, [loadedData.allExpenses, dateRange]);
+  const filteredExpenses = useMemo(
+    () => filterByDateRange(loadedData.allExpenses, dateRange, 'date'),
+    [loadedData.allExpenses, dateRange]
+  );
 
   const stats = useMemo(() => {
     const totalRevenue = filteredInvoices.reduce((sum, invoice) => {
@@ -151,9 +116,9 @@ export const DashboardOverview = () => {
             <select
               className={themeClasses.select}
               value={selectedPeriod}
-              onChange={(e) => setSelectedPeriod(e.target.value as TimePeriod)}
+              onChange={(e) => setSelectedPeriod(e.target.value as DateRangePeriod)}
             >
-              {timePeriodOptions.map(option => (
+              {dateRangeFilterOptions.map(option => (
                 <option key={option.value} value={option.value}>
                   {option.label}
                 </option>

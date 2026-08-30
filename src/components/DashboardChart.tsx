@@ -2,12 +2,14 @@
 import React from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { themeClasses } from '@/utils/themeUtils.util';
-import { type Invoice, type TimePeriod } from '@/types';
+import { parseDisplayDate } from '@/utils/formatting/date.util';
+import { type DateRangePeriod } from '@/utils/data';
+import { type Invoice } from '@/types';
 
 interface DashboardChartProps {
   invoices: Invoice[];
   title?: string;
-  selectedPeriod: TimePeriod;
+  selectedPeriod: DateRangePeriod;
 }
 
 const DashboardChart: React.FC<DashboardChartProps> = ({ invoices, title = "Revenue Trend", selectedPeriod }) => {
@@ -15,15 +17,15 @@ const DashboardChart: React.FC<DashboardChartProps> = ({ invoices, title = "Reve
   // Generate chart data based on selected time period
   const generateChartData = () => {
     switch (selectedPeriod) {
-      case 'last-week':
+      case 'last_week':
         return generateWeeklyData();
-      case 'last-month':
+      case 'last_month':
         return generateLastMonthData();
-      case 'last-year':
+      case 'last_year':
         return generateLastYearData();
-      case 'year-to-date':
+      case 'this_year':
         return generateYearToDateData();
-      case 'month-to-date':
+      case 'this_month':
         return generateMonthToDateData();
       default:
         return generateYearToDateData();
@@ -36,7 +38,7 @@ const DashboardChart: React.FC<DashboardChartProps> = ({ invoices, title = "Reve
 
     // Use the already filtered invoices passed from parent
     invoices.forEach(invoice => {
-      const date = new Date(invoice.created_at);
+      const date = parseDisplayDate(invoice.issue_date);
       const dayKey = date.toISOString().split('T')[0];
       dailyData[dayKey] = (dailyData[dayKey] || 0) + invoice.total_amount;
     });
@@ -65,7 +67,7 @@ const DashboardChart: React.FC<DashboardChartProps> = ({ invoices, title = "Reve
 
     // Use the already filtered invoices passed from parent
     invoices.forEach(invoice => {
-      const date = new Date(invoice.created_at);
+      const date = parseDisplayDate(invoice.issue_date);
       const dayKey = date.toISOString().split('T')[0];
       dailyData[dayKey] = (dailyData[dayKey] || 0) + invoice.total_amount;
     });
@@ -96,7 +98,7 @@ const DashboardChart: React.FC<DashboardChartProps> = ({ invoices, title = "Reve
 
     // Use the already filtered invoices passed from parent
     invoices.forEach(invoice => {
-      const date = new Date(invoice.created_at);
+      const date = parseDisplayDate(invoice.issue_date);
       const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
       monthlyData[monthKey] = (monthlyData[monthKey] || 0) + invoice.total_amount;
     });
@@ -125,7 +127,7 @@ const DashboardChart: React.FC<DashboardChartProps> = ({ invoices, title = "Reve
 
     // Use the already filtered invoices passed from parent
     invoices.forEach(invoice => {
-      const date = new Date(invoice.created_at);
+      const date = parseDisplayDate(invoice.issue_date);
       const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
       monthlyData[monthKey] = (monthlyData[monthKey] || 0) + invoice.total_amount;
     });
@@ -155,7 +157,7 @@ const DashboardChart: React.FC<DashboardChartProps> = ({ invoices, title = "Reve
 
     // Use the already filtered invoices passed from parent
     invoices.forEach(invoice => {
-      const date = new Date(invoice.created_at);
+      const date = parseDisplayDate(invoice.issue_date);
       const dayKey = date.toISOString().split('T')[0];
       dailyData[dayKey] = (dailyData[dayKey] || 0) + invoice.total_amount;
     });

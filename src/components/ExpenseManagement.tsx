@@ -32,6 +32,8 @@ import { StatCard, StatCardGrid } from '@/components/ui/StatCard';
 import { filterByDateRange, getDateRangeForPeriod, type DateRangePeriod } from '@/utils/data';
 import { formatDateSync } from '@/components/ui/FormattedDate';
 import { FormattedCurrency } from '@/components/ui/FormattedCurrency';
+import { useFiscalSettings } from '@/hooks/useFiscalSettings.hook';
+import { useRememberedPeriod } from '@/hooks/useRememberedPeriod.hook';
 import { type Expense, type DateRange } from '@/types';
 
 export const ExpenseManagement: React.FC = () => {
@@ -42,11 +44,13 @@ export const ExpenseManagement: React.FC = () => {
     viewMode: 'table' as 'panel' | 'table'
   });
 
+  const { fiscalYearStartMonth } = useFiscalSettings();
+  const [dateFilter, setDateFilter] = useRememberedPeriod('expenses');
+
   const [filters, setFilters] = useState({
     searchTerm: '',
     categoryFilter: 'all',
     statusFilter: 'all',
-    dateFilter: 'this_month' as DateRangePeriod,
     customDateRange: undefined as DateRange | undefined
   });
 
@@ -113,10 +117,10 @@ export const ExpenseManagement: React.FC = () => {
 
   // Apply date filtering
   const dateFilteredExpenses = (() => {
-    if (filters.dateFilter === 'custom' && filters.customDateRange) {
+    if (dateFilter === 'custom' && filters.customDateRange) {
       return filterByDateRange(filteredExpenses, filters.customDateRange, 'date');
     } else {
-      const dateRange = getDateRangeForPeriod(filters.dateFilter);
+      const dateRange = getDateRangeForPeriod(dateFilter, fiscalYearStartMonth, new Date());
       return filterByDateRange(filteredExpenses, dateRange, 'date');
     }
   })();
@@ -125,7 +129,7 @@ export const ExpenseManagement: React.FC = () => {
   const pagination = usePagination({
     data: dateFilteredExpenses,
     searchTerm: filters.searchTerm,
-    filters: { categoryFilter: filters.categoryFilter, statusFilter: filters.statusFilter, dateFilter: filters.dateFilter }
+    filters: { categoryFilter: filters.categoryFilter, statusFilter: filters.statusFilter, dateFilter }
   });
 
   const totalExpenses = dateFilteredExpenses.reduce((sum, exp) => sum + exp.amount, 0);
@@ -134,7 +138,8 @@ export const ExpenseManagement: React.FC = () => {
   const reimbursedCount = dateFilteredExpenses.filter(exp => exp.status === 'reimbursed').length;
 
   const handleDateFilterChange = (period: DateRangePeriod, customRange?: DateRange) => {
-    updateFilters({ dateFilter: period, customDateRange: customRange });
+    setDateFilter(period);
+    updateFilters({ customDateRange: customRange });
   };
 
   const handleCreateExpense = () => {
@@ -423,7 +428,7 @@ export const ExpenseManagement: React.FC = () => {
                 <option value="reimbursed">Reimbursed</option>
               </select>
               <DateRangeFilter
-                value={filters.dateFilter}
+                value={dateFilter}
                 customRange={filters.customDateRange}
                 onChange={handleDateFilterChange}
                 className="max-w-xs"
@@ -501,7 +506,7 @@ export const ExpenseManagement: React.FC = () => {
               <Receipt className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
               <h3 className="text-lg font-medium text-foreground mb-2">No expenses found</h3>
               <p className="text-muted-foreground mb-4">
-                {filters.searchTerm || filters.categoryFilter !== 'all' || filters.statusFilter !== 'all' || filters.dateFilter !== 'this_month'
+                {filters.searchTerm || filters.categoryFilter !== 'all' || filters.statusFilter !== 'all' || dateFilter !== 'this_year'
                   ? 'Try adjusting your search or filters'
                   : 'Add your first expense to get started'
                 }

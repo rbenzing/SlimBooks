@@ -4,10 +4,12 @@ import { type DateRange } from '@/types';
 import {
   getDateRangeForPeriod,
   dateRangeFilterOptions,
+  toCalendarDay,
   type DateRangePeriod
 } from '@/utils/data';
 import { formatDateRangeSync } from '@/utils/formatting';
 import { cn } from '@/utils/themeUtils.util';
+import { useFiscalSettings } from '@/hooks/useFiscalSettings.hook';
 
 interface DateRangeFilterProps {
   value: DateRangePeriod;
@@ -24,6 +26,7 @@ export const DateRangeFilter: React.FC<DateRangeFilterProps> = ({
   className,
   disabled = false
 }) => {
+  const { fiscalYearStartMonth } = useFiscalSettings();
   const [isCustomMode, setIsCustomMode] = useState(value === 'custom');
   const [customStartDate, setCustomStartDate] = useState('');
   const [customEndDate, setCustomEndDate] = useState('');
@@ -31,8 +34,8 @@ export const DateRangeFilter: React.FC<DateRangeFilterProps> = ({
   // Update custom date inputs when customRange prop changes
   useEffect(() => {
     if (value === 'custom' && customRange) {
-      setCustomStartDate(customRange.start.toISOString().split('T')[0]);
-      setCustomEndDate(customRange.end.toISOString().split('T')[0]);
+      setCustomStartDate(toCalendarDay(customRange.start));
+      setCustomEndDate(toCalendarDay(customRange.end));
       setIsCustomMode(true);
     } else {
       setIsCustomMode(false);
@@ -44,9 +47,9 @@ export const DateRangeFilter: React.FC<DateRangeFilterProps> = ({
       setIsCustomMode(true);
       // Set default custom range to this month if no custom range exists
       if (!customRange) {
-        const thisMonth = getDateRangeForPeriod('this_month');
-        setCustomStartDate(thisMonth.start.toISOString().split('T')[0]);
-        setCustomEndDate(thisMonth.end.toISOString().split('T')[0]);
+        const thisMonth = getDateRangeForPeriod('this_month', fiscalYearStartMonth, new Date());
+        setCustomStartDate(toCalendarDay(thisMonth.start));
+        setCustomEndDate(toCalendarDay(thisMonth.end));
         onChange(period, thisMonth);
       } else {
         onChange(period, customRange);
@@ -84,7 +87,7 @@ export const DateRangeFilter: React.FC<DateRangeFilterProps> = ({
     setIsCustomMode(false);
     setCustomStartDate('');
     setCustomEndDate('');
-    onChange('this_month'); // Default back to this month
+    onChange('this_year'); // Default back to fiscal year to date
   };
 
   return (

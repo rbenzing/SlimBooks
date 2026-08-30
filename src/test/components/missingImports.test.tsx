@@ -9,6 +9,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 
+import type * as UseSettingsHook from '@/hooks/useSettings.hook';
+
 const { testConnection, getEmailSettings } = vi.hoisted(() => ({
   testConnection: vi.fn(),
   getEmailSettings: vi.fn()
@@ -25,9 +27,17 @@ vi.mock('@/contexts/AuthContext', () => ({
   useAuth: () => ({ user: { email: 'admin@example.com', name: 'Admin' } })
 }));
 
-vi.mock('@/hooks/useSettings.hook', () => ({
-  useEmailSettings: getEmailSettings
-}));
+vi.mock('@/hooks/useSettings.hook', async () => {
+  const actual = await vi.importActual<typeof UseSettingsHook>('@/hooks/useSettings.hook');
+  return {
+    ...actual,
+    useEmailSettings: getEmailSettings,
+    useCompanySettings: () => ({
+      settings: { fiscalYearStartMonth: 1, accountingMethod: 'accrual' },
+      isLoading: false
+    })
+  };
+});
 
 vi.mock('sonner', () => ({
   toast: { success: vi.fn(), error: vi.fn() }

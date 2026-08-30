@@ -32,6 +32,8 @@ import { filterByDateRange, getDateRangeForPeriod, type DateRangePeriod } from '
 import { authenticatedFetch } from '@/utils/api';
 import { formatDateSync } from '@/components/ui/FormattedDate';
 import { FormattedCurrency } from '@/components/ui/FormattedCurrency';
+import { useFiscalSettings } from '@/hooks/useFiscalSettings.hook';
+import { useRememberedPeriod } from '@/hooks/useRememberedPeriod.hook';
 import { type Payment } from '@/types';
 import { type DateRange } from '@/types';
 
@@ -44,11 +46,13 @@ export const PaymentManagement: React.FC = () => {
     loading: false
   });
 
+  const { fiscalYearStartMonth } = useFiscalSettings();
+  const [dateFilter, setDateFilter] = useRememberedPeriod('payments');
+
   const [filters, setFilters] = useState({
     searchTerm: '',
     methodFilter: 'all',
     statusFilter: 'all',
-    dateFilter: 'this_month' as DateRangePeriod,
     customDateRange: undefined as DateRange | undefined
   });
 
@@ -113,10 +117,10 @@ export const PaymentManagement: React.FC = () => {
 
   // Apply date filtering
   const dateFilteredPayments = (() => {
-    if (filters.dateFilter === 'custom' && filters.customDateRange) {
+    if (dateFilter === 'custom' && filters.customDateRange) {
       return filterByDateRange(filteredPayments, filters.customDateRange, 'date');
     } else {
-      const dateRange = getDateRangeForPeriod(filters.dateFilter);
+      const dateRange = getDateRangeForPeriod(dateFilter, fiscalYearStartMonth, new Date());
       return filterByDateRange(filteredPayments, dateRange, 'date');
     }
   })();
@@ -125,7 +129,7 @@ export const PaymentManagement: React.FC = () => {
   const pagination = usePagination({
     data: dateFilteredPayments,
     searchTerm: filters.searchTerm,
-    filters: { methodFilter: filters.methodFilter, statusFilter: filters.statusFilter, dateFilter: filters.dateFilter }
+    filters: { methodFilter: filters.methodFilter, statusFilter: filters.statusFilter, dateFilter }
   });
 
   const totalAmount = dateFilteredPayments.reduce((sum, payment) => sum + payment.amount, 0);
@@ -134,7 +138,8 @@ export const PaymentManagement: React.FC = () => {
   const failedCount = dateFilteredPayments.filter(p => p.status === 'failed').length;
 
   const handleDateFilterChange = (period: DateRangePeriod, customRange?: DateRange) => {
-    updateFilters({ dateFilter: period, customDateRange: customRange });
+    setDateFilter(period);
+    updateFilters({ customDateRange: customRange });
   };
 
   const handleCreatePayment = () => {
@@ -453,7 +458,7 @@ export const PaymentManagement: React.FC = () => {
                 <option value="refunded">Refunded</option>
               </select>
               <DateRangeFilter
-                value={filters.dateFilter}
+                value={dateFilter}
                 customRange={filters.customDateRange}
                 onChange={handleDateFilterChange}
                 className="max-w-xs"
@@ -535,7 +540,7 @@ export const PaymentManagement: React.FC = () => {
               <CreditCard className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
               <h3 className="text-lg font-medium text-foreground mb-2">No payments found</h3>
               <p className="text-muted-foreground mb-4">
-                {filters.searchTerm || filters.methodFilter !== 'all' || filters.statusFilter !== 'all' || filters.dateFilter !== 'this_month'
+                {filters.searchTerm || filters.methodFilter !== 'all' || filters.statusFilter !== 'all' || dateFilter !== 'this_year'
                   ? 'Try adjusting your search or filters'
                   : 'Add your first payment to get started'
                 }

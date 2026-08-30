@@ -11,18 +11,21 @@ import { filterByDateRange, getDateRangeForPeriod, type DateRangePeriod } from '
 import { formatDateSync } from '@/components/ui/FormattedDate';
 import { FormattedCurrency } from '@/components/ui/FormattedCurrency';
 import { createPaymentForInvoice } from '@/utils/payment.util';
+import { useFiscalSettings } from '@/hooks/useFiscalSettings.hook';
+import { useRememberedPeriod } from '@/hooks/useRememberedPeriod.hook';
 import { toast } from 'sonner';
 import { type DateRange, type Invoice } from '@/types';
 
 export const InvoicesTab = () => {
   const navigate = useNavigate();
+  const { fiscalYearStartMonth } = useFiscalSettings();
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [viewingInvoice, setViewingInvoice] = useState<Invoice | null>(null);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [clientFilter, setClientFilter] = useState('all');
-  const [dateFilter, setDateFilter] = useState<DateRangePeriod>('this_month');
+  const [dateFilter, setDateFilter] = useRememberedPeriod('invoices');
   const [customDateRange, setCustomDateRange] = useState<DateRange | undefined>(undefined);
   const [viewMode, setViewMode] = useState<'panel' | 'table'>('panel');
 
@@ -61,7 +64,7 @@ export const InvoicesTab = () => {
     if (dateFilter === 'custom' && customDateRange) {
       return filterByDateRange(filteredInvoices, customDateRange, 'created_at');
     } else {
-      const dateRange = getDateRangeForPeriod(dateFilter);
+      const dateRange = getDateRangeForPeriod(dateFilter, fiscalYearStartMonth, new Date());
       return filterByDateRange(filteredInvoices, dateRange, 'created_at');
     }
   })();
@@ -416,12 +419,12 @@ export const InvoicesTab = () => {
           <DollarSign className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
           <h3 className="text-lg font-medium text-foreground mb-2">No invoices found</h3>
           <p className="text-muted-foreground mb-4">
-            {searchTerm || statusFilter !== 'all' || clientFilter !== 'all' || dateFilter !== 'this_month'
+            {searchTerm || statusFilter !== 'all' || clientFilter !== 'all' || dateFilter !== 'this_year'
               ? 'Try adjusting your search or filters'
               : 'Create your first invoice to get started'
             }
           </p>
-          {!searchTerm && statusFilter === 'all' && clientFilter === 'all' && dateFilter === 'this_month' && (
+          {!searchTerm && statusFilter === 'all' && clientFilter === 'all' && dateFilter === 'this_year' && (
             <button
               onClick={handleCreateNew}
               className="inline-flex items-center px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90"

@@ -277,9 +277,13 @@ export class ReportService {
     // `YYYY-MM-DD` text, so it binds directly like the expenses query below;
     // running it through `instantRange()` would bind an epoch-millisecond
     // number against this text column instead, and comparing the two returns
-    // no rows on either engine — verified live: SQLite orders numbers below
-    // all text, and MySQL casts `issue_date`'s leading digits to a plain
-    // year (2026), which never falls inside an epoch-millisecond range.
+    // no rows on either engine — verified live, though by different routes:
+    // the column has TEXT affinity, so SQLite converts the bound number to its
+    // string form and compares lexicographically, while MySQL goes the other
+    // way and casts `issue_date`'s leading digits to a plain year (2026),
+    // which never falls inside an epoch-millisecond range. Note this is the
+    // MIRROR of the scar in CLAUDE.md, which is a day string bound against a
+    // timestamp column — there MySQL matches everything rather than nothing.
     const invoices = await databaseService.getMany<InvoiceWithClient>(`
       SELECT i.*, c.name as client_name
       FROM invoices i

@@ -128,4 +128,35 @@ describe('fiscal quarters', () => {
     const buckets = buildPeriodBuckets('2025-07-01', '2026-06-30', 'quarterly', 7);
     expect(buckets.map(b => b.key)).toEqual(['FY2026-Q1', 'FY2026-Q2', 'FY2026-Q3', 'FY2026-Q4']);
   });
+
+  /**
+   * A November start puts a quarter's END in January — month 11 + 2. Computing
+   * that end by adding to the start month without wrapping produces "2026-13-01",
+   * which is not a date. Only fiscal starts in {2,3,5,6,8,9,11,12} have a quarter
+   * that crosses the year end this way, and none of them was covered until a
+   * latent overflow was found and fixed here.
+   */
+  it('ends a quarter that crosses the calendar year in January, not month 13', () => {
+    const buckets = buildPeriodBuckets('2025-11-01', '2026-10-31', 'quarterly', 11);
+
+    expect(buckets.map(b => b.key)).toEqual(['FY2026-Q1', 'FY2026-Q2', 'FY2026-Q3', 'FY2026-Q4']);
+    expect(buckets.map(b => b.end)).toEqual(['2026-01-31', '2026-04-30', '2026-07-31', '2026-10-31']);
+    for (const bucket of buckets) {
+      expect(bucket.end).toMatch(/^\d{4}-(0[1-9]|1[0-2])-\d{2}$/);
+    }
+  });
+
+  it.each([2, 3, 5, 6, 8, 9, 11, 12])(
+    'produces only real months for a fiscal year starting in month %i',
+    (startMonth) => {
+      const buckets = buildPeriodBuckets('2025-01-01', '2027-12-31', 'quarterly', startMonth);
+
+      expect(buckets.length).toBeGreaterThan(0);
+      for (const bucket of buckets) {
+        expect(bucket.start).toMatch(/^\d{4}-(0[1-9]|1[0-2])-\d{2}$/);
+        expect(bucket.end).toMatch(/^\d{4}-(0[1-9]|1[0-2])-\d{2}$/);
+        expect(bucket.start <= bucket.end).toBe(true);
+      }
+    }
+  );
 });

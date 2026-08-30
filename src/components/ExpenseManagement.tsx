@@ -520,6 +520,9 @@ export const ExpenseManagement: React.FC = () => {
           <ExpenseImportExport
             onClose={() => updateUiState({ showImportExport: false })}
             onImportComplete={loadExpenses}
+            currentPeriod={dateFilter}
+            currentCustomRange={filters.customDateRange}
+            onPeriodChange={handleDateFilterChange}
           />
         )}
 

@@ -564,6 +564,9 @@ export const PaymentManagement: React.FC = () => {
           <PaymentImportExport
             onClose={() => updateUiState({ showImportExport: false })}
             onImportComplete={loadPayments}
+            currentPeriod={dateFilter}
+            currentCustomRange={filters.customDateRange}
+            onPeriodChange={handleDateFilterChange}
           />
         )}
       </div>

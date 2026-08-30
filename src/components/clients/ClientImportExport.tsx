@@ -5,8 +5,15 @@ import { authenticatedFetch } from '@/utils/api';
 import { exportToCSV, parseCSV, validateClientData } from '@/utils/data';
 import { toast } from 'sonner';
 import { themeClasses, getIconColorClasses, getButtonClasses } from '@/utils/themeUtils.util';
+import { ImportResult } from '@/components/ui/ImportResult.cpt';
 import { type ClientValidationResult } from '@/types';
-import { type FieldMapping, type ImportExportProps, type PreviewDataItem, CLIENT_FIELDS } from '@/types';
+import {
+  type FieldMapping,
+  type ImportExportProps,
+  type PreviewDataItem,
+  type ImportOutcome,
+  CLIENT_FIELDS
+} from '@/types';
 
 // CLIENT_FIELDS now imported from shared types
 
@@ -18,6 +25,7 @@ export const ClientImportExport: React.FC<ImportExportProps> = ({ onClose, onImp
   const [previewData, setPreviewData] = useState<PreviewDataItem[]>([]);
   const [validationResults, setValidationResults] = useState<ClientValidationResult[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [importOutcome, setImportOutcome] = useState<ImportOutcome | null>(null);
 
   const handleExport = async () => {
     try {
@@ -177,26 +185,19 @@ export const ClientImportExport: React.FC<ImportExportProps> = ({ onClose, onImp
       });
       
       const result = await response.json();
-      
-      if (result.success) {
-        toast.success(`Import completed: ${result.data.imported} clients imported${result.data.failed > 0 ? `, ${result.data.failed} failed` : ''}`);
-        
-        // Show detailed errors if any
-        if (result.data.failed > 0 && result.data.errors.length > 0) {
-          console.warn('Import errors:', result.data.errors);
-          toast.warning(`${result.data.failed} clients failed to import. Check console for details.`);
-        }
-      } else {
+
+      if (!result.data) {
         throw new Error(result.error || 'Import failed');
       }
 
+      const outcome: ImportOutcome = result.data;
+      setImportOutcome(outcome);
       onImportComplete();
-      onClose();
     } catch (error) {
       toast.error('Failed to import clients');
       console.error('Import error:', error);
     }
-    
+
     setIsProcessing(false);
   };
 
@@ -292,7 +293,7 @@ export const ClientImportExport: React.FC<ImportExportProps> = ({ onClose, onImp
     <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
       <div className={`${themeClasses.card} w-full max-w-4xl max-h-[90vh] overflow-y-auto`}>
         <div className="flex justify-between items-center mb-6">
-          <h2 className={themeClasses.cardTitle}>Import Clients</h2>
+          <h2 className={themeClasses.cardTitle}>{importOutcome ? 'Import Results' : 'Import Clients'}</h2>
           <button
             onClick={onClose}
             className="text-muted-foreground hover:text-foreground transition-colors"
@@ -301,6 +302,10 @@ export const ClientImportExport: React.FC<ImportExportProps> = ({ onClose, onImp
           </button>
         </div>
 
+        {importOutcome ? (
+          // Clients have no date to filter by, so there is never anything to widen the view for.
+          <ImportResult outcome={importOutcome} hiddenCount={0} onShowImported={() => {}} onDone={onClose} />
+        ) : (
         <div className="space-y-6">
           {/* Field Mapping */}
           <div>
@@ -399,6 +404,7 @@ export const ClientImportExport: React.FC<ImportExportProps> = ({ onClose, onImp
             </div>
           </div>
         </div>
+        )}
       </div>
     </div>
   );

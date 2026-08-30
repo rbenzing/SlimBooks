@@ -2,20 +2,37 @@
 import React, { useState, useCallback } from 'react';
 import { Upload, Download, FileText, CheckCircle, AlertCircle, X } from 'lucide-react';
 import { authenticatedFetch } from '@/utils/api';
-import { exportToCSV, parseCSV, validateExpenseData } from '@/utils/data';
+import { exportToCSV, parseCSV, validateExpenseData, getDateRangeForPeriod } from '@/utils/data';
 import { toast } from 'sonner';
 import { themeClasses, getIconColorClasses, getButtonClasses } from '@/utils/themeUtils.util';
+import { parseDisplayDate } from '@/utils/formatting';
+import { useFiscalSettings } from '@/hooks/useFiscalSettings.hook';
+import { ImportResult } from '@/components/ui/ImportResult.cpt';
 import {
   type FieldMapping,
   type ImportExportProps,
   type CSVRecord,
   type PreviewDataItem,
   type ExpenseValidationResult,
+  type ImportOutcome,
   EXPENSE_FIELDS,
   isExpenseStatus
 } from '@/types';
 
-export const ExpenseImportExport: React.FC<ImportExportProps> = ({ onClose, onImportComplete }) => {
+/** The end of the local day named by a calendar-day string, for a custom range. */
+const endOfCalendarDay = (day: string): Date => {
+  const date = parseDisplayDate(day);
+  date.setHours(23, 59, 59, 999);
+  return date;
+};
+
+export const ExpenseImportExport: React.FC<ImportExportProps> = ({
+  onClose,
+  onImportComplete,
+  currentPeriod,
+  currentCustomRange,
+  onPeriodChange
+}) => {
   const [mode, setMode] = useState<'select' | 'import' | 'export'>('select');
   const [csvData, setCsvData] = useState<CSVRecord[]>([]);
   const [csvHeaders, setCsvHeaders] = useState<string[]>([]);
@@ -23,6 +40,22 @@ export const ExpenseImportExport: React.FC<ImportExportProps> = ({ onClose, onIm
   const [previewData, setPreviewData] = useState<PreviewDataItem[]>([]);
   const [validationResults, setValidationResults] = useState<ExpenseValidationResult[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [importOutcome, setImportOutcome] = useState<ImportOutcome | null>(null);
+  const [hiddenCount, setHiddenCount] = useState(0);
+
+  const { fiscalYearStartMonth } = useFiscalSettings();
+
+  /** How many of the submitted rows fall outside the caller's current view. */
+  const countHidden = (rows: PreviewDataItem[]): number => {
+    if (!currentPeriod) return 0;
+    const range = currentPeriod === 'custom' && currentCustomRange
+      ? currentCustomRange
+      : getDateRangeForPeriod(currentPeriod, fiscalYearStartMonth, new Date());
+    return rows.filter(row => {
+      const date = typeof row.date === 'string' ? parseDisplayDate(row.date) : null;
+      return !date || isNaN(date.getTime()) || date < range.start || date > range.end;
+    }).length;
+  };
 
   const handleExport = async () => {
     try {
@@ -183,26 +216,20 @@ export const ExpenseImportExport: React.FC<ImportExportProps> = ({ onClose, onIm
       });
       
       const result = await response.json();
-      
-      if (result.success) {
-        toast.success(`Import completed: ${result.data.imported} expenses imported${result.data.failed > 0 ? `, ${result.data.failed} failed` : ''}`);
-        
-        // Show detailed errors if any
-        if (result.data.failed > 0 && result.data.errors.length > 0) {
-          console.warn('Import errors:', result.data.errors);
-          toast.warning(`${result.data.failed} expenses failed to import. Check console for details.`);
-        }
-      } else {
+
+      if (!result.data) {
         throw new Error(result.error || 'Import failed');
       }
 
+      const outcome: ImportOutcome = result.data;
+      setImportOutcome(outcome);
+      setHiddenCount(countHidden(validExpenses));
       onImportComplete();
-      onClose();
     } catch (error) {
       toast.error(`Failed to import expenses: ${error.message || error}`);
       console.error('Import error:', error);
     }
-    
+
     setIsProcessing(false);
   };
 
@@ -298,7 +325,7 @@ export const ExpenseImportExport: React.FC<ImportExportProps> = ({ onClose, onIm
     <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
       <div className={`${themeClasses.card} w-full max-w-4xl max-h-[90vh] overflow-y-auto`}>
         <div className="flex justify-between items-center mb-6">
-          <h2 className={themeClasses.cardTitle}>Import Expenses</h2>
+          <h2 className={themeClasses.cardTitle}>{importOutcome ? 'Import Results' : 'Import Expenses'}</h2>
           <button
             onClick={onClose}
             className="text-muted-foreground hover:text-foreground transition-colors"
@@ -307,6 +334,17 @@ export const ExpenseImportExport: React.FC<ImportExportProps> = ({ onClose, onIm
           </button>
         </div>
 
+        {importOutcome ? (
+          <ImportResult
+            outcome={importOutcome}
+            hiddenCount={hiddenCount}
+            onShowImported={(earliest, latest) => {
+              onPeriodChange?.('custom', { start: parseDisplayDate(earliest), end: endOfCalendarDay(latest) });
+              onClose();
+            }}
+            onDone={onClose}
+          />
+        ) : (
         <div className="space-y-6">
           {/* Field Mapping */}
           <div>
@@ -399,6 +437,7 @@ export const ExpenseImportExport: React.FC<ImportExportProps> = ({ onClose, onIm
             </div>
           </div>
         </div>
+        )}
       </div>
     </div>
   );

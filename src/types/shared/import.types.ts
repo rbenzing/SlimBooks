@@ -1,5 +1,8 @@
 // Import and export related types and interfaces
 
+import { type DateRangePeriod } from '@/utils/data/period.util';
+import { type DateRange } from './common.types';
+
 // Generic CSV record interface
 export interface CSVRecord {
   [key: string]: string;
@@ -50,6 +53,15 @@ export interface PreviewDataItem {
 export interface ImportExportProps {
   onClose: () => void;
   onImportComplete: () => void;
+  /**
+   * The list's current period and a way to change it, so a completed import
+   * can offer to widen the view to include rows that landed outside it.
+   * Omitted by callers with no period concept of their own — clients aren't
+   * date-filtered, so ClientImportExport receives none of these.
+   */
+  currentPeriod?: DateRangePeriod;
+  currentCustomRange?: DateRange;
+  onPeriodChange?: (period: DateRangePeriod, customRange?: DateRange) => void;
 }
 
 /**

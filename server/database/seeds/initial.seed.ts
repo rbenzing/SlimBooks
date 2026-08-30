@@ -93,6 +93,20 @@ export const initializeSettings = async (db: IDatabase): Promise<void> => {
           is_public: 1
         },
         {
+          key: 'fiscal_year_start_month',
+          value: '1',
+          type: 'number',
+          description: 'Month the fiscal year opens, 1-12',
+          is_public: 1
+        },
+        {
+          key: 'accounting_method',
+          value: 'accrual',
+          type: 'string',
+          description: 'Cash or accrual accounting basis',
+          is_public: 1
+        },
+        {
           key: 'default_currency',
           value: 'USD',
           type: 'string',

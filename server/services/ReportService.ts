@@ -267,19 +267,27 @@ export class ReportService {
   async generateProfitLossData(
     startDate: string,
     endDate: string,
+    fiscalYearStartMonth: number,
     accountingMethod: 'cash' | 'accrual' = 'accrual',
     preset?: string,
     breakdownPeriod: 'monthly' | 'quarterly' = 'quarterly'
   ): Promise<ProfitLossReportData> {
-    // Get invoices in date range
+    // Get invoices in date range, windowed on the day they were issued — not
+    // `created_at`, the moment the row was entered. `issue_date` is
+    // `YYYY-MM-DD` text, so it binds directly like the expenses query below;
+    // running it through `instantRange()` would bind an epoch-millisecond
+    // number against this text column instead, and comparing the two returns
+    // no rows on either engine — verified live: SQLite orders numbers below
+    // all text, and MySQL casts `issue_date`'s leading digits to a plain
+    // year (2026), which never falls inside an epoch-millisecond range.
     const invoices = await databaseService.getMany<InvoiceWithClient>(`
       SELECT i.*, c.name as client_name
       FROM invoices i
       LEFT JOIN clients c ON i.client_id = c.id
-      WHERE i.created_at >= ? AND i.created_at <= ?
+      WHERE i.issue_date >= ? AND i.issue_date <= ?
       AND i.deleted_at IS NULL
-      ORDER BY i.created_at DESC
-    `, instantRange(startDate, endDate));
+      ORDER BY i.issue_date DESC
+    `, [startDate, endDate]);
 
     // Get expenses in date range
     const expenses = await databaseService.getMany<Expense>(`
@@ -319,14 +327,14 @@ export class ReportService {
 
     // Per-period columns. Bucketed on the same fields and with the same
     // accounting method as the totals above, so the columns reconcile with them.
-    const buckets = buildPeriodBuckets(startDate, endDate, breakdownPeriod);
+    const buckets = buildPeriodBuckets(startDate, endDate, breakdownPeriod, fiscalYearStartMonth);
 
     const periodColumns = buckets.map(bucket => {
       const bucketInvoices = invoices.filter(
-        inv => periodKeyFor(inv.created_at, breakdownPeriod) === bucket.key
+        inv => periodKeyFor(inv.issue_date, breakdownPeriod, fiscalYearStartMonth) === bucket.key
       );
       const bucketExpenses = expenses.filter(
-        exp => periodKeyFor(exp.date, breakdownPeriod) === bucket.key
+        exp => periodKeyFor(exp.date, breakdownPeriod, fiscalYearStartMonth) === bucket.key
       );
 
       const bucketRevenue = (
@@ -427,14 +435,16 @@ export class ReportService {
    * Generate Invoice Report Data
    */
   async generateInvoiceData(startDate: string, endDate: string): Promise<InvoiceReportData> {
+    // Windowed on issue_date, not created_at — see generateProfitLossData
+    // above for why the bind changes with the field.
     const invoices = await databaseService.getMany<InvoiceWithClient>(`
       SELECT i.*, c.name as client_name
       FROM invoices i
       LEFT JOIN clients c ON i.client_id = c.id
-      WHERE i.created_at >= ? AND i.created_at <= ?
+      WHERE i.issue_date >= ? AND i.issue_date <= ?
       AND i.deleted_at IS NULL
-      ORDER BY i.created_at DESC
-    `, instantRange(startDate, endDate));
+      ORDER BY i.issue_date DESC
+    `, [startDate, endDate]);
 
     const toNumber = (value: unknown): number => {
       if (value === null || value === undefined) return 0;

@@ -11,14 +11,19 @@ import { buildPeriodBuckets, periodKeyFor, type BreakdownPeriod } from './report
 
 interface Row { date: string; amount: number }
 
+// A January fiscal year, so these calendar-quarter expectations hold exactly
+// as before; fiscal-quarter bucketing itself is covered separately in
+// reportPeriods.util.test.ts.
+const CALENDAR_FISCAL_YEAR_START_MONTH = 1;
+
 /** Mirrors how ReportService groups records into columns. */
 const bucketise = (rows: Row[], start: string, end: string, period: BreakdownPeriod) => {
-  const buckets = buildPeriodBuckets(start, end, period);
+  const buckets = buildPeriodBuckets(start, end, period, CALENDAR_FISCAL_YEAR_START_MONTH);
 
   return buckets.map(bucket => ({
     label: bucket.label,
     total: rows
-      .filter(row => periodKeyFor(row.date, period) === bucket.key)
+      .filter(row => periodKeyFor(row.date, period, CALENDAR_FISCAL_YEAR_START_MONTH) === bucket.key)
       .reduce((sum, row) => sum + row.amount, 0)
   }));
 };
@@ -47,10 +52,12 @@ describe('P&L column reconciliation', () => {
 
   it('places each record in exactly one column', () => {
     const period: BreakdownPeriod = 'quarterly';
-    const buckets = buildPeriodBuckets('2026-01-01', '2026-12-31', period);
+    const buckets = buildPeriodBuckets('2026-01-01', '2026-12-31', period, CALENDAR_FISCAL_YEAR_START_MONTH);
 
     for (const row of rows) {
-      const matches = buckets.filter(b => b.key === periodKeyFor(row.date, period));
+      const matches = buckets.filter(
+        b => b.key === periodKeyFor(row.date, period, CALENDAR_FISCAL_YEAR_START_MONTH)
+      );
       expect(matches).toHaveLength(1);
     }
   });
@@ -72,6 +79,8 @@ describe('P&L column reconciliation', () => {
 
   it('produces a single column for a range inside one quarter', () => {
     // hasBreakdown is false in this case, so the UI shows only the Total column.
-    expect(buildPeriodBuckets('2026-01-05', '2026-02-20', 'quarterly')).toHaveLength(1);
+    expect(
+      buildPeriodBuckets('2026-01-05', '2026-02-20', 'quarterly', CALENDAR_FISCAL_YEAR_START_MONTH)
+    ).toHaveLength(1);
   });
 });

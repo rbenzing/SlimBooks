@@ -163,7 +163,7 @@ router.delete('/:id', async (req: Request, res: Response): Promise<void> => {
 // Generate Profit & Loss Report
 router.post('/generate/profit-loss', async (req: Request, res: Response): Promise<void> => {
   try {
-    const { startDate, endDate, accountingMethod, preset, breakdownPeriod } = req.body;
+    const { startDate, endDate, accountingMethod, preset, breakdownPeriod, fiscalYearStartMonth } = req.body;
 
     if (!startDate || !endDate) {
       res.status(400).json({
@@ -173,9 +173,20 @@ router.post('/generate/profit-loss', async (req: Request, res: Response): Promis
       return;
     }
 
+    // No default: a caller that sends nothing must not silently fall back to
+    // calendar quarters while the UI it drove shows fiscal ones.
+    if (!Number.isInteger(fiscalYearStartMonth) || fiscalYearStartMonth < 1 || fiscalYearStartMonth > 12) {
+      res.status(400).json({
+        success: false,
+        error: 'fiscalYearStartMonth must be an integer between 1 and 12'
+      });
+      return;
+    }
+
     const data = await reportService.generateProfitLossData(
       startDate,
       endDate,
+      fiscalYearStartMonth,
       accountingMethod || 'accrual',
       preset,
       breakdownPeriod || 'quarterly'

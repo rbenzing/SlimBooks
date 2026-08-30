@@ -43,7 +43,8 @@ export const ProfitLossReport: React.FC<ProfitLossReportProps> = ({ onBack, onSa
           endDate: dateRange.end,
           accountingMethod,
           preset: dateRange.preset,
-          breakdownPeriod
+          breakdownPeriod,
+          fiscalYearStartMonth
         })
       });
       const result = await response.json();
@@ -57,7 +58,7 @@ export const ProfitLossReport: React.FC<ProfitLossReportProps> = ({ onBack, onSa
     } finally {
       setLoading(false);
     }
-  }, [dateRange.start, dateRange.end, dateRange.preset, accountingMethod, breakdownPeriod]);
+  }, [dateRange.start, dateRange.end, dateRange.preset, accountingMethod, breakdownPeriod, fiscalYearStartMonth]);
 
   useEffect(() => {
     generateReportData();

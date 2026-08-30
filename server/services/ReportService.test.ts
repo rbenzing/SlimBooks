@@ -22,6 +22,7 @@ const invoice = (over: Record<string, unknown> = {}) => ({
   client_id: 1,
   amount: 100,
   status: 'paid',
+  issue_date: '2026-02-15',
   created_at: Date.parse('2026-02-15T00:00:00.000Z'),
   ...over
 });
@@ -51,7 +52,7 @@ describe('generateProfitLossData', () => {
   it('returns every key the P&L screen reads', async () => {
     seed({});
 
-    const report = await reportService.generateProfitLossData('2026-01-01', '2026-03-31');
+    const report = await reportService.generateProfitLossData('2026-01-01', '2026-03-31', 1);
 
     expect(Object.keys(report)).toEqual(expect.arrayContaining([
       'revenue', 'expenses', 'profit', 'netIncome', 'accountingMethod',
@@ -67,7 +68,7 @@ describe('generateProfitLossData', () => {
       expenses: [expense({ amount: 50 })]
     });
 
-    const report = await reportService.generateProfitLossData('2026-01-01', '2026-03-31', 'accrual');
+    const report = await reportService.generateProfitLossData('2026-01-01', '2026-03-31', 1, 'accrual');
 
     expect(report.revenue.total).toBe(500);
     expect(report.revenue.paid).toBe(300);
@@ -81,7 +82,7 @@ describe('generateProfitLossData', () => {
       expenses: [expense({ amount: 50 })]
     });
 
-    const report = await reportService.generateProfitLossData('2026-01-01', '2026-03-31', 'cash');
+    const report = await reportService.generateProfitLossData('2026-01-01', '2026-03-31', 1, 'cash');
 
     expect(report.revenue.total).toBe(300);
     expect(report.netIncome).toBe(250);
@@ -96,7 +97,7 @@ describe('generateProfitLossData', () => {
       ]
     });
 
-    const report = await reportService.generateProfitLossData('2026-01-01', '2026-03-31');
+    const report = await reportService.generateProfitLossData('2026-01-01', '2026-03-31', 1);
 
     expect(report.expenses).toMatchObject({ total: 110, Office: 50, Travel: 60 });
   });
@@ -104,7 +105,7 @@ describe('generateProfitLossData', () => {
   it('files an uncategorised expense rather than dropping it', async () => {
     seed({ expenses: [expense({ category: null, amount: 25 })] });
 
-    const report = await reportService.generateProfitLossData('2026-01-01', '2026-03-31');
+    const report = await reportService.generateProfitLossData('2026-01-01', '2026-03-31', 1);
 
     expect(report.expenses).toMatchObject({ total: 25, Uncategorized: 25 });
   });
@@ -112,7 +113,7 @@ describe('generateProfitLossData', () => {
   it('coerces amounts stored as strings', async () => {
     seed({ invoices: [invoice({ amount: '150.50' })], expenses: [expense({ amount: '0.50' })] });
 
-    const report = await reportService.generateProfitLossData('2026-01-01', '2026-03-31');
+    const report = await reportService.generateProfitLossData('2026-01-01', '2026-03-31', 1);
 
     expect(report.revenue.total).toBe(150.5);
     expect(report.expenses.total).toBe(0.5);
@@ -121,7 +122,7 @@ describe('generateProfitLossData', () => {
   it('treats an unparseable amount as zero instead of NaN', async () => {
     seed({ invoices: [invoice({ amount: 'n/a' }), invoice({ id: 2, amount: null })] });
 
-    const report = await reportService.generateProfitLossData('2026-01-01', '2026-03-31');
+    const report = await reportService.generateProfitLossData('2026-01-01', '2026-03-31', 1);
 
     expect(report.revenue.total).toBe(0);
     expect(Number.isNaN(report.profit.margin)).toBe(false);
@@ -130,7 +131,7 @@ describe('generateProfitLossData', () => {
   it('reports a zero margin rather than dividing by zero', async () => {
     seed({ expenses: [expense({ amount: 100 })] });
 
-    const report = await reportService.generateProfitLossData('2026-01-01', '2026-03-31');
+    const report = await reportService.generateProfitLossData('2026-01-01', '2026-03-31', 1);
 
     expect(report.profit.margin).toBe(0);
     expect(report.netIncome).toBe(-100);
@@ -139,7 +140,7 @@ describe('generateProfitLossData', () => {
   it('computes the margin against recognised revenue', async () => {
     seed({ invoices: [invoice({ amount: 1000 })], expenses: [expense({ amount: 250 })] });
 
-    const report = await reportService.generateProfitLossData('2026-01-01', '2026-03-31');
+    const report = await reportService.generateProfitLossData('2026-01-01', '2026-03-31', 1);
 
     expect(report.profit.margin).toBeCloseTo(75);
   });
@@ -147,8 +148,8 @@ describe('generateProfitLossData', () => {
   it('breaks the period into columns that add up to the total', async () => {
     seed({
       invoices: [
-        invoice({ amount: 300, created_at: Date.parse('2026-02-15T00:00:00.000Z') }),
-        invoice({ id: 2, amount: 200, created_at: Date.parse('2026-05-15T00:00:00.000Z') })
+        invoice({ amount: 300, issue_date: '2026-02-15' }),
+        invoice({ id: 2, amount: 200, issue_date: '2026-05-15' })
       ],
       expenses: [
         expense({ amount: 40, date: '2026-02-20' }),
@@ -157,7 +158,7 @@ describe('generateProfitLossData', () => {
     });
 
     const report = await reportService.generateProfitLossData(
-      '2026-01-01', '2026-06-30', 'accrual', undefined, 'quarterly'
+      '2026-01-01', '2026-06-30', 1, 'accrual', undefined, 'quarterly'
     );
 
     const columnRevenue = report.periodColumns.reduce((sum, c) => sum + c.revenue, 0);
@@ -169,21 +170,40 @@ describe('generateProfitLossData', () => {
   });
 
   it('buckets by month when asked', async () => {
-    seed({ invoices: [invoice({ amount: 100, created_at: Date.parse('2026-02-15T00:00:00.000Z') })] });
+    seed({ invoices: [invoice({ amount: 100, issue_date: '2026-02-15' })] });
 
     const report = await reportService.generateProfitLossData(
-      '2026-01-01', '2026-03-31', 'accrual', undefined, 'monthly'
+      '2026-01-01', '2026-03-31', 1, 'accrual', undefined, 'monthly'
     );
 
     expect(report.breakdownPeriod).toBe('monthly');
     expect(report.periodColumns).toHaveLength(3);
   });
 
-  it('hides a breakdown that would just restate the total column', async () => {
-    seed({ invoices: [invoice({ amount: 100, created_at: Date.parse('2026-02-15T00:00:00.000Z') })] });
+  it('labels quarterly columns by fiscal quarter, not the calendar one', async () => {
+    seed({
+      invoices: [
+        invoice({ amount: 300, issue_date: '2026-07-15' }),
+        invoice({ id: 2, amount: 200, issue_date: '2026-10-15' })
+      ]
+    });
 
     const report = await reportService.generateProfitLossData(
-      '2026-02-01', '2026-02-28', 'accrual', undefined, 'quarterly'
+      '2026-07-01', '2027-06-30', 7, 'accrual', undefined, 'quarterly'
+    );
+
+    expect(report.periodColumns.map(c => c.label)).toEqual([
+      'FY2027 Q1', 'FY2027 Q2', 'FY2027 Q3', 'FY2027 Q4'
+    ]);
+    expect(report.periodColumns[0].revenue).toBe(300);
+    expect(report.periodColumns[1].revenue).toBe(200);
+  });
+
+  it('hides a breakdown that would just restate the total column', async () => {
+    seed({ invoices: [invoice({ amount: 100, issue_date: '2026-02-15' })] });
+
+    const report = await reportService.generateProfitLossData(
+      '2026-02-01', '2026-02-28', 1, 'accrual', undefined, 'quarterly'
     );
 
     expect(report.periodColumns).toHaveLength(1);
@@ -195,13 +215,13 @@ describe('generateProfitLossData', () => {
     // not reconcile with the total column beside them.
     seed({
       invoices: [
-        invoice({ amount: 300, created_at: Date.parse('2026-02-15T00:00:00.000Z') }),
-        invoice({ id: 2, amount: 200, status: 'sent', created_at: Date.parse('2026-02-16T00:00:00.000Z') })
+        invoice({ amount: 300, issue_date: '2026-02-15' }),
+        invoice({ id: 2, amount: 200, status: 'sent', issue_date: '2026-02-16' })
       ]
     });
 
     const report = await reportService.generateProfitLossData(
-      '2026-01-01', '2026-06-30', 'cash', undefined, 'quarterly'
+      '2026-01-01', '2026-06-30', 1, 'cash', undefined, 'quarterly'
     );
 
     const columnRevenue = report.periodColumns.reduce((sum, c) => sum + c.revenue, 0);
@@ -209,36 +229,25 @@ describe('generateProfitLossData', () => {
     expect(columnRevenue).toBe(report.revenue.total);
   });
 
-  it('queries the range as instants, not as the days the user picked', async () => {
-    // `created_at` holds epoch milliseconds. Binding '2026-01-01' against it
-    // fails silently and differently on each engine: SQLite orders every number
-    // below every string, so the report comes back empty; MySQL reads the string
-    // as 2026, so the lower bound matches everything and the upper bound nothing.
+  it('queries invoices by issue date, not row creation time', async () => {
+    // An invoice issued last January but entered today must land in last
+    // January's report, not this month's. `issue_date` is `YYYY-MM-DD` text,
+    // so it binds directly — running it through the instant conversion used
+    // for timestamp columns would compare a number against text and fail
+    // silently and differently on each engine: SQLite orders every number
+    // below every string, so the report comes back empty; MySQL reads the
+    // string as 2026, so the lower bound matches everything and the upper
+    // bound nothing.
     seed({});
 
-    await reportService.generateProfitLossData('2026-01-01', '2026-03-31');
+    await reportService.generateProfitLossData('2026-01-01', '2026-03-31', 1);
 
-    const invoiceParams = db.getMany.mock.calls.find(
+    const invoiceCall = db.getMany.mock.calls.find(
       call => /FROM invoices/.test(call[0] as string)
-    )?.[1] as unknown[];
-    expect(invoiceParams).toEqual([
-      Date.parse('2026-01-01T00:00:00.000Z'),
-      Date.parse('2026-03-31T23:59:59.999Z')
-    ]);
-  });
-
-  it('stretches the end bound to cover the whole final day', async () => {
-    // Invoice timestamps carry a time; stopping at the final midnight would
-    // drop that day's invoices from the report.
-    seed({});
-
-    await reportService.generateProfitLossData('2026-01-01', '2026-03-31');
-
-    const invoiceParams = db.getMany.mock.calls.find(
-      call => /FROM invoices/.test(call[0] as string)
-    )?.[1] as unknown[];
-    expect(invoiceParams[1]).toBeGreaterThan(Date.parse('2026-03-31T18:00:00.000Z'));
-    expect(invoiceParams[1]).toBeLessThan(Date.parse('2026-04-01T00:00:00.000Z'));
+    );
+    expect(flattenSql(invoiceCall?.[0] as string)).toMatch(/i\.issue_date >= \? AND i\.issue_date <= \?/);
+    expect(flattenSql(invoiceCall?.[0] as string)).toMatch(/ORDER BY i\.issue_date DESC/);
+    expect(invoiceCall?.[1]).toEqual(['2026-01-01', '2026-03-31']);
   });
 
   it('still queries expenses by calendar day, because that column is days', async () => {
@@ -246,7 +255,7 @@ describe('generateProfitLossData', () => {
     // 'YYYY-MM-DD' text against a number and return nothing.
     seed({});
 
-    await reportService.generateProfitLossData('2026-01-01', '2026-03-31');
+    await reportService.generateProfitLossData('2026-01-01', '2026-03-31', 1);
 
     const expenseParams = db.getMany.mock.calls.find(
       call => /FROM expenses/.test(call[0] as string)
@@ -257,7 +266,7 @@ describe('generateProfitLossData', () => {
   it('excludes soft-deleted records', async () => {
     seed({});
 
-    await reportService.generateProfitLossData('2026-01-01', '2026-03-31');
+    await reportService.generateProfitLossData('2026-01-01', '2026-03-31', 1);
 
     for (const [sql] of db.getMany.mock.calls) {
       expect(flattenSql(sql as string)).toMatch(/deleted_at IS NULL/);
@@ -354,6 +363,21 @@ describe('generateInvoiceData', () => {
     const report = await reportService.generateInvoiceData('2026-01-01', '2026-03-31');
 
     expect(report.invoicesByStatus).toEqual({ draft: 75 });
+  });
+
+  it('windows on issue date, not row creation time', async () => {
+    // Same defect as generateProfitLossData: the list and the report must
+    // agree on which date places an invoice inside the range.
+    seed({});
+
+    await reportService.generateInvoiceData('2026-01-01', '2026-03-31');
+
+    const invoiceCall = db.getMany.mock.calls.find(
+      call => /FROM invoices/.test(call[0] as string)
+    );
+    expect(flattenSql(invoiceCall?.[0] as string)).toMatch(/i\.issue_date >= \? AND i\.issue_date <= \?/);
+    expect(flattenSql(invoiceCall?.[0] as string)).toMatch(/ORDER BY i\.issue_date DESC/);
+    expect(invoiceCall?.[1]).toEqual(['2026-01-01', '2026-03-31']);
   });
 });
 

@@ -3,7 +3,7 @@ import React from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { themeClasses } from '@/utils/themeUtils.util';
 import { parseDisplayDate } from '@/utils/formatting/date.util';
-import { type DateRangePeriod } from '@/utils/data';
+import { toCalendarDay, type DateRangePeriod } from '@/utils/data';
 import { type Invoice } from '@/types';
 
 interface DashboardChartProps {
@@ -39,7 +39,7 @@ const DashboardChart: React.FC<DashboardChartProps> = ({ invoices, title = "Reve
     // Use the already filtered invoices passed from parent
     invoices.forEach(invoice => {
       const date = parseDisplayDate(invoice.issue_date);
-      const dayKey = date.toISOString().split('T')[0];
+      const dayKey = toCalendarDay(date);
       dailyData[dayKey] = (dailyData[dayKey] || 0) + invoice.total_amount;
     });
 
@@ -49,7 +49,7 @@ const DashboardChart: React.FC<DashboardChartProps> = ({ invoices, title = "Reve
     for (let i = 6; i >= 0; i--) {
       const date = new Date(currentDate);
       date.setDate(currentDate.getDate() - i);
-      const dayKey = date.toISOString().split('T')[0];
+      const dayKey = toCalendarDay(date);
       const dayName = date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
 
       last7Days.push({
@@ -68,7 +68,7 @@ const DashboardChart: React.FC<DashboardChartProps> = ({ invoices, title = "Reve
     // Use the already filtered invoices passed from parent
     invoices.forEach(invoice => {
       const date = parseDisplayDate(invoice.issue_date);
-      const dayKey = date.toISOString().split('T')[0];
+      const dayKey = toCalendarDay(date);
       dailyData[dayKey] = (dailyData[dayKey] || 0) + invoice.total_amount;
     });
 
@@ -80,7 +80,7 @@ const DashboardChart: React.FC<DashboardChartProps> = ({ invoices, title = "Reve
 
     for (let day = 1; day <= lastMonthEnd.getDate(); day++) {
       const date = new Date(lastMonth.getFullYear(), lastMonth.getMonth(), day);
-      const dayKey = date.toISOString().split('T')[0];
+      const dayKey = toCalendarDay(date);
       const dayLabel = day.toString();
 
       lastMonthDays.push({
@@ -158,7 +158,7 @@ const DashboardChart: React.FC<DashboardChartProps> = ({ invoices, title = "Reve
     // Use the already filtered invoices passed from parent
     invoices.forEach(invoice => {
       const date = parseDisplayDate(invoice.issue_date);
-      const dayKey = date.toISOString().split('T')[0];
+      const dayKey = toCalendarDay(date);
       dailyData[dayKey] = (dailyData[dayKey] || 0) + invoice.total_amount;
     });
 
@@ -168,7 +168,7 @@ const DashboardChart: React.FC<DashboardChartProps> = ({ invoices, title = "Reve
 
     for (let day = 1; day <= currentDay; day++) {
       const date = new Date(currentDate.getFullYear(), currentDate.getMonth(), day);
-      const dayKey = date.toISOString().split('T')[0];
+      const dayKey = toCalendarDay(date);
       const dayLabel = day.toString();
 
       monthToDateDays.push({

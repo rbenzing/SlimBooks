@@ -357,6 +357,18 @@ export function useSettings<T extends Record<string, unknown>>({
 }
 
 // Default company settings - defined outside to avoid recreating object
+//
+// Deliberately NOT annotated `: CompanySettings` — a named interface has no
+// index signature, so it fails the `T extends Record<string, unknown>`
+// constraint `useSettings` infers `T` against, unlike a fresh object literal
+// (which TypeScript treats as structurally compatible with an index
+// signature). `as const` narrows `accountingMethod`/`fiscalYearStartMonth`
+// to their literal values, which `useSettings`' inference of `T` would
+// otherwise lock onto — then reject `transformLoad`'s wider
+// `'cash' | 'accrual'` / `number` return as unassignable. Each is widened
+// individually with an inline assertion instead, leaving the other fields'
+// `as const` narrowing (harmless for them — every consumer already treats
+// them as plain `string`) untouched.
 const defaultCompanySettings = {
   companyName: '',
   ownerName: '',
@@ -366,8 +378,25 @@ const defaultCompanySettings = {
   zipCode: '',
   email: '',
   phone: '',
-  brandingImage: ''
+  brandingImage: '',
+  fiscalYearStartMonth: 1 as number,
+  accountingMethod: 'accrual' as 'cash' | 'accrual'
 } as const;
+
+/**
+ * Settings values round-trip through JSON, so a fiscal month arrives as
+ * either 7 or "7". An unusable value falls back to the calendar year rather
+ * than producing a fiscal year nobody can reconcile. Exported so
+ * `useFiscalSettings` applies the identical rule to whatever this hook
+ * returns, rather than trusting this transform to have already done it.
+ */
+export const toFiscalMonth = (value: unknown): number => {
+  const month = Number(value);
+  return Number.isInteger(month) && month >= 1 && month <= 12 ? month : 1;
+};
+
+export const toAccountingMethod = (value: unknown): 'cash' | 'accrual' =>
+  value === 'cash' ? 'cash' : 'accrual';
 
 // Specialized hook for company settings
 export function useCompanySettings() {
@@ -392,7 +421,9 @@ export function useCompanySettings() {
         zipCode: typeof saved.zipCode === 'string' ? saved.zipCode : defaultCompanySettings.zipCode,
         email: typeof saved.email === 'string' ? saved.email : defaultCompanySettings.email,
         phone: typeof saved.phone === 'string' ? saved.phone : defaultCompanySettings.phone,
-        brandingImage: typeof saved.brandingImage === 'string' ? saved.brandingImage : defaultCompanySettings.brandingImage
+        brandingImage: typeof saved.brandingImage === 'string' ? saved.brandingImage : defaultCompanySettings.brandingImage,
+        fiscalYearStartMonth: toFiscalMonth(saved.fiscalYearStartMonth),
+        accountingMethod: toAccountingMethod(saved.accountingMethod)
       };
 
       debug('[useCompanySettings] Loaded settings:', {
@@ -415,7 +446,9 @@ export function useCompanySettings() {
         zipCode: data.zipCode,
         email: data.email,
         phone: data.phone,
-        brandingImage: data.brandingImage
+        brandingImage: data.brandingImage,
+        fiscalYearStartMonth: data.fiscalYearStartMonth,
+        accountingMethod: data.accountingMethod
       };
     },
     onSaveSuccess: () => {

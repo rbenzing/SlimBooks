@@ -244,4 +244,8 @@ export interface CompanySettings {
   state: string;
   zipCode: string;
   brandingImage: string;
+  /** Month the fiscal year opens, 1-12. 1 means a calendar year. */
+  fiscalYearStartMonth: number;
+  /** Cash or accrual basis. A fact about the business, not a per-report choice. */
+  accountingMethod: 'cash' | 'accrual';
 }

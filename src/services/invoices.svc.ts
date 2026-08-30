@@ -129,7 +129,9 @@ export class InvoiceService {
       address: '',
       city: '',
       state: '',
-      zipCode: ''
+      zipCode: '',
+      fiscalYearStartMonth: 1,
+      accountingMethod: 'accrual'
     };
   }
 

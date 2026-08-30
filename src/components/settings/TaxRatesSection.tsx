@@ -1,29 +1,33 @@
 
-import { useState, useEffect, forwardRef, useImperativeHandle } from 'react';
+import { useState, useEffect } from 'react';
 import { Plus, Edit2, Trash2 } from 'lucide-react';
-import { themeClasses } from '@/utils/themeUtils.util';
+import { themeClasses, getButtonClasses } from '@/utils/themeUtils.util';
 import { type TaxRate, validateTaxRateArray } from '@/types';
-import type { SettingsTabRef } from '@/types';
 
-export const TaxSettings = forwardRef<SettingsTabRef>((props, ref) => {
+/**
+ * Tax rate management, formerly its own "Tax Rates" tab — now a section of
+ * the Company & Tax tab (see `CompanySettings.tsx`). It manages its own
+ * state and saves each change immediately, same as before the merge, so it
+ * needs no `SettingsTabRef`: `CompanySettings`'s own ref covers the company
+ * profile fields, which is the only part of this tab with a batched save.
+ *
+ * Stored as `tax.tax_rates`. The tab moved; the storage category did not —
+ * migration 002 back-filled `category = 'tax'` onto exactly these rows, so
+ * every read/write here keeps passing `'tax'` rather than the new tab's
+ * `'company'`, or every upgrading install would read a key nothing ever
+ * wrote and silently lose its configured rates.
+ */
+export const TaxRatesSection: React.FC = () => {
   const [taxRates, setTaxRates] = useState<TaxRate[]>([]);
   const [isEditing, setIsEditing] = useState<string | null>(null);
   const [editForm, setEditForm] = useState({ name: '', rate: 0 });
-
-  // Expose saveSettings method to parent component (no-op for tax settings as they save immediately)
-  useImperativeHandle(ref, () => ({
-    saveSettings: async () => {
-      // Tax rates are saved immediately when added/edited, no additional save needed
-      return Promise.resolve();
-    }
-  }), []);
 
   useEffect(() => {
     const loadTaxRates = async () => {
       try {
         // Use dynamic import to avoid circular dependencies
         const { sqliteService } = await import('@/services/sqlite.svc');
-        
+
         if (!sqliteService.isReady()) {
           await sqliteService.initialize();
         }
@@ -82,9 +86,9 @@ export const TaxSettings = forwardRef<SettingsTabRef>((props, ref) => {
 
   const saveEdit = () => {
     if (!isEditing) return;
-    
-    const updated = taxRates.map(rate => 
-      rate.id === isEditing 
+
+    const updated = taxRates.map(rate =>
+      rate.id === isEditing
         ? { ...rate, name: editForm.name, rate: editForm.rate }
         : rate
     );
@@ -106,14 +110,14 @@ export const TaxSettings = forwardRef<SettingsTabRef>((props, ref) => {
   };
 
   return (
-    <div className="bg-card rounded-lg shadow-sm border border-border p-6">
-      <div className="flex justify-between items-center mb-6">
-        <h3 className="text-lg font-medium text-card-foreground">Tax Rates</h3>
+    <div>
+      <div className="flex justify-between items-center mb-4">
+        <h4 className={themeClasses.cardTitle}>Tax Rates</h4>
         <button
           onClick={addTaxRate}
-          className="flex items-center px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90"
+          className={getButtonClasses('primary')}
         >
-          <Plus className="h-4 w-4 mr-2" />
+          <Plus className={themeClasses.iconButton} />
           Add Tax Rate
         </button>
       </div>
@@ -174,6 +178,7 @@ export const TaxSettings = forwardRef<SettingsTabRef>((props, ref) => {
                   )}
                   <button
                     onClick={() => startEdit(rate)}
+                    title="Edit tax rate"
                     className="p-1 text-muted-foreground hover:text-foreground"
                   >
                     <Edit2 className="h-4 w-4" />
@@ -181,6 +186,7 @@ export const TaxSettings = forwardRef<SettingsTabRef>((props, ref) => {
                   {rate.id !== '1' && (
                     <button
                       onClick={() => deleteTaxRate(rate.id)}
+                      title="Delete tax rate"
                       className="p-1 text-destructive hover:text-destructive/80"
                     >
                       <Trash2 className="h-4 w-4" />
@@ -194,6 +200,4 @@ export const TaxSettings = forwardRef<SettingsTabRef>((props, ref) => {
       </div>
     </div>
   );
-});
-
-TaxSettings.displayName = 'TaxSettings';
+};

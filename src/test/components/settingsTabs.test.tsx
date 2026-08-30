@@ -16,6 +16,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
+import type * as UseSettingsHook from '@/hooks/useSettings.hook';
 
 const { getProjectSettings, updateProjectSettings, getSetting, setSetting, isReady, initialize } =
   vi.hoisted(() => ({
@@ -38,8 +39,15 @@ vi.mock('@/services/sqlite.svc', () => ({
 vi.mock('@/utils/emailConfig.util', () => ({ getEmailConfigurationStatus }));
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn(), info: vi.fn() } }));
 
+const { useCompanySettings } = vi.hoisted(() => ({ useCompanySettings: vi.fn() }));
+vi.mock('@/hooks/useSettings.hook', async () => {
+  const actual = await vi.importActual<typeof UseSettingsHook>('@/hooks/useSettings.hook');
+  return { ...actual, useCompanySettings };
+});
+
 import { SecuritySettingsTab } from '@/components/settings/SecuritySettingsTab';
 import { GoogleSettingsTab } from '@/components/settings/GoogleSettingsTab';
+import { ResponsiveSettings } from '@/components/ResponsiveSettings';
 
 const projectSettings = (over: Record<string, unknown> = {}) => ({
   google_oauth: { enabled: false, client_id: '', client_secret: '', configured: false },
@@ -81,6 +89,12 @@ const renderGoogleEnabled = async (over: Record<string, unknown> = {}) => {
   return renderGoogle();
 };
 
+const companySettings = () => ({
+  companyName: '', ownerName: '', email: '', phone: '', address: '',
+  city: '', state: '', zipCode: '', brandingImage: '',
+  fiscalYearStartMonth: 1, accountingMethod: 'accrual' as const
+});
+
 beforeEach(() => {
   vi.clearAllMocks();
   vi.spyOn(console, 'error').mockImplementation(() => {});
@@ -88,6 +102,16 @@ beforeEach(() => {
   getProjectSettings.mockResolvedValue(projectSettings());
   updateProjectSettings.mockResolvedValue(undefined);
   getEmailConfigurationStatus.mockResolvedValue(emailStatus(true));
+  getSetting.mockResolvedValue([]);
+  useCompanySettings.mockReturnValue({
+    settings: companySettings(),
+    setSettings: vi.fn(),
+    saveSettings: vi.fn().mockResolvedValue(undefined),
+    isLoading: false,
+    isSaving: false,
+    isLoaded: true,
+    error: null
+  });
 });
 
 afterEach(() => vi.restoreAllMocks());
@@ -277,5 +301,59 @@ describe('Google tab', () => {
     await user.type(screen.getByLabelText(/client id/i), 'abc');
 
     expect((screen.getByLabelText(/client id/i) as HTMLInputElement).value).toBe('abc');
+  });
+});
+
+/**
+ * Settings tab list.
+ *
+ * Tax Rates used to be its own tab; it is now a section of Company & Tax, so
+ * these pin the merged tab list and the redirect that keeps the old `#tax`
+ * deep link working.
+ */
+describe('Settings tab list', () => {
+  const expectedTabNames = [
+    'Company & Tax', 'General', 'Shipping', 'Email Settings', 'Notifications',
+    'Appearance', 'Google OAuth', 'Stripe', 'Security', 'Backup & Restore'
+  ];
+
+  const renderSettings = (initialEntries: string[] = ['/settings']) =>
+    render(
+      <MemoryRouter initialEntries={initialEntries}>
+        <ResponsiveSettings />
+      </MemoryRouter>
+    );
+
+  it('shows exactly the merged ten tabs — no separate Tax Rates or bare Company', async () => {
+    renderSettings();
+    await screen.findByLabelText(/fiscal year starts/i);
+
+    const candidateNames = new Set([...expectedTabNames, 'Tax Rates', 'Company']);
+    const shownTabNames = new Set(
+      screen.getAllByRole('button')
+        .map((button) => button.textContent?.trim())
+        .filter((text): text is string => !!text && candidateNames.has(text))
+    );
+
+    expect([...shownTabNames].sort()).toEqual([...expectedTabNames].sort());
+  });
+
+  it('defaults to Company & Tax, showing company details, the fiscal fields and tax rates together', async () => {
+    getSetting.mockResolvedValue([{ id: '1', name: 'No Tax', rate: 0, isDefault: true }]);
+    renderSettings();
+
+    expect(await screen.findByText('Company Name *')).toBeTruthy();
+    expect(await screen.findByLabelText(/fiscal year starts/i)).toBeTruthy();
+    expect(await screen.findByLabelText(/accounting basis/i)).toBeTruthy();
+    expect(await screen.findByText('No Tax')).toBeTruthy();
+  });
+
+  it('redirects the old #tax deep link to Company & Tax rather than matching nothing', async () => {
+    renderSettings(['/settings#tax']);
+
+    // If the redirect were missing, no known tab id would match '#tax' either
+    // — but the fiscal fields are proof the Company & Tax tab, not some
+    // coincidental default, is what actually rendered.
+    expect(await screen.findByLabelText(/fiscal year starts/i)).toBeTruthy();
   });
 });

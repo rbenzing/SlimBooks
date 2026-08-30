@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Save, ChevronDown } from 'lucide-react';
-import { TaxSettings } from './settings/TaxSettings';
 import { ShippingSettings } from './settings/ShippingSettings';
 import { CompanySettings } from './settings/CompanySettings';
 import { GeneralSettingsTab } from './settings/GeneralSettingsTab';
@@ -33,9 +32,8 @@ interface SettingsTab {
  * turned on at all.
  */
 const settingsTabs: SettingsTab[] = [
-  { id: 'company', name: 'Company' },
+  { id: 'company', name: 'Company & Tax' },
   { id: 'general', name: 'General' },
-  { id: 'tax', name: 'Tax Rates' },
   { id: 'shipping', name: 'Shipping' },
   { id: 'email', name: 'Email Settings' },
   { id: 'notifications', name: 'Notifications' },
@@ -58,7 +56,6 @@ export const ResponsiveSettings = () => {
   // Refs for all settings tabs
   const companySettingsRef = useRef<SettingsTabRef>(null);
   const generalSettingsRef = useRef<SettingsTabRef>(null);
-  const taxSettingsRef = useRef<SettingsTabRef>(null);
   const shippingSettingsRef = useRef<SettingsTabRef>(null);
   const emailSettingsRef = useRef<SettingsTabRef>(null);
   const stripeSettingsRef = useRef<SettingsTabRef>(null);
@@ -77,6 +74,9 @@ export const ResponsiveSettings = () => {
     } else if (hash === 'project') {
       // The old combined Project Settings link. Security is what replaced it.
       setActiveTab('security');
+    } else if (hash === 'tax') {
+      // Tax Rates merged into Company & Tax; keep the old deep link alive.
+      setActiveTab('company');
     } else {
       setActiveTab('company');
     }
@@ -100,9 +100,6 @@ export const ResponsiveSettings = () => {
           break;
         case 'general':
           settingsRef = generalSettingsRef.current;
-          break;
-        case 'tax':
-          settingsRef = taxSettingsRef.current;
           break;
         case 'shipping':
           settingsRef = shippingSettingsRef.current;
@@ -153,7 +150,6 @@ export const ResponsiveSettings = () => {
     switch (activeTab) {
       case 'company': return <CompanySettings ref={companySettingsRef} />;
       case 'general': return <GeneralSettingsTab ref={generalSettingsRef} />;
-      case 'tax': return <TaxSettings ref={taxSettingsRef} />;
       case 'shipping': return <ShippingSettings ref={shippingSettingsRef} />;
       case 'email': return <EmailSettings ref={emailSettingsRef} />;
       case 'stripe': return <StripeSettingsTab ref={stripeSettingsRef} />;

@@ -3,8 +3,10 @@ import { forwardRef, useImperativeHandle } from 'react';
 import { Building } from 'lucide-react';
 import { BrandingImageSection } from './BrandingImageSection';
 import { CompanyDetailsSection } from './CompanyDetailsSection';
+import { TaxRatesSection } from './TaxRatesSection';
 import { type CompanySettings as CompanySettingsType } from '@/types/shared/common.types';
 import { useCompanySettings } from '@/hooks/useSettings.hook';
+import { themeClasses } from '@/utils/themeUtils.util';
 import type { SettingsTabRef } from '@/types';
 
 export const CompanySettings = forwardRef<SettingsTabRef>((props, ref) => {
@@ -36,7 +38,7 @@ export const CompanySettings = forwardRef<SettingsTabRef>((props, ref) => {
     setSettings(prev => ({ ...prev, brandingImage: '' }));
   };
 
-  const handleInputChange = (field: keyof CompanySettingsType, value: string) => {
+  const handleInputChange = <K extends keyof CompanySettingsType>(field: K, value: CompanySettingsType[K]) => {
     setSettings(prev => ({ ...prev, [field]: value }));
   };
 
@@ -88,6 +90,8 @@ export const CompanySettings = forwardRef<SettingsTabRef>((props, ref) => {
           settings={settings}
           onInputChange={handleInputChange}
         />
+        <div className={themeClasses.divider} />
+        <TaxRatesSection />
       </div>
     </div>
   );

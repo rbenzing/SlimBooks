@@ -17,6 +17,19 @@ const { authenticatedFetch } = vi.hoisted(() => ({ authenticatedFetch: vi.fn() }
 vi.mock('@/utils/api', () => ({ authenticatedFetch, API_BASE: '/api' }));
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
+/**
+ * The report reads the fiscal year through `useFiscalSettings` -> `useSettings`,
+ * which imports this service and calls `initialize()` when it is not ready. Left
+ * unmocked the suite makes a real backend call and sits through a 2s retry loop.
+ * `EditInvoicePage.test.tsx` mocks it the same way.
+ */
+vi.mock('@/services/sqlite.svc', () => ({
+  sqliteService: {
+    isReady: () => true,
+    getSetting: vi.fn().mockResolvedValue(null)
+  }
+}));
+
 import { ExpenseReport } from '@/components/reports/ExpenseReport';
 
 /** Exactly what the server sends — note the absence of `expensesByStatus`. */

@@ -62,10 +62,10 @@ export const InvoicesTab = () => {
   // Apply date filtering
   const dateFilteredInvoices = (() => {
     if (dateFilter === 'custom' && customDateRange) {
-      return filterByDateRange(filteredInvoices, customDateRange, 'created_at');
+      return filterByDateRange(filteredInvoices, customDateRange, 'issue_date');
     } else {
       const dateRange = getDateRangeForPeriod(dateFilter, fiscalYearStartMonth, new Date());
-      return filterByDateRange(filteredInvoices, dateRange, 'created_at');
+      return filterByDateRange(filteredInvoices, dateRange, 'issue_date');
     }
   })();
 
@@ -183,7 +183,7 @@ export const InvoicesTab = () => {
 
             <div className="flex items-center text-sm text-muted-foreground">
               <Calendar className="h-4 w-4 mr-2" />
-              <span>{formatDateSync(invoice.created_at)}</span>
+              <span>{formatDateSync(invoice.issue_date)}</span>
             </div>
 
             <div className="flex items-center text-sm text-muted-foreground">
@@ -217,7 +217,7 @@ export const InvoicesTab = () => {
               <th className="text-left py-3 px-6 text-xs font-medium text-muted-foreground uppercase">Client</th>
               <th className="text-left py-3 px-6 text-xs font-medium text-muted-foreground uppercase">Amount</th>
               <th className="text-left py-3 px-6 text-xs font-medium text-muted-foreground uppercase">Status</th>
-              <th className="text-left py-3 px-6 text-xs font-medium text-muted-foreground uppercase">Created</th>
+              <th className="text-left py-3 px-6 text-xs font-medium text-muted-foreground uppercase">Issued</th>
               <th className="text-left py-3 px-6 text-xs font-medium text-muted-foreground uppercase">Actions</th>
             </tr>
           </thead>
@@ -237,7 +237,7 @@ export const InvoicesTab = () => {
                   </span>
                 </td>
                 <td className="py-4 px-6 text-sm text-card-foreground">
-                  {formatDateSync(invoice.created_at)}
+                  {formatDateSync(invoice.issue_date)}
                 </td>
                 <td className="py-4 px-6 text-sm">
                   <div className="flex space-x-2">

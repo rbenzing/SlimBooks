@@ -6,16 +6,18 @@ import { themeClasses, getButtonClasses } from '@/utils/themeUtils.util';
 import { StatCard, StatCardGrid } from '@/components/ui/StatCard';
 import { formatDateSync, formatDateRangeSync } from '@/utils/formatting';
 import { FormattedCurrency } from '@/components/ui/FormattedCurrency';
+import { useFiscalSettings } from '@/hooks/useFiscalSettings.hook';
+import { getDateRangeForPeriod, toCalendarDay, dateRangeFilterOptions, type DateRangePeriod } from '@/utils/data';
 import { type Expense } from '@/types';
 import { type ExpenseReportData, type ExpenseReportProps, type ReportDateRange } from '@/types';
 
 export const ExpenseReport: React.FC<ExpenseReportProps> = ({ onBack, onSave }) => {
+  const { fiscalYearStartMonth } = useFiscalSettings();
   const [reportData, setReportData] = useState<ExpenseReportData | null>(null);
   const [loading, setLoading] = useState(false);
-  const [dateRange, setDateRange] = useState<ReportDateRange>({
-    start: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0],
-    end: new Date().toISOString().split('T')[0],
-    preset: 'this-month'
+  const [dateRange, setDateRange] = useState<ReportDateRange>(() => {
+    const range = getDateRangeForPeriod('this_month', fiscalYearStartMonth, new Date());
+    return { start: toCalendarDay(range.start), end: toCalendarDay(range.end), preset: 'this_month' };
   });
 
 
@@ -61,54 +63,14 @@ export const ExpenseReport: React.FC<ExpenseReportProps> = ({ onBack, onSave }) 
     generateReportData();
   }, [generateReportData]);
 
-  const handleDatePresetChange = (preset: ReportDateRange['preset']) => {
-    const today = new Date();
-    let start: Date;
-    let end: Date;
-
-    switch (preset) {
-      case 'this-month':
-        start = new Date(today.getFullYear(), today.getMonth(), 1);
-        end = today;
-        break;
-      case 'last-month':
-        start = new Date(today.getFullYear(), today.getMonth() - 1, 1);
-        end = new Date(today.getFullYear(), today.getMonth(), 0);
-        break;
-      case 'this-quarter': {
-        const currentQuarter = Math.floor(today.getMonth() / 3);
-        start = new Date(today.getFullYear(), currentQuarter * 3, 1);
-        end = today;
-        break;
-      }
-      case 'last-quarter': {
-        const lastQuarter = Math.floor(today.getMonth() / 3) - 1;
-        const year = lastQuarter < 0 ? today.getFullYear() - 1 : today.getFullYear();
-        const quarter = lastQuarter < 0 ? 3 : lastQuarter;
-        start = new Date(year, quarter * 3, 1);
-        end = new Date(year, (quarter + 1) * 3, 0);
-        break;
-      }
-      case 'this-year':
-        start = new Date(today.getFullYear(), 0, 1);
-        end = today;
-        break;
-      case 'last-year':
-        start = new Date(today.getFullYear() - 1, 0, 1);
-        end = new Date(today.getFullYear() - 1, 11, 31);
-        break;
-      default:
-        return;
+  const handleDatePresetChange = (preset: DateRangePeriod): void => {
+    if (preset === 'custom') {
+      setDateRange({ ...dateRange, preset });
+      return;
     }
-
-    setDateRange({
-      start: start.toISOString().split('T')[0],
-      end: end.toISOString().split('T')[0],
-      preset
-    });
+    const range = getDateRangeForPeriod(preset, fiscalYearStartMonth, new Date());
+    setDateRange({ start: toCalendarDay(range.start), end: toCalendarDay(range.end), preset });
   };
-
-
 
   const getFormattedDateRange = () => {
     return formatDateRangeSync(dateRange.start, dateRange.end);
@@ -187,15 +149,11 @@ export const ExpenseReport: React.FC<ExpenseReportProps> = ({ onBack, onSave }) 
               <select
                 className={`w-full ${themeClasses.select}`}
                 value={dateRange.preset}
-                onChange={(e) => handleDatePresetChange(e.target.value as ReportDateRange['preset'])}
+                onChange={(e) => handleDatePresetChange(e.target.value as DateRangePeriod)}
               >
-                <option value="this-month">This Month</option>
-                <option value="last-month">Last Month</option>
-                <option value="this-quarter">This Quarter</option>
-                <option value="last-quarter">Last Quarter</option>
-                <option value="this-year">This Year</option>
-                <option value="last-year">Last Year</option>
-                <option value="custom">Custom Range</option>
+                {dateRangeFilterOptions.map(option => (
+                  <option key={option.value} value={option.value}>{option.label}</option>
+                ))}
               </select>
             </div>
             <div>

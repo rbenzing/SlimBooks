@@ -8,23 +8,26 @@ import { formatDateRangeSync } from '@/utils/formatting';
 import { FormattedCurrency, useCurrencyFormatter } from '@/components/ui/FormattedCurrency';
 import { pdfService } from '@/services/pdf.svc';
 import { useRuntimeConfig } from '@/hooks/useRuntimeConfig.hook';
+import { useFiscalSettings } from '@/hooks/useFiscalSettings.hook';
+import { getDateRangeForPeriod, toCalendarDay, dateRangeFilterOptions, type DateRangePeriod } from '@/utils/data';
 import { type ProfitLossReportProps, type ProfitLossReportData, type ReportDateRange, type AccountingMethod, type BreakdownPeriod } from '@/types';
 
 export const ProfitLossReport: React.FC<ProfitLossReportProps> = ({ onBack, onSave }) => {
   const { data: runtimeConfig } = useRuntimeConfig();
   const pdfEnabled = runtimeConfig?.features.pdf === true;
+  const { fiscalYearStartMonth, accountingMethod: defaultMethod } = useFiscalSettings();
   const [reportData, setReportData] = useState<ProfitLossReportData | null>(null);
   const [loading, setLoading] = useState(false);
   const [isExportingPDF, setIsExportingPDF] = useState(false);
-  const [accountingMethod, setAccountingMethod] = useState<AccountingMethod>('accrual');
+  const [accountingMethod, setAccountingMethod] = useState<AccountingMethod>(defaultMethod);
+  useEffect(() => { setAccountingMethod(defaultMethod); }, [defaultMethod]);
   const [breakdownPeriod, setBreakdownPeriod] = useState<BreakdownPeriod>('quarterly');
   const [dateRange, setDateRange] = useState<ReportDateRange>(() => {
-    const today = new Date();
-    const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+    const range = getDateRangeForPeriod('this_month', fiscalYearStartMonth, new Date());
     return {
-      start: `${startOfMonth.getFullYear()}-${String(startOfMonth.getMonth() + 1).padStart(2, '0')}-${String(startOfMonth.getDate()).padStart(2, '0')}`,
-      end: `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`,
-      preset: 'this-month'
+      start: toCalendarDay(range.start),
+      end: toCalendarDay(range.end),
+      preset: 'this_month'
     };
   });
 
@@ -60,54 +63,14 @@ export const ProfitLossReport: React.FC<ProfitLossReportProps> = ({ onBack, onSa
     generateReportData();
   }, [generateReportData]);
 
-  const handleDatePresetChange = (preset: ReportDateRange['preset']) => {
-    const today = new Date();
-    let start: Date;
-    let end: Date;
-
-    switch (preset) {
-      case 'this-month':
-        start = new Date(today.getFullYear(), today.getMonth(), 1);
-        end = today;
-        break;
-      case 'last-month':
-        start = new Date(today.getFullYear(), today.getMonth() - 1, 1);
-        end = new Date(today.getFullYear(), today.getMonth(), 0);
-        break;
-      case 'this-quarter': {
-        const currentQuarter = Math.floor(today.getMonth() / 3);
-        start = new Date(today.getFullYear(), currentQuarter * 3, 1);
-        end = today;
-        break;
-      }
-      case 'last-quarter': {
-        const lastQuarter = Math.floor(today.getMonth() / 3) - 1;
-        const year = lastQuarter < 0 ? today.getFullYear() - 1 : today.getFullYear();
-        const quarter = lastQuarter < 0 ? 3 : lastQuarter;
-        start = new Date(year, quarter * 3, 1);
-        end = new Date(year, (quarter + 1) * 3, 0);
-        break;
-      }
-      case 'this-year':
-        start = new Date(today.getFullYear(), 0, 1);
-        end = new Date(today.getFullYear(), 11, 31);
-        break;
-      case 'last-year':
-        start = new Date(today.getFullYear() - 1, 0, 1);
-        end = new Date(today.getFullYear() - 1, 11, 31);
-        break;
-      default:
-        return;
+  const handleDatePresetChange = (preset: DateRangePeriod): void => {
+    if (preset === 'custom') {
+      setDateRange({ ...dateRange, preset });
+      return;
     }
-
-    setDateRange({
-      start: `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, '0')}-${String(start.getDate()).padStart(2, '0')}`,
-      end: `${end.getFullYear()}-${String(end.getMonth() + 1).padStart(2, '0')}-${String(end.getDate()).padStart(2, '0')}`,
-      preset
-    });
+    const range = getDateRangeForPeriod(preset, fiscalYearStartMonth, new Date());
+    setDateRange({ start: toCalendarDay(range.start), end: toCalendarDay(range.end), preset });
   };
-
-
 
   const getFormattedDateRange = () => {
     return formatDateRangeSync(dateRange.start, dateRange.end);
@@ -206,15 +169,11 @@ export const ProfitLossReport: React.FC<ProfitLossReportProps> = ({ onBack, onSa
               <select
                 className={`w-full ${themeClasses.select}`}
                 value={dateRange.preset}
-                onChange={(e) => handleDatePresetChange(e.target.value as ReportDateRange['preset'])}
+                onChange={(e) => handleDatePresetChange(e.target.value as DateRangePeriod)}
               >
-                <option value="this-month">This Month</option>
-                <option value="last-month">Last Month</option>
-                <option value="this-quarter">This Quarter</option>
-                <option value="last-quarter">Last Quarter</option>
-                <option value="this-year">This Year</option>
-                <option value="last-year">Last Year</option>
-                <option value="custom">Custom Range</option>
+                {dateRangeFilterOptions.map(option => (
+                  <option key={option.value} value={option.value}>{option.label}</option>
+                ))}
               </select>
             </div>
             <div>

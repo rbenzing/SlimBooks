@@ -4,12 +4,13 @@ import { type Invoice } from './invoice.types';
 import { type Expense } from './expense.types';
 import { type Client } from './client.types';
 import { type ReportType } from '../shared/common.types';
+import { type DateRangePeriod } from '@/utils/data/period.util';
 
 // Date range for reports (extends the common DateRange with preset functionality)
 export interface ReportDateRange {
   start: string;
   end: string;
-  preset: 'custom' | 'this-month' | 'last-month' | 'this-quarter' | 'last-quarter' | 'this-year' | 'last-year';
+  preset: DateRangePeriod;
 }
 
 // Base report props interface

@@ -14,7 +14,7 @@ The Invoices screen has two tabs: **Invoices** (the list) and **Templates**
 | Issue date | A calendar day |
 | Due date | A calendar day |
 | Line items | Description, quantity, rate |
-| Tax | Rates come from Settings → Tax Rates |
+| Tax | Rates come from Settings → Company & Tax, under Tax Rates |
 | Shipping | Configured in Settings → Shipping |
 | Notes | Free text on the invoice |
 

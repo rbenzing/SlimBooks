@@ -40,17 +40,27 @@ Recurring invoices are created from the Invoices screen and have their own
 
 ## The dashboard
 
-Your financial position at a glance, over a period you choose: last week, last
-month, last year, year to date, or month to date.
+Your financial position at a glance, over a period you choose: This Year, Last
+Year, This Quarter, Last Quarter, This Month, Last Month, This Week, Last Week,
+Today, Yesterday, or a custom range. "This Year" means your fiscal year, set in
+Settings → Company.
 
-It shows totals and charts drawn from the same data as the reports, so a figure
-here and a figure in a report agree.
+The totals are drawn from the same data as the reports and dated the same way —
+an invoice counts in the period it was issued, an expense in the period it was
+incurred — so a figure here and a figure in a report agree.
+
+The revenue chart covers five of those periods: This Year, Last Year, This
+Month, Last Month and Last Week. Choose any of the others and the totals are
+still correct for what you picked, but the chart falls back to a year-to-date
+trend.
 
 ## A first invoice, end to end
 
-1. **Settings → Company** — your name, address and logo. These appear on every
-   invoice, so do this first.
-2. **Settings → Tax Rates** — if you charge tax.
+1. **Settings → Company & Tax** — your name, address and logo. These appear on
+   every invoice, so do this first. Set your fiscal year and accounting basis
+   here too: they decide what every "This Year" and "This Quarter" in the app
+   means.
+2. **Settings → Company & Tax, under Tax Rates** — if you charge tax.
 3. **Clients → New Client** — who you are billing.
 4. **Invoices → Create** — pick the client, add line items, set the issue and
    due dates.

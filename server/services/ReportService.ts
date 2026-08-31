@@ -503,11 +503,14 @@ export class ReportService {
     `);
 
     let invoiceFilter = '';
-    const params: number[] = [];
+    // Calendar days, bound directly — `issue_date` is `YYYY-MM-DD` text, so it
+    // must not go through `instantRange()`. Same reasoning as the profit-and-loss
+    // and invoice queries above.
+    const params: string[] = [];
 
     if (startDate && endDate) {
-      invoiceFilter = 'WHERE i.created_at >= ? AND i.created_at <= ? AND i.deleted_at IS NULL';
-      params.push(...instantRange(startDate, endDate));
+      invoiceFilter = 'WHERE i.issue_date >= ? AND i.issue_date <= ? AND i.deleted_at IS NULL';
+      params.push(startDate, endDate);
     } else {
       invoiceFilter = 'WHERE i.deleted_at IS NULL';
     }
@@ -517,7 +520,7 @@ export class ReportService {
       FROM invoices i
       LEFT JOIN clients c ON i.client_id = c.id
       ${invoiceFilter}
-      ORDER BY i.created_at DESC
+      ORDER BY i.issue_date DESC
     `, params);
 
     const toNumber = (value: unknown): number => {

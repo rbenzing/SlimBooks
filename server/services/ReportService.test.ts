@@ -421,11 +421,12 @@ describe('generateClientData', () => {
     await reportService.generateClientData('2026-01-01', '2026-03-31');
 
     const call = db.getMany.mock.calls.find(c => /FROM invoices/.test(c[0] as string));
-    expect(flattenSql(call?.[0] as string)).toMatch(/i\.created_at >= \? AND i\.created_at <= \?/);
-    expect(call?.[1]).toEqual([
-      Date.parse('2026-01-01T00:00:00.000Z'),
-      Date.parse('2026-03-31T23:59:59.999Z')
-    ]);
+    expect(flattenSql(call?.[0] as string)).toMatch(/i\.issue_date >= \? AND i\.issue_date <= \?/);
+
+    // Calendar days bound as text, not epoch milliseconds. This assertion used
+    // to pin `created_at` and an instantRange() pair — it was holding the
+    // client report to the row-entry-time bug the rest of this branch removed.
+    expect(call?.[1]).toEqual(['2026-01-01', '2026-03-31']);
   });
 
   it('reports over all time when no range is given', async () => {

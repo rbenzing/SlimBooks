@@ -106,7 +106,13 @@ router.post('/bulk-import',
       // of landed rows to report — unlike expenses and payments.
       const data: BulkImportResult = { imported: successCount, failed: errorCount, errors, span: null };
 
-      res.status(errorCount > 0 && successCount === 0 ? 422 : 200).json({
+      // 200 even when every row failed. An all-failed import is a business
+      // outcome this response explains, not a transport error, and
+      // authenticatedFetch throws on any non-ok status (http.util.ts:76) after
+      // consuming the body to build its message — so a 422 here would reach the
+      // panel as an unrecoverable error toast, hiding the very row errors the
+      // user needs. `success` carries the verdict.
+      res.json({
         success: successCount > 0,
         data,
         message: `Import completed: ${successCount} clients imported, ${errorCount} failed`

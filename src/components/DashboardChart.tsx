@@ -4,15 +4,55 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { themeClasses } from '@/utils/themeUtils.util';
 import { parseDisplayDate } from '@/utils/formatting/date.util';
 import { toCalendarDay, type DateRangePeriod } from '@/utils/data';
-import { type Invoice } from '@/types';
+import { type DateRange, type Invoice } from '@/types';
 
 interface DashboardChartProps {
   invoices: Invoice[];
   title?: string;
   selectedPeriod: DateRangePeriod;
+  /** The same fiscal-aware range the dashboard's stat cards already total. */
+  dateRange: DateRange;
 }
 
-const DashboardChart: React.FC<DashboardChartProps> = ({ invoices, title = "Revenue Trend", selectedPeriod }) => {
+/**
+ * Monthly revenue buckets across `range`, inclusive of both end months.
+ *
+ * Used for the year-scale views (`this_year`, `last_year`, and anything else
+ * that falls through to a yearly view). It walks `range` rather than the
+ * calendar year, so a fiscal year that does not start in January produces
+ * the same months the caller's own totals were computed from — the chart
+ * used to always walk January onward regardless of the configured fiscal
+ * year, so months the stat cards counted had no bar on the chart.
+ */
+export const buildMonthlyRevenueSeries = (
+  invoices: Invoice[],
+  range: DateRange
+): { period: string; revenue: number }[] => {
+  const monthlyData: { [key: string]: number } = {};
+
+  invoices.forEach(invoice => {
+    const date = parseDisplayDate(invoice.issue_date);
+    const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+    monthlyData[monthKey] = (monthlyData[monthKey] || 0) + invoice.total_amount;
+  });
+
+  const months: { period: string; revenue: number }[] = [];
+  const cursor = new Date(range.start.getFullYear(), range.start.getMonth(), 1);
+  const last = new Date(range.end.getFullYear(), range.end.getMonth(), 1);
+
+  while (cursor.getTime() <= last.getTime()) {
+    const monthKey = `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, '0')}`;
+    months.push({
+      period: cursor.toLocaleDateString('en-US', { month: 'short' }),
+      revenue: monthlyData[monthKey] || 0
+    });
+    cursor.setMonth(cursor.getMonth() + 1);
+  }
+
+  return months;
+};
+
+const DashboardChart: React.FC<DashboardChartProps> = ({ invoices, title = "Revenue Trend", selectedPeriod, dateRange }) => {
 
   // Generate chart data based on selected time period
   const generateChartData = () => {
@@ -22,13 +62,12 @@ const DashboardChart: React.FC<DashboardChartProps> = ({ invoices, title = "Reve
       case 'last_month':
         return generateLastMonthData();
       case 'last_year':
-        return generateLastYearData();
       case 'this_year':
-        return generateYearToDateData();
+        return buildMonthlyRevenueSeries(invoices, dateRange);
       case 'this_month':
         return generateMonthToDateData();
       default:
-        return generateYearToDateData();
+        return buildMonthlyRevenueSeries(invoices, dateRange);
     }
   };
 
@@ -90,65 +129,6 @@ const DashboardChart: React.FC<DashboardChartProps> = ({ invoices, title = "Reve
     }
 
     return lastMonthDays;
-  };
-
-  // Generate data for all 12 months of last year
-  const generateLastYearData = () => {
-    const monthlyData: { [key: string]: number } = {};
-
-    // Use the already filtered invoices passed from parent
-    invoices.forEach(invoice => {
-      const date = parseDisplayDate(invoice.issue_date);
-      const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-      monthlyData[monthKey] = (monthlyData[monthKey] || 0) + invoice.total_amount;
-    });
-
-    const currentDate = new Date();
-    const lastYear = currentDate.getFullYear() - 1;
-    const lastYearMonths = [];
-
-    for (let month = 0; month < 12; month++) {
-      const date = new Date(lastYear, month, 1);
-      const monthKey = `${lastYear}-${String(month + 1).padStart(2, '0')}`;
-      const monthName = date.toLocaleDateString('en-US', { month: 'short' });
-
-      lastYearMonths.push({
-        period: monthName,
-        revenue: monthlyData[monthKey] || 0
-      });
-    }
-
-    return lastYearMonths;
-  };
-
-  // Generate data for months from January to current month this year
-  const generateYearToDateData = () => {
-    const monthlyData: { [key: string]: number } = {};
-
-    // Use the already filtered invoices passed from parent
-    invoices.forEach(invoice => {
-      const date = parseDisplayDate(invoice.issue_date);
-      const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-      monthlyData[monthKey] = (monthlyData[monthKey] || 0) + invoice.total_amount;
-    });
-
-    const currentDate = new Date();
-    const currentYear = currentDate.getFullYear();
-    const currentMonth = currentDate.getMonth();
-    const yearToDateMonths = [];
-
-    for (let month = 0; month <= currentMonth; month++) {
-      const date = new Date(currentYear, month, 1);
-      const monthKey = `${currentYear}-${String(month + 1).padStart(2, '0')}`;
-      const monthName = date.toLocaleDateString('en-US', { month: 'short' });
-
-      yearToDateMonths.push({
-        period: monthName,
-        revenue: monthlyData[monthKey] || 0
-      });
-    }
-
-    return yearToDateMonths;
   };
 
   // Generate data for days in current month up to today

@@ -15,7 +15,11 @@ describe('the dashboard uses the shared period module', () => {
 
   it('offers the one shared list of periods', () => {
     const source = readFileSync(DASHBOARD, 'utf8');
-    expect(source).toMatch(/dateRangeFilterOptions/);
+    // The dashboard used to map dateRangeFilterOptions into its own <select>.
+    // It now renders the same DateRangeFilter control the list screens use,
+    // which sources the list itself — one shared control, not just one
+    // shared array two different pieces of markup could still drift apart.
+    expect(source).toMatch(/DateRangeFilter/);
     expect(source).not.toMatch(/'year-to-date'|'month-to-date'/);
   });
 

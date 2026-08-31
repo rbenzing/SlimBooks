@@ -2,17 +2,19 @@
 import { useState, useEffect, useMemo } from 'react';
 import { DollarSign, Users, FileText, TrendingUp, Calendar, AlertCircle } from 'lucide-react';
 import DashboardChart from './DashboardChart';
+import { DateRangeFilter } from './ui/DateRangeFilter';
 import { authenticatedFetch } from '@/utils/api';
 import { themeClasses, getIconColorClasses, getStatusColor } from '@/utils/themeUtils.util';
 import { StatCard, StatCardGrid } from '@/components/ui/StatCard';
 import { FormattedCurrency } from '@/components/ui/FormattedCurrency';
 import { useFiscalSettings } from '@/hooks/useFiscalSettings.hook';
-import { getDateRangeForPeriod, filterByDateRange, dateRangeFilterOptions, type DateRangePeriod } from '@/utils/data';
-import { type Invoice, type Expense } from '@/types';
+import { getDateRangeForPeriod, filterByDateRange, type DateRangePeriod } from '@/utils/data';
+import { type DateRange, type Invoice, type Expense } from '@/types';
 
 export const DashboardOverview = () => {
   const { fiscalYearStartMonth } = useFiscalSettings();
   const [selectedPeriod, setSelectedPeriod] = useState<DateRangePeriod>('this_year');
+  const [customRange, setCustomRange] = useState<DateRange | undefined>(undefined);
   const [loadedData, setLoadedData] = useState({
     allInvoices: [] as Invoice[],
     allExpenses: [] as Expense[],
@@ -46,9 +48,16 @@ export const DashboardOverview = () => {
   };
 
   const dateRange = useMemo(
-    () => getDateRangeForPeriod(selectedPeriod, fiscalYearStartMonth, new Date()),
-    [selectedPeriod, fiscalYearStartMonth]
+    () => selectedPeriod === 'custom' && customRange
+      ? customRange
+      : getDateRangeForPeriod(selectedPeriod, fiscalYearStartMonth, new Date()),
+    [selectedPeriod, customRange, fiscalYearStartMonth]
   );
+
+  const handlePeriodChange = (period: DateRangePeriod, range?: DateRange): void => {
+    setSelectedPeriod(period);
+    setCustomRange(range);
+  };
 
   const filteredInvoices = useMemo(
     () => filterByDateRange(loadedData.allInvoices, dateRange, 'issue_date'),
@@ -112,19 +121,12 @@ export const DashboardOverview = () => {
             <h1 className={themeClasses.pageTitle}>Dashboard</h1>
             <p className={themeClasses.pageSubtitle}>Welcome back! Here's an overview of your business.</p>
           </div>
-          <div className="w-48">
-            <select
-              className={themeClasses.select}
-              value={selectedPeriod}
-              onChange={(e) => setSelectedPeriod(e.target.value as DateRangePeriod)}
-            >
-              {dateRangeFilterOptions.map(option => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </div>
+          <DateRangeFilter
+            value={selectedPeriod}
+            customRange={customRange}
+            onChange={handlePeriodChange}
+            className="max-w-xs"
+          />
         </div>
 
         {/* Stats Grid */}
@@ -228,7 +230,7 @@ export const DashboardOverview = () => {
         {/* Chart and Recent Invoices */}
         <div className={themeClasses.contentGrid}>
           <div className={themeClasses.card}>
-            <DashboardChart invoices={filteredInvoices} title="Revenue Trend" selectedPeriod={selectedPeriod} />
+            <DashboardChart invoices={filteredInvoices} title="Revenue Trend" selectedPeriod={selectedPeriod} dateRange={dateRange} />
           </div>
 
           <div className={themeClasses.card}>

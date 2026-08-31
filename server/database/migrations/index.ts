@@ -16,6 +16,7 @@ import { up as migration012 } from './012_add_runtime_tables.js';
 import { up as migration013 } from './013_add_stored_objects.js';
 import { up as migration014 } from './014_normalize_timestamps.js';
 import { up as migration015 } from './015_epoch_timestamps.js';
+import { up as migration016 } from './016_backfill_issue_date.js';
 
 interface Migration {
   id: string;
@@ -96,6 +97,11 @@ const migrations: Migration[] = [
     id: '015',
     name: 'epoch_timestamps',
     up: migration015
+  },
+  {
+    id: '016',
+    name: 'backfill_issue_date',
+    up: migration016
   }
 ];
 

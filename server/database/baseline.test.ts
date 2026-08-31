@@ -172,10 +172,12 @@ describe('buildMysqlBaseline', () => {
     // 014 rewrites legacy timestamp values and 015 retypes those columns to
     // integers. A database created from this baseline has neither problem —
     // every timestamp column is already BIGINT and already defaults to epoch
-    // milliseconds. Recording both is correct.
+    // milliseconds. 016 backfills invoices.issue_date for rows a pre-fix
+    // InvoiceService left null; a freshly baselined database has none, since
+    // InvoiceService always supplies one. Recording all three is correct.
     expect(fake.inserts.map(insert => insert.params[0])).toEqual([
       '001', '002', '003', '004', '006', '007', '008', '009', '010', '011', '012', '013',
-      '014', '015'
+      '014', '015', '016'
     ]);
   });
 

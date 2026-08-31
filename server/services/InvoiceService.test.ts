@@ -11,6 +11,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import jwt from 'jsonwebtoken';
 import { createDatabaseMock, insertColumnsOf, flattenSql } from './databaseMock.test-helper.js';
+import { epochToCalendarDay } from '../utils/utcTime.util.js';
 
 const db = createDatabaseMock();
 vi.mock('../core/DatabaseService.js', () => ({ databaseService: db }));
@@ -116,6 +117,23 @@ describe('createInvoice', () => {
 
     expect(insertedValue('status')).toBe('draft');
     expect(insertedValue('email_status')).toBe('not_sent');
+  });
+
+  it('defaults issue_date to the day the row was created, rather than null', async () => {
+    // Every report and list screen now windows on issue_date, and NULL
+    // compares false against every range: an omitted issue_date used to make
+    // the invoice silently disappear from every report.
+    await invoiceService.createInvoice(validInvoice);
+
+    const createdAt = insertedValue('created_at') as number;
+    expect(insertedValue('issue_date')).toBe(epochToCalendarDay(createdAt));
+    expect(insertedValue('issue_date')).not.toBeNull();
+  });
+
+  it('honours an explicitly supplied issue_date instead of the default', async () => {
+    await invoiceService.createInvoice({ ...validInvoice, issue_date: '2026-01-15' });
+
+    expect(insertedValue('issue_date')).toBe('2026-01-15');
   });
 
   it('generates a number when the caller does not supply one', async () => {

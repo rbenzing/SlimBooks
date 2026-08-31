@@ -7,7 +7,7 @@ import { authConfig } from '../config/index.js';
 import { type ServiceOptions, type InvoiceWithClient, type InvoiceStatus } from '../types/index.js';
 import { type PublicInvoiceDisplay, type PublicInvoiceTokenPayload } from '../types/invoice.types.js';
 import { invoiceNumberService } from './InvoiceNumberService.js';
-import { toEpochMillis, utcNow } from '../utils/utcTime.util.js';
+import { epochToCalendarDay, toEpochMillis, utcNow } from '../utils/utcTime.util.js';
 
 /**
  * `key` is a reserved word in MySQL, so the column is backticked — a quoting
@@ -274,7 +274,13 @@ export class InvoiceService {
       total_amount: invoiceData.total_amount || invoiceData.amount,
       status: invoiceData.status || 'draft',
       due_date: invoiceData.due_date || null,
-      issue_date: invoiceData.issue_date || null,
+      // Every report and list screen windows on issue_date now, not created_at
+      // (see ReportService.ts and filtering.util.ts), and NULL compares false
+      // against every range — a caller-omitted issue_date used to make the
+      // invoice silently disappear from every report. The honest fallback is
+      // the day the row was created, the same day it was windowed on before
+      // this branch moved every query onto issue_date.
+      issue_date: invoiceData.issue_date || epochToCalendarDay(now),
       description: invoiceData.description || '',
       items: invoiceData.items || null,
       notes: invoiceData.notes || '',

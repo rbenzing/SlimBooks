@@ -7,7 +7,8 @@ import { authenticatedFetch } from '@/utils/api';
 import { formatDateSync, formatDateRangeSync } from '@/utils/formatting';
 import { FormattedCurrency } from '@/components/ui/FormattedCurrency';
 import { useFiscalSettings } from '@/hooks/useFiscalSettings.hook';
-import { getDateRangeForPeriod, toCalendarDay, dateRangeFilterOptions, type DateRangePeriod } from '@/utils/data';
+import { getDateRangeForPeriod, toCalendarDay, dateRangeFilterOptions,
+  formatDateRangeLabel, type DateRangePeriod } from '@/utils/data';
 import { type InvoiceReportData, type InvoiceReportProps, type ReportDateRange } from '@/types';
 
 export const InvoiceReport: React.FC<InvoiceReportProps> = ({ onBack, onSave }) => {
@@ -136,7 +137,7 @@ export const InvoiceReport: React.FC<InvoiceReportProps> = ({ onBack, onSave }) 
                 onChange={(e) => handleDatePresetChange(e.target.value as DateRangePeriod)}
               >
                 {dateRangeFilterOptions.map(option => (
-                  <option key={option.value} value={option.value}>{option.label}</option>
+                  <option key={option.value} value={option.value}>{formatDateRangeLabel(option.value, fiscalYearStartMonth, new Date())}</option>
                 ))}
               </select>
             </div>

@@ -88,7 +88,13 @@ export const ImportResult: React.FC<ImportResultProps> = ({ outcome, hiddenCount
       )}
 
       <div className="flex justify-end space-x-3">
-        {hiddenCount > 0 && (
+        {/*
+          `span` as well as `hiddenCount`: the count is derived from the rows
+          the browser submitted, so when every row fails it is still positive
+          while `span` is null — and the handler needs the span. Without this
+          the button renders on an all-failed import and does nothing at all.
+        */}
+        {hiddenCount > 0 && span && (
           <button type="button" onClick={handleShowImported} className={getButtonClasses('secondary')}>
             Show all imported
           </button>

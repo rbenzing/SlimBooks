@@ -8,7 +8,7 @@ import {
   type DateRangePeriod
 } from '@/utils/data/period.util';
 
-/** Fixed "today" so no test mocks the clock. Tue 12 Aug 2026, local midday. */
+/** Fixed "today" so no test mocks the clock. Wed 12 Aug 2026, local midday. */
 const TODAY = new Date(2026, 7, 12, 12, 0, 0);
 
 const ALL_PERIODS: DateRangePeriod[] = [

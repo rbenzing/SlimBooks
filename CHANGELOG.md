@@ -19,9 +19,12 @@ Upgrade instructions live in
   every "This Quarter" and "This Year" (and their "Last" counterparts) across
   Expenses, Payments, Invoices, all four reports and the dashboard, including
   which months a report's quarterly columns cover. Accounting basis is a fact
-  about the business, not a per-report choice — the profit & loss report
-  reads it directly to decide whether an invoice counts when issued
-  (accrual) or when paid (cash).
+  about the business, not a per-report choice, so the profit & loss report
+  now reads it from settings instead of resetting to accrual on every visit;
+  a single run can still be switched on the report itself. Note that "cash"
+  currently means *invoices marked paid within the reporting period*, not
+  invoices recognised on the date the payment arrived — recognising them by
+  `paid_date` is a separate change.
 - **An import result panel**, shown after a bulk import of expenses,
   payments or clients. It reports how many rows landed and how many failed,
   the per-row reason for each failure the API returned, the date span of the

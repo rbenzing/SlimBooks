@@ -9,7 +9,8 @@ import { FormattedCurrency, useCurrencyFormatter } from '@/components/ui/Formatt
 import { pdfService } from '@/services/pdf.svc';
 import { useRuntimeConfig } from '@/hooks/useRuntimeConfig.hook';
 import { useFiscalSettings } from '@/hooks/useFiscalSettings.hook';
-import { getDateRangeForPeriod, toCalendarDay, dateRangeFilterOptions, type DateRangePeriod } from '@/utils/data';
+import { getDateRangeForPeriod, toCalendarDay, dateRangeFilterOptions,
+  formatDateRangeLabel, type DateRangePeriod } from '@/utils/data';
 import { type ProfitLossReportProps, type ProfitLossReportData, type ReportDateRange, type AccountingMethod, type BreakdownPeriod } from '@/types';
 
 export const ProfitLossReport: React.FC<ProfitLossReportProps> = ({ onBack, onSave }) => {
@@ -173,7 +174,7 @@ export const ProfitLossReport: React.FC<ProfitLossReportProps> = ({ onBack, onSa
                 onChange={(e) => handleDatePresetChange(e.target.value as DateRangePeriod)}
               >
                 {dateRangeFilterOptions.map(option => (
-                  <option key={option.value} value={option.value}>{option.label}</option>
+                  <option key={option.value} value={option.value}>{formatDateRangeLabel(option.value, fiscalYearStartMonth, new Date())}</option>
                 ))}
               </select>
             </div>

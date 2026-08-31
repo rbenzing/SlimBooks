@@ -4,6 +4,7 @@ import { type DateRange } from '@/types';
 import {
   getDateRangeForPeriod,
   dateRangeFilterOptions,
+  formatDateRangeLabel,
   toCalendarDay,
   type DateRangePeriod
 } from '@/utils/data';
@@ -107,7 +108,7 @@ export const DateRangeFilter: React.FC<DateRangeFilterProps> = ({
           >
             {dateRangeFilterOptions.map((option) => (
               <option key={option.value} value={option.value}>
-                {option.label}
+                {formatDateRangeLabel(option.value, fiscalYearStartMonth, new Date())}
               </option>
             ))}
           </select>

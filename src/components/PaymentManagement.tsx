@@ -28,14 +28,13 @@ import {
   getStatusColor 
 } from '@/utils/themeUtils.util';
 import { StatCard, StatCardGrid } from '@/components/ui/StatCard';
-import { filterByDateRange, getDateRangeForPeriod, type DateRangePeriod } from '@/utils/data';
+import { filterByDateRange, getDateRangeForPeriod } from '@/utils/data';
 import { authenticatedFetch } from '@/utils/api';
 import { formatDateSync } from '@/components/ui/FormattedDate';
 import { FormattedCurrency } from '@/components/ui/FormattedCurrency';
 import { useFiscalSettings } from '@/hooks/useFiscalSettings.hook';
 import { useRememberedPeriod } from '@/hooks/useRememberedPeriod.hook';
 import { type Payment } from '@/types';
-import { type DateRange } from '@/types';
 
 export const PaymentManagement: React.FC = () => {
   const [uiState, setUiState] = useState({
@@ -47,13 +46,12 @@ export const PaymentManagement: React.FC = () => {
   });
 
   const { fiscalYearStartMonth } = useFiscalSettings();
-  const [dateFilter, setDateFilter] = useRememberedPeriod('payments');
+  const [dateFilter, customDateRange, setDateFilter] = useRememberedPeriod('payments');
 
   const [filters, setFilters] = useState({
     searchTerm: '',
     methodFilter: 'all',
-    statusFilter: 'all',
-    customDateRange: undefined as DateRange | undefined
+    statusFilter: 'all'
   });
 
   const [activeItem, setActiveItem] = useState<{
@@ -117,8 +115,8 @@ export const PaymentManagement: React.FC = () => {
 
   // Apply date filtering
   const dateFilteredPayments = (() => {
-    if (dateFilter === 'custom' && filters.customDateRange) {
-      return filterByDateRange(filteredPayments, filters.customDateRange, 'date');
+    if (dateFilter === 'custom' && customDateRange) {
+      return filterByDateRange(filteredPayments, customDateRange, 'date');
     } else {
       const dateRange = getDateRangeForPeriod(dateFilter, fiscalYearStartMonth, new Date());
       return filterByDateRange(filteredPayments, dateRange, 'date');
@@ -136,11 +134,6 @@ export const PaymentManagement: React.FC = () => {
   const receivedCount = dateFilteredPayments.filter(p => p.status === 'received').length;
   const pendingCount = dateFilteredPayments.filter(p => p.status === 'pending').length;
   const failedCount = dateFilteredPayments.filter(p => p.status === 'failed').length;
-
-  const handleDateFilterChange = (period: DateRangePeriod, customRange?: DateRange) => {
-    setDateFilter(period);
-    updateFilters({ customDateRange: customRange });
-  };
 
   const handleCreatePayment = () => {
     setActiveItem({ editing: null, viewing: null });
@@ -459,8 +452,8 @@ export const PaymentManagement: React.FC = () => {
               </select>
               <DateRangeFilter
                 value={dateFilter}
-                customRange={filters.customDateRange}
-                onChange={handleDateFilterChange}
+                customRange={customDateRange}
+                onChange={setDateFilter}
                 className="max-w-xs"
               />
             </div>
@@ -565,8 +558,8 @@ export const PaymentManagement: React.FC = () => {
             onClose={() => updateUiState({ showImportExport: false })}
             onImportComplete={loadPayments}
             currentPeriod={dateFilter}
-            currentCustomRange={filters.customDateRange}
-            onPeriodChange={handleDateFilterChange}
+            currentCustomRange={customDateRange}
+            onPeriodChange={setDateFilter}
           />
         )}
       </div>

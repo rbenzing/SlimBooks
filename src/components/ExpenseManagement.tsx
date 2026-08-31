@@ -29,12 +29,12 @@ import {
   getStatusColor 
 } from '@/utils/themeUtils.util';
 import { StatCard, StatCardGrid } from '@/components/ui/StatCard';
-import { filterByDateRange, getDateRangeForPeriod, type DateRangePeriod } from '@/utils/data';
+import { filterByDateRange, getDateRangeForPeriod } from '@/utils/data';
 import { formatDateSync } from '@/components/ui/FormattedDate';
 import { FormattedCurrency } from '@/components/ui/FormattedCurrency';
 import { useFiscalSettings } from '@/hooks/useFiscalSettings.hook';
 import { useRememberedPeriod } from '@/hooks/useRememberedPeriod.hook';
-import { type Expense, type DateRange } from '@/types';
+import { type Expense } from '@/types';
 
 export const ExpenseManagement: React.FC = () => {
   const [uiState, setUiState] = useState({
@@ -45,13 +45,12 @@ export const ExpenseManagement: React.FC = () => {
   });
 
   const { fiscalYearStartMonth } = useFiscalSettings();
-  const [dateFilter, setDateFilter] = useRememberedPeriod('expenses');
+  const [dateFilter, customDateRange, setDateFilter] = useRememberedPeriod('expenses');
 
   const [filters, setFilters] = useState({
     searchTerm: '',
     categoryFilter: 'all',
-    statusFilter: 'all',
-    customDateRange: undefined as DateRange | undefined
+    statusFilter: 'all'
   });
 
   const [activeItem, setActiveItem] = useState<{
@@ -117,8 +116,8 @@ export const ExpenseManagement: React.FC = () => {
 
   // Apply date filtering
   const dateFilteredExpenses = (() => {
-    if (dateFilter === 'custom' && filters.customDateRange) {
-      return filterByDateRange(filteredExpenses, filters.customDateRange, 'date');
+    if (dateFilter === 'custom' && customDateRange) {
+      return filterByDateRange(filteredExpenses, customDateRange, 'date');
     } else {
       const dateRange = getDateRangeForPeriod(dateFilter, fiscalYearStartMonth, new Date());
       return filterByDateRange(filteredExpenses, dateRange, 'date');
@@ -136,11 +135,6 @@ export const ExpenseManagement: React.FC = () => {
   const pendingCount = dateFilteredExpenses.filter(exp => exp.status === 'pending').length;
   const approvedCount = dateFilteredExpenses.filter(exp => exp.status === 'approved').length;
   const reimbursedCount = dateFilteredExpenses.filter(exp => exp.status === 'reimbursed').length;
-
-  const handleDateFilterChange = (period: DateRangePeriod, customRange?: DateRange) => {
-    setDateFilter(period);
-    updateFilters({ customDateRange: customRange });
-  };
 
   const handleCreateExpense = () => {
     setActiveItem({ editing: null, viewing: null });
@@ -429,8 +423,8 @@ export const ExpenseManagement: React.FC = () => {
               </select>
               <DateRangeFilter
                 value={dateFilter}
-                customRange={filters.customDateRange}
-                onChange={handleDateFilterChange}
+                customRange={customDateRange}
+                onChange={setDateFilter}
                 className="max-w-xs"
               />
             </div>
@@ -521,8 +515,8 @@ export const ExpenseManagement: React.FC = () => {
             onClose={() => updateUiState({ showImportExport: false })}
             onImportComplete={loadExpenses}
             currentPeriod={dateFilter}
-            currentCustomRange={filters.customDateRange}
-            onPeriodChange={handleDateFilterChange}
+            currentCustomRange={customDateRange}
+            onPeriodChange={setDateFilter}
           />
         )}
 

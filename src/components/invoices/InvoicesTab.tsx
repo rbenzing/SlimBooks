@@ -7,14 +7,14 @@ import { PaginationControls } from '../ui/PaginationControls';
 import { DateRangeFilter } from '../ui/DateRangeFilter';
 import { usePagination } from '@/hooks/usePagination';
 import { getStatusColor } from '@/utils/themeUtils.util';
-import { filterByDateRange, getDateRangeForPeriod, type DateRangePeriod } from '@/utils/data';
+import { filterByDateRange, getDateRangeForPeriod } from '@/utils/data';
 import { formatDateSync } from '@/components/ui/FormattedDate';
 import { FormattedCurrency } from '@/components/ui/FormattedCurrency';
 import { createPaymentForInvoice } from '@/utils/payment.util';
 import { useFiscalSettings } from '@/hooks/useFiscalSettings.hook';
 import { useRememberedPeriod } from '@/hooks/useRememberedPeriod.hook';
 import { toast } from 'sonner';
-import { type DateRange, type Invoice } from '@/types';
+import { type Invoice } from '@/types';
 
 export const InvoicesTab = () => {
   const navigate = useNavigate();
@@ -25,8 +25,7 @@ export const InvoicesTab = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [clientFilter, setClientFilter] = useState('all');
-  const [dateFilter, setDateFilter] = useRememberedPeriod('invoices');
-  const [customDateRange, setCustomDateRange] = useState<DateRange | undefined>(undefined);
+  const [dateFilter, customDateRange, setDateFilter] = useRememberedPeriod('invoices');
   const [viewMode, setViewMode] = useState<'panel' | 'table'>('panel');
 
   useEffect(() => {
@@ -86,11 +85,6 @@ export const InvoicesTab = () => {
   const pendingAmount = dateFilteredInvoices
     .filter(invoice => invoice.status === 'sent')
     .reduce((sum, invoice) => sum + invoice.amount, 0);
-
-  const handleDateFilterChange = (period: DateRangePeriod, customRange?: DateRange) => {
-    setDateFilter(period);
-    setCustomDateRange(customRange);
-  };
 
   const handleDelete = async (id: number) => {
     if (confirm('Are you sure you want to delete this invoice?')) {
@@ -358,7 +352,7 @@ export const InvoicesTab = () => {
             <DateRangeFilter
               value={dateFilter}
               customRange={customDateRange}
-              onChange={handleDateFilterChange}
+              onChange={setDateFilter}
               className="max-w-xs"
             />
           </div>

@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
+  epochToCalendarDay,
   isEpochMillis,
   normalizeCalendarDay,
   normalizeUtcTimestamp,
@@ -47,6 +48,28 @@ describe('utcTimestamp', () => {
 describe('utcCalendarDay', () => {
   it('renders a bare day', () => {
     expect(utcCalendarDay(AT)).toBe('2026-08-09');
+  });
+});
+
+describe('epochToCalendarDay', () => {
+  it('renders the UTC day of a stored instant', () => {
+    expect(epochToCalendarDay(AT_MS)).toBe('2026-08-09');
+  });
+
+  it('agrees with utcCalendarDay for the same instant', () => {
+    expect(epochToCalendarDay(AT_MS)).toBe(utcCalendarDay(AT));
+  });
+
+  it('reads the day in UTC, not the host timezone', () => {
+    // 23:30 UTC is still the 9th in UTC even though it has already rolled to
+    // the 10th east of the date line — the same day migration 016 must derive
+    // from created_at regardless of where the server runs.
+    expect(epochToCalendarDay(Date.parse('2026-08-09T23:30:00.000Z'))).toBe('2026-08-09');
+  });
+
+  it('does not round to the nearest day', () => {
+    expect(epochToCalendarDay(Date.parse('2026-08-09T00:00:00.001Z'))).toBe('2026-08-09');
+    expect(epochToCalendarDay(Date.parse('2026-08-09T23:59:59.999Z'))).toBe('2026-08-09');
   });
 });
 

@@ -46,6 +46,18 @@ export const utcTimestamp = (moment: Date): number => moment.getTime();
 /** `YYYY-MM-DD` in UTC — the shape every calendar-day column holds. */
 export const utcCalendarDay = (moment: Date): string => moment.toISOString().slice(0, 10);
 
+/**
+ * The UTC calendar day a stored instant falls on.
+ *
+ * For turning `created_at` (epoch milliseconds) into the honest fallback for a
+ * day column that was never given a value of its own — migration 016 backfills
+ * `invoices.issue_date` this way, and `InvoiceService.createInvoice` defaults a
+ * new row to it rather than writing null. UTC, like every other day derived
+ * here: a due date is the 12th everywhere, not just for whichever timezone
+ * happened to compute it.
+ */
+export const epochToCalendarDay = (epochMillis: number): string => utcCalendarDay(new Date(epochMillis));
+
 const MILLIS_PER_DAY = 24 * 60 * 60 * 1000;
 
 /**

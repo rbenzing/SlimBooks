@@ -86,11 +86,11 @@ Upgrade instructions live in
   (`created_at`) rather than when they were issued or incurred.** A
   historical import landed entirely on the day it was imported, not the
   dates on its rows. This was wrong in three places that disagreed with each
-  other on the same data: the invoice list, the profit & loss and invoice
-  reports in `server/services/ReportService.ts`, and the dashboard — which
-  also disagreed with the Expenses screen, since Expenses already filtered
-  on `date`. Invoices now file by `issue_date` and expenses by `date`
-  everywhere.
+  other on the same data: the invoice list, every report in
+  `server/services/ReportService.ts` — profit & loss, invoice and client —
+  and the dashboard, which also disagreed with the Expenses screen, since
+  Expenses already filtered on `date`. Invoices now file by `issue_date` and
+  expenses by `date` everywhere.
 - **A fiscal year starting in any month but January, April, July or October
   produced a malformed report column.** A quarter's end month was computed
   by adding to its start month without wrapping past December, so a fiscal

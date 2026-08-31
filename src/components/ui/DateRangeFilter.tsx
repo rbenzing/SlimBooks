@@ -7,7 +7,7 @@ import {
   toCalendarDay,
   type DateRangePeriod
 } from '@/utils/data';
-import { formatDateRangeSync } from '@/utils/formatting';
+import { formatDateRangeSync, parseDisplayDate } from '@/utils/formatting';
 import { cn } from '@/utils/themeUtils.util';
 import { useFiscalSettings } from '@/hooks/useFiscalSettings.hook';
 
@@ -62,8 +62,8 @@ export const DateRangeFilter: React.FC<DateRangeFilterProps> = ({
 
   const handleCustomDateChange = () => {
     if (customStartDate && customEndDate) {
-      const startDate = new Date(customStartDate);
-      const endDate = new Date(customEndDate);
+      const startDate = parseDisplayDate(customStartDate);
+      const endDate = parseDisplayDate(customEndDate);
       
       // Ensure end date is not before start date
       if (endDate < startDate) {

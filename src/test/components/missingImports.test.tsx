@@ -45,6 +45,7 @@ vi.mock('sonner', () => ({
 
 import { EmailSettings } from '@/components/settings/EmailSettings';
 import { DateRangeFilter } from '@/components/ui/DateRangeFilter';
+import { toCalendarDay } from '@/utils/data/period.util';
 
 describe('EmailSettings', () => {
   beforeEach(() => {
@@ -126,5 +127,28 @@ describe('DateRangeFilter', () => {
     const offered = Array.from(document.querySelectorAll('option')).map((o) => o.value);
     expect(onChange).toHaveBeenCalled();
     expect(offered).toContain(onChange.mock.calls[0][0]);
+  });
+
+  /**
+   * `new Date('2026-01-17')` parses a bare yyyy-MM-dd string as UTC midnight,
+   * which `toCalendarDay` reads back a day early anywhere west of UTC — the
+   * mirror of the toISOString scar this file's date parsing already avoids
+   * thirty lines away. `parseDisplayDate` reads it as a local day instead.
+   */
+  it('keeps a typed custom start date on the day it was typed, not a day earlier', () => {
+    const onChange = vi.fn();
+    const customRange = { start: new Date(2026, 0, 1), end: new Date(2026, 0, 31) };
+
+    render(<DateRangeFilter value="custom" customRange={customRange} onChange={onChange} />);
+
+    const fromInput = document.querySelector<HTMLInputElement>('input[type="date"]');
+    expect(fromInput).not.toBeNull();
+
+    fireEvent.change(fromInput!, { target: { value: '2026-01-17' } });
+    fireEvent.blur(fromInput!);
+
+    expect(onChange).toHaveBeenCalled();
+    const [, range] = onChange.mock.calls[onChange.mock.calls.length - 1];
+    expect(toCalendarDay(range.start)).toBe('2026-01-17');
   });
 });

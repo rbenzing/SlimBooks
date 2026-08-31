@@ -12,6 +12,32 @@ Upgrade instructions live in
 
 ## [Unreleased]
 
+### Added
+
+- **Two company settings: fiscal year start month and accounting basis**
+  (cash or accrual), in Settings → Company & Tax. The fiscal year drives
+  every "This Quarter" and "This Year" (and their "Last" counterparts) across
+  Expenses, Payments, Invoices, all four reports and the dashboard, including
+  which months a report's quarterly columns cover. Accounting basis is a fact
+  about the business, not a per-report choice — the profit & loss report
+  reads it directly to decide whether an invoice counts when issued
+  (accrual) or when paid (cash).
+- **An import result panel**, shown after a bulk import of expenses,
+  payments or clients. It reports how many rows landed and how many failed,
+  the per-row reason for each failure the API returned, the date span of the
+  rows that landed, and a button that widens the list's date filter to show
+  them.
+
+### Changed
+
+- **Expenses, Payments and Invoices open on the fiscal year to date**
+  instead of the current month, and each screen remembers the period you
+  last chose.
+- **The dashboard follows the configured fiscal year** instead of always
+  starting "This Year" and "Last Year" on 1 January, and its period
+  selector now offers the same eleven presets as the reports and lists.
+- **Tax Rates moved from its own settings tab into Company & Tax.**
+
 ### Removed
 
 - **Forty shadcn/ui components that nothing imported**, along with three barrel
@@ -47,6 +73,44 @@ Upgrade instructions live in
   It is not: a request for `admin@slimbooks.app` is answered without a token,
   and the handler returns what `SELECT *` produced — `password_hash` included.
   Documented as it behaves.
+- **"This Year" ended on 31 December in the profit & loss report but today
+  in the expense report**, so the two could never be reconciled for the year
+  in progress. Every report, list and the dashboard now end a current period
+  today, never in the future.
+- **Report and list date ranges shifted a day for anyone east of UTC.**
+  Ranges were built with `toISOString()`, which converts to UTC before
+  taking the date, so a local midnight became the previous day — a Berlin
+  user's "This Year" started 31 December. Ranges are now built from local
+  date parts by `toCalendarDay` in `src/utils/data/period.util.ts`.
+- **Invoices and expenses were dated by when their row was entered
+  (`created_at`) rather than when they were issued or incurred.** A
+  historical import landed entirely on the day it was imported, not the
+  dates on its rows. This was wrong in three places that disagreed with each
+  other on the same data: the invoice list, the profit & loss and invoice
+  reports in `server/services/ReportService.ts`, and the dashboard — which
+  also disagreed with the Expenses screen, since Expenses already filtered
+  on `date`. Invoices now file by `issue_date` and expenses by `date`
+  everywhere.
+- **A fiscal year starting in any month but January, April, July or October
+  produced a malformed report column.** A quarter's end month was computed
+  by adding to its start month without wrapping past December, so a fiscal
+  year starting in November produced a column dated `2026-13-01`.
+- **An import where every row failed showed only "Failed to import
+  expenses"**, with no counts and no indication of which rows were wrong or
+  why. The bulk-import endpoints answered `422` in that case, and the
+  client's fetch helper throws on any non-2xx response after consuming the
+  body to build its error message — so the explanation the panel exists to
+  show never arrived. They now answer `200` with `success: false`, and the
+  import result panel shows the counts and every per-row error.
+
+### Migration
+
+**A report run after this upgrade can return different totals than the same
+report run before it.** That is the point of the fixes above, but it will
+look like a discrepancy to whoever meets it first. **Saved reports are not
+affected** — a saved report keeps the range and figures it was generated
+with and is never recomputed, so an old saved report will not agree with a
+freshly run report of the same name over the same period. Both are correct.
 
 ## [2.3.0] — 2026-08-23
 

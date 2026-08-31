@@ -64,6 +64,22 @@ notion of a day used everywhere else: both ends inclusive.
 - Check the currency and date columns before importing a large file.
 - **Import into a test install first if you can.**
 
+### After importing
+
+The import shows a result panel rather than closing silently — including
+when every row failed. It reports:
+
+- **Imported** and **Failed** counts.
+- **Why rows failed**, one line per failed row, in the API's own words —
+  copyable in one click.
+- The **date span** the imported rows cover, if any landed.
+- **Show all imported**, when the rows you just added fall outside the
+  list's current date filter — it widens the filter to a custom range
+  covering that span so you can see them immediately, instead of leaving you
+  to wonder why an import that reported success shows nothing on screen.
+
+Payment and client imports show the same panel.
+
 ## Statistics
 
 The expenses screen shows totals for the current filter, and the

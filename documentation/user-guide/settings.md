@@ -1,13 +1,12 @@
 # Settings
 
-Eleven tabs. Anything saved here **takes precedence over the server's
+Ten tabs. Anything saved here **takes precedence over the server's
 environment file**, so Settings is the place to configure a running install.
 
 | Tab | For |
 |---|---|
-| [Company](#company) | Name, address, logo — what appears on invoices |
+| [Company & Tax](#company--tax) | Name, address, logo, tax rates, fiscal year and accounting basis |
 | [General](#general) | Currency, date format, language |
-| [Tax Rates](#tax-rates) | Rates available on invoices |
 | [Shipping](#shipping) | Shipping options and rates |
 | [Email Settings](#email) | SMTP delivery |
 | [Notifications](#notifications) | In-app notification behaviour |
@@ -17,7 +16,7 @@ environment file**, so Settings is the place to configure a running install.
 | [Security](#security) | Authentication policy |
 | [Backup & Restore](#backup--restore) | Download and restore the database |
 
-## Company
+## Company & tax
 
 Your business name, address and contact details, plus a **logo** that appears
 on every invoice. Set this up before issuing your first invoice — it is what
@@ -25,6 +24,29 @@ your clients see.
 
 The logo is stored by the application rather than linked from elsewhere, so it
 keeps working regardless of how the install is hosted.
+
+### Tax rates
+
+Define the rates you charge. They become selectable on invoice line items.
+
+### Fiscal year
+
+The month your fiscal year starts, January through December. It drives every
+"This Quarter" and "This Year" — and their "Last" counterparts — across
+Expenses, Payments, Invoices, all four reports and the dashboard, including
+which calendar months a report's quarterly columns cover.
+
+A January fiscal year is labelled by its calendar year, same as a plain
+calendar year always was. Any other start is labelled **FY** plus the
+calendar year it *ends* in — a fiscal year starting July 2026 runs to June
+2027 and is labelled **FY2027**, and its quarterly report columns read
+"FY2027 Q1" through "FY2027 Q4".
+
+### Accounting basis
+
+Cash or accrual. This is a fact about how the business recognises income, not
+a per-report choice, and the profit & loss report reads it directly — see
+[cash or accrual](reports.md#cash-or-accrual) for what each counts.
 
 ## General
 
@@ -35,10 +57,6 @@ formats amounts and dates the way you set them here — there is no screen with
 its own idea of what a date looks like.
 
 Change the date format here rather than looking for a per-screen setting.
-
-## Tax rates
-
-Define the rates you charge. They become selectable on invoice line items.
 
 ## Shipping
 

@@ -65,8 +65,16 @@ const createFake = (options: FakeOptions = {}): Fake => {
       if (sql.includes('FROM migrations')) {
         return (applied.has(params[0] as string) ? [{ id: params[0] }] : []) as T[];
       }
+      // Migration 016 (repairsData) queries invoices for offending rows. This
+      // stand-in never actually creates rows, so there is never anything to
+      // repair here — the same as a freshly baselined database in practice.
       return [] as T[];
-    }
+    },
+
+    // Migration 016 (repairsData) checks this before querying invoices. The
+    // real baseline always issues invoices' CREATE TABLE before recording
+    // migrations, so it is always true by the time this runs.
+    tableExists: async () => true
   } as unknown as IDatabase;
 
   return { db, statements, inserts };
@@ -161,7 +169,7 @@ describe('buildMysqlBaseline', () => {
     expect(at('users')).toBeLessThan(at('password_reset_tokens'));
   });
 
-  it('records every migration as applied without executing one', async () => {
+  it('records every migration as applied, running only 016 (repairsData) and finding nothing to do', async () => {
     await buildMysqlBaseline(fake.db);
 
     // Pinned rather than derived from the registry: comparing the recorder's
@@ -170,15 +178,20 @@ describe('buildMysqlBaseline', () => {
     // should be recording it as already done.
     //
     // 014 rewrites legacy timestamp values and 015 retypes those columns to
-    // integers. A database created from this baseline has neither problem —
-    // every timestamp column is already BIGINT and already defaults to epoch
-    // milliseconds. 016 backfills invoices.issue_date for rows a pre-fix
-    // InvoiceService left null; a freshly baselined database has none, since
-    // InvoiceService always supplies one. Recording all three is correct.
+    // integers — schema archaeology recorded without running, same as every
+    // other migration below 016. 016 is different: it is flagged repairsData
+    // (see migrations/index.ts), so its up() genuinely runs here too, not just
+    // gets recorded — this stand-in's invoices table is always empty, so on a
+    // freshly baselined database it is a no-op, and that no-op is asserted
+    // below rather than merely assumed.
     expect(fake.inserts.map(insert => insert.params[0])).toEqual([
       '001', '002', '003', '004', '006', '007', '008', '009', '010', '011', '012', '013',
       '014', '015', '016'
     ]);
+
+    // 016's up() ran (it queried invoices for offenders), but there was
+    // nothing to repair, so it issued no UPDATE.
+    expect(fake.statements.some(sql => /UPDATE\s+invoices/i.test(sql))).toBe(false);
   });
 
   it('skips an index that already exists, since MySQL has no IF NOT EXISTS there', async () => {

@@ -34,18 +34,18 @@ describe('buildMonthlyRevenueSeries', () => {
     const series = buildMonthlyRevenueSeries(invoices, range);
 
     expect(series).toHaveLength(8);
-    expect(series[0].period).toBe('Jul');
-    expect(series[series.length - 1].period).toBe('Feb');
+    expect(series[0].period.startsWith('Jul')).toBe(true); // the fiscal year opens in July; the label may carry its year too
+    expect(series[series.length - 1].period.startsWith('Feb')).toBe(true);
 
     // The August invoice must land in a bucket at all — a calendar-year
     // walk starting in January would never visit August 2025 and this
     // revenue would silently vanish from the chart.
     const august = series[1];
-    expect(august.period).toBe('Aug');
+    expect(august.period.startsWith('Aug')).toBe(true);
     expect(august.revenue).toBe(500);
 
     const january = series[6];
-    expect(january.period).toBe('Jan');
+    expect(january.period.startsWith('Jan')).toBe(true);
     expect(january.revenue).toBe(300);
   });
 
@@ -57,8 +57,8 @@ describe('buildMonthlyRevenueSeries', () => {
     const series = buildMonthlyRevenueSeries(invoices, range);
 
     expect(series).toHaveLength(12);
-    expect(series[0].period).toBe('Jul');
-    expect(series[series.length - 1].period).toBe('Jun');
+    expect(series[0].period.startsWith('Jul')).toBe(true); // the fiscal year opens in July; the label may carry its year too
+    expect(series[series.length - 1].period.startsWith('Jun')).toBe(true);
     expect(series.find(bucket => bucket.revenue === 750)).toBeDefined();
   });
 
@@ -80,5 +80,48 @@ describe('buildMonthlyRevenueSeries', () => {
     const totalRevenue = series.reduce((sum, bucket) => sum + bucket.revenue, 0);
 
     expect(totalRevenue).toBe(0);
+  });
+});
+
+/**
+ * A fiscal year crosses the calendar year, and a custom range can span several.
+ * Bare month names then label two different months identically — "Jan" above
+ * one bar and "Jan" above another, twelve bars apart.
+ */
+describe('month labels stay unambiguous across a year boundary', () => {
+  const invoices = [invoice('2026-01-15', 100)];
+
+  it('adds the year when the range crosses one', () => {
+    const series = buildMonthlyRevenueSeries(invoices, {
+      start: new Date(2025, 6, 1),
+      end: new Date(2026, 5, 30)
+    });
+
+    expect(series).toHaveLength(12);
+    for (const point of series) {
+      expect(point.period).toMatch(/^[A-Za-z]{3} \d{2}$/);
+    }
+    expect(new Set(series.map(p => p.period)).size).toBe(12);
+  });
+
+  it('leaves a single-year range reading plainly', () => {
+    const series = buildMonthlyRevenueSeries(invoices, {
+      start: new Date(2026, 0, 1),
+      end: new Date(2026, 11, 31)
+    });
+
+    for (const point of series) {
+      expect(point.period).toMatch(/^[A-Za-z]{3}$/);
+    }
+  });
+
+  it('never repeats a label in a range spanning three calendar years', () => {
+    const series = buildMonthlyRevenueSeries(invoices, {
+      start: new Date(2024, 0, 1),
+      end: new Date(2026, 11, 31)
+    });
+
+    expect(series).toHaveLength(36);
+    expect(new Set(series.map(p => p.period)).size).toBe(36);
   });
 });

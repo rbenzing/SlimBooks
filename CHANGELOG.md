@@ -21,10 +21,13 @@ Upgrade instructions live in
   which months a report's quarterly columns cover. Accounting basis is a fact
   about the business, not a per-report choice, so the profit & loss report
   now reads it from settings instead of resetting to accrual on every visit;
-  a single run can still be switched on the report itself. Note that "cash"
-  currently means *invoices marked paid within the reporting period*, not
-  invoices recognised on the date the payment arrived — recognising them by
-  `paid_date` is a separate change.
+  a single run can still be switched on the report itself. Note what "cash"
+  currently means: *invoices issued within the period that are right now
+  marked paid*. The period bounds the issue date, never the payment, so an
+  invoice issued 20 January and paid 3 March is absent from a January cash
+  report run in February and present in the same report run in April.
+  Recognising revenue on the date the payment arrived — bucketing by
+  `paid_date` — is a separate change.
 - **An import result panel**, shown after a bulk import of expenses,
   payments or clients. It reports how many rows landed and how many failed,
   the per-row reason for each failure the API returned, the date span of the

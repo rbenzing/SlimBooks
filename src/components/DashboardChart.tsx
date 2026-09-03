@@ -40,10 +40,18 @@ export const buildMonthlyRevenueSeries = (
   const cursor = new Date(range.start.getFullYear(), range.start.getMonth(), 1);
   const last = new Date(range.end.getFullYear(), range.end.getMonth(), 1);
 
+  // A fiscal year, and any custom range, can cross a calendar year — a July
+  // year runs Jul..Jun, and a two-year custom range repeats Jan..Dec. Bare
+  // month names would then label two different months identically, so the year
+  // is added exactly when the range needs it to be unambiguous.
+  const spansCalendarYears = range.start.getFullYear() !== range.end.getFullYear();
+
   while (cursor.getTime() <= last.getTime()) {
     const monthKey = `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, '0')}`;
     months.push({
-      period: cursor.toLocaleDateString('en-US', { month: 'short' }),
+      period: cursor.toLocaleDateString('en-US', spansCalendarYears
+        ? { month: 'short', year: '2-digit' }
+        : { month: 'short' }),
       revenue: monthlyData[monthKey] || 0
     });
     cursor.setMonth(cursor.getMonth() + 1);

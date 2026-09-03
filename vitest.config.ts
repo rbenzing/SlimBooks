@@ -7,6 +7,17 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'happy-dom',
+    // CI runs on ubuntu-latest, which is UTC, and under UTC a date bug that
+    // shifts the day cannot express itself — `new Date('2026-01-17')` is still
+    // the 17th locally, so a test written to catch it passes against the broken
+    // code. This codebase has shipped a day-shift three times; pinning a
+    // negative offset means those regressions fail the suite everywhere rather
+    // than only on a developer's machine west of Greenwich.
+    //
+    // The positive-offset direction is covered by construction instead: the
+    // day-key tests compose `toCalendarDay` with `parseDisplayDate`, both of
+    // which read local parts, so they hold at any offset.
+    env: { TZ: 'America/New_York' },
     setupFiles: ['./src/test/setup.ts'],
     include: ['src/test/**/*.test.{ts,tsx}', 'server/**/*.test.ts'],
     exclude: ['node_modules', 'dist', '.git'],

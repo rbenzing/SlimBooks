@@ -5,11 +5,14 @@
  * range, so the invoice silently disappears from the P&L, the invoice report,
  * the client report, the list and the dashboard. This migration is the
  * backfill half of the fix, so it is checked against real SQLite and real
- * MySQL/MariaDB rather than against generated SQL — the header of the
- * migration itself explains why its `up()` never actually runs against a live
- * MySQL install, but the conversion logic still has to be correct there,
- * because the codebase requires anything database-shaped to be proved on both
- * engines.
+ * MySQL/MariaDB rather than against generated SQL, as the codebase requires of
+ * anything database-shaped.
+ *
+ * It runs on BOTH engines. It is marked `repairsData`, which is what makes the
+ * MySQL boot path execute it rather than merely record it as applied the way it
+ * does for the SQLite schema archaeology in 001-015. An earlier draft of this
+ * comment said the opposite; that was true for about an hour, and it was the
+ * defect, not the design.
  *
  * SQLite always runs. MySQL runs when TEST_MYSQL_URL is set. A skipped MySQL
  * half is reported rather than silent.

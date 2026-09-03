@@ -29,16 +29,17 @@
 // issue_date, so a second run — or a run against an install where
 // InvoiceService now always supplies one — finds nothing and touches nothing.
 //
-// MySQL note: this migration's `up()` never actually executes against a
-// MySQL/MariaDB backend. MySQL installs are built once from tables.schema.ts
-// by baseline.ts, with every migration's history recorded as applied without
-// running (see CLAUDE.md and baseline.ts) — a MySQL database only ever comes
-// from a fresh schema build or an import of already-current data, never from
-// replaying history the way SQLite does. The logic here is still exercised
-// directly against a real MySQL/MariaDB server in
-// 016_backfill_issue_date.test.ts, which proves it dialect-neutral; it simply
-// has no install to run against in practice, because a MySQL install that
-// predates InvoiceService's fix does not exist yet.
+// MySQL note: this migration IS flagged `repairsData` (see migrations/index.ts)
+// and DOES run against MySQL/MariaDB, unlike 001-015. MySQL installs are built
+// once from tables.schema.ts by baseline.ts, with schema-archaeology migration
+// history recorded as applied without running (see CLAUDE.md and baseline.ts)
+// — but this migration repairs rows, not schema, so applyDataRepairsAndMark-
+// MigrationsApplied awaits its up() before recording it. On a freshly-built
+// database that is a harmless no-op; on an existing MySQL install that predates
+// this migration being registered, it is the only place the repair ever runs.
+// Proved directly against a real MySQL/MariaDB server in
+// 016_backfill_issue_date.test.ts (the conversion logic) and
+// baselineDataRepair.test.ts (the boot path that actually invokes it there).
 
 import type { IDatabase } from '../../types/database.types.js';
 import { epochToCalendarDay } from '../../utils/utcTime.util.js';

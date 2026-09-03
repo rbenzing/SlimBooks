@@ -18,10 +18,25 @@ import { up as migration014 } from './014_normalize_timestamps.js';
 import { up as migration015 } from './015_epoch_timestamps.js';
 import { up as migration016 } from './016_backfill_issue_date.js';
 
-interface Migration {
+export interface Migration {
   id: string;
   name: string;
   up: (db: IDatabase) => Promise<void>;
+  /**
+   * Marks this migration as a data repair rather than schema archaeology.
+   *
+   * Schema archaeology (001-015, the default/omitted case) exists only to
+   * replay SQLite's own history of ALTER/PRAGMA steps toward the shape
+   * tables.schema.ts already declares; MySQL is built once from that file and
+   * never needs to replay it — see baseline.ts. Flag a migration here only
+   * when it instead repairs existing ROWS (wrong or missing data left by a
+   * bug, not a schema shape). That makes it dialect-neutral by construction,
+   * so it must run on every backend a database might already exist on,
+   * including a MySQL/MariaDB install that otherwise never replays history.
+   * See applyDataRepairsAndMarkMigrationsApplied, which is what actually runs
+   * it there.
+   */
+  repairsData?: true;
 }
 
 /**
@@ -101,7 +116,8 @@ const migrations: Migration[] = [
   {
     id: '016',
     name: 'backfill_issue_date',
-    up: migration016
+    up: migration016,
+    repairsData: true
   }
 ];
 
@@ -179,20 +195,45 @@ export const runMigrations = async (db: IDatabase): Promise<void> => {
 };
 
 /**
- * Record every migration as applied without executing any of them.
+ * Record every migration as applied, running only the ones flagged
+ * `repairsData` first.
  *
  * Used by the MySQL baseline, which builds the fully-migrated shape directly
- * from tables.schema.ts. It writes through the same INSERT path a real run
- * uses, so a migration added later is picked up normally on both backends —
- * this marks history as done, it does not opt the database out of migrations.
+ * from tables.schema.ts rather than replaying 001-015's SQLite archaeology —
+ * PRAGMA guards and rebuild-copy-drop steps that have nothing to do against a
+ * dialect with no PRAGMA. Those are still recorded as applied without
+ * running, exactly as before.
+ *
+ * A migration flagged `repairsData` (016, so far) is not schema archaeology —
+ * it fixes existing rows, so it is dialect-neutral and must actually run
+ * here, or a MySQL/MariaDB install that already has the defect it fixes would
+ * be marked as repaired without ever being repaired. Its up() is awaited
+ * before it is recorded, so a boot interrupted mid-repair is retried on the
+ * next boot rather than marked done it never finished.
+ *
+ * Idempotent the same way runMigrations() is: an id already present in
+ * `migrations` is skipped outright, flagged or not, so a completed repair
+ * never runs twice and a second boot touches nothing.
+ *
+ * `list` defaults to the real registry and exists so tests can substitute
+ * small fakes rather than depending on which real migrations happen to be
+ * flagged.
  */
-export const markAllMigrationsApplied = async (db: IDatabase): Promise<void> => {
+export const applyDataRepairsAndMarkMigrationsApplied = async (
+  db: IDatabase,
+  list: readonly Migration[] = migrations
+): Promise<void> => {
   await createMigrationsTable(db);
 
-  for (const migration of migrations) {
-    if (!(await isMigrationApplied(db, migration.id))) {
-      await markMigrationApplied(db, migration);
+  for (const migration of list) {
+    if (await isMigrationApplied(db, migration.id)) continue;
+
+    if (migration.repairsData === true) {
+      console.log(`Running data-repair migration ${migration.id}: ${migration.name}`);
+      await migration.up(db);
     }
+
+    await markMigrationApplied(db, migration);
   }
 };
 

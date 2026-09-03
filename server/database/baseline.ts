@@ -1,19 +1,27 @@
 // Building a MySQL schema from nothing.
 //
 // A MySQL database is built once from tables.schema.ts and its migration
-// history recorded as already applied. Migrations 001-012 are SQLite
+// history recorded as already applied. Migrations 001-015 are SQLite
 // archaeology — PRAGMA table_info guards, a create-copy-drop-rename table
 // rebuild — and none of it can or should run on a dialect with no PRAGMA.
 //
 // That makes tables.schema.ts the sole definition of a MySQL install's shape,
 // which is why the schema-drift test in index.test.ts is load-bearing rather
-// than nice to have: if a migration would still alter a freshly-created
-// database, this baseline produces the wrong schema and the two backends
-// diverge from the moment the MySQL one is created.
+// than nice to have: if a schema-archaeology migration would still alter a
+// freshly-created database, this baseline produces the wrong schema and the
+// two backends diverge from the moment the MySQL one is created.
+//
+// A migration flagged `repairsData` (see migrations/index.ts) is not schema
+// archaeology — it fixes existing rows rather than shape, so it is
+// dialect-neutral and DOES run here, via
+// applyDataRepairsAndMarkMigrationsApplied. On a freshly-built database that
+// is a harmless no-op (there is nothing yet to repair); on an existing MySQL
+// install that predates the repair being registered, it is the only place
+// that repair ever runs.
 
 import type { IDatabase } from '../types/database.types.js';
 import { mysqlSchemaStatements } from './schemas/mysql.ddl.js';
-import { markAllMigrationsApplied } from './migrations/index.js';
+import { applyDataRepairsAndMarkMigrationsApplied } from './migrations/index.js';
 
 interface VersionRow {
   version: string;
@@ -113,11 +121,13 @@ const isIndexStatement = (statement: string): boolean =>
   /^CREATE\s+(UNIQUE\s+)?INDEX/i.test(statement);
 
 /**
- * Build the complete schema, then record every migration as already applied.
+ * Build the complete schema, then run any pending data repairs and record
+ * every migration as applied.
  *
  * Idempotent: tables use CREATE TABLE IF NOT EXISTS, indexes are checked first,
- * and the migration recording skips ids already present. A process killed
- * part-way through simply resumes on the next boot.
+ * and the migration recording skips ids already present — so a data repair
+ * already recorded as applied is not re-run, and a process killed part-way
+ * through simply resumes on the next boot.
  */
 export const buildMysqlBaseline = async (db: IDatabase): Promise<void> => {
   await assertMysqlCapabilities(db);
@@ -128,5 +138,5 @@ export const buildMysqlBaseline = async (db: IDatabase): Promise<void> => {
     await db.executeQuery(statement);
   }
 
-  await markAllMigrationsApplied(db);
+  await applyDataRepairsAndMarkMigrationsApplied(db);
 };

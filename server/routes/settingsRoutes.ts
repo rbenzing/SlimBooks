@@ -102,7 +102,9 @@ router.get('/company', async (_req: Request, res: Response): Promise<void> => {
           zipCode: '',
           email: '',
           phone: '',
-          brandingImage: ''
+          brandingImage: '',
+          fiscalYearStartMonth: 1,
+          accountingMethod: 'accrual'
         }
       });
     }
@@ -229,14 +231,27 @@ router.delete('/company/logo', requireAuth, async (req: Request, res: Response):
 router.post('/company', requireAuth, async (req: Request, res: Response): Promise<void> => {
   try {
     const { settingsService } = await import('../services/SettingsService.js');
-    const { companyName, ownerName, address, city, state, zipCode, email, phone, brandingImage } = req.body;
-    
+    const {
+      companyName, ownerName, address, city, state, zipCode, email, phone, brandingImage,
+      fiscalYearStartMonth, accountingMethod
+    } = req.body;
+
     // Validate required fields
     if (!companyName || typeof companyName !== 'string') {
       res.status(400).json({ success: false, error: 'Company name is required' });
       return;
     }
-    
+
+    // Same coercion the frontend applies on load (useSettings.hook.ts's
+    // toFiscalMonth/toAccountingMethod), so a value entered here reads back
+    // correctly and a missing or malformed one still saves something valid
+    // rather than silently dropping the field.
+    const fiscalMonth = Number(fiscalYearStartMonth);
+    const validFiscalMonth = Number.isInteger(fiscalMonth) && fiscalMonth >= 1 && fiscalMonth <= 12
+      ? fiscalMonth
+      : 1;
+    const validAccountingMethod = accountingMethod === 'cash' ? 'cash' : 'accrual';
+
     // Build company settings object
     const companySettings = {
       companyName: companyName.trim(),
@@ -247,9 +262,11 @@ router.post('/company', requireAuth, async (req: Request, res: Response): Promis
       zipCode: zipCode || '',
       email: email || '',
       phone: phone || '',
-      brandingImage: brandingImage || ''
+      brandingImage: brandingImage || '',
+      fiscalYearStartMonth: validFiscalMonth,
+      accountingMethod: validAccountingMethod
     };
-    
+
     await settingsService.saveSetting('company_settings', companySettings, 'company');
     res.json({ success: true, message: 'Company settings saved successfully' });
   } catch (error) {

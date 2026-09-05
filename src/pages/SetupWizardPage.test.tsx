@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import type * as ReactRouterDom from 'react-router-dom';
 import { SetupWizardPage } from './SetupWizardPage';
@@ -16,6 +16,13 @@ vi.mock('@/contexts/AuthContext', () => ({
 vi.mock('react-router-dom', async (importOriginal) => {
   const actual = await importOriginal<typeof ReactRouterDom>();
   return { ...actual, useNavigate: () => navigateMock };
+});
+
+vi.mock('@/components/settings/CompanySettings', async () => {
+  const React = await import('react');
+  return {
+    CompanySettings: React.forwardRef(() => <div>Company settings form</div>)
+  };
 });
 
 afterEach(() => {
@@ -53,13 +60,14 @@ describe('SetupWizardPage', () => {
     expect(navigateMock).not.toHaveBeenCalled();
   });
 
-  it('navigates to the dashboard once the only step succeeds', async () => {
+  it('advances to the company step after the admin account is created', async () => {
     completeSetup.mockResolvedValue({ success: true, user: { role: 'admin' }, session_token: 'tok' });
     render(<MemoryRouter><SetupWizardPage /></MemoryRouter>);
 
     fillAdminForm();
     fireEvent.click(screen.getByRole('button', { name: /create administrator account/i }));
 
-    await waitFor(() => expect(navigateMock).toHaveBeenCalledWith('/dashboard', { replace: true }));
+    expect(await screen.findByText('Company information')).toBeInTheDocument();
+    expect(navigateMock).not.toHaveBeenCalled();
   });
 });

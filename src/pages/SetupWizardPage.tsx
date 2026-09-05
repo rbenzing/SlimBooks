@@ -2,10 +2,12 @@
 // GET /api/setup/status reports needsSetup: true (App.tsx). Steps 2-5 are
 // added by later tasks, appended to the `steps` array below.
 
-import { useState, type FormEvent } from 'react';
+import { useState, useRef, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AlertCircle } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { CompanySettings } from '@/components/settings/CompanySettings';
+import type { SettingsTabRef } from '@/types';
 
 interface WizardStepProps {
   onAdvance: () => void;
@@ -93,6 +95,40 @@ const AdminAccountStep = ({ onAdvance }: WizardStepProps) => {
   );
 };
 
+/** Step 2: company details, shown on every invoice. Mandatory, no skip. */
+const CompanyInfoStep = ({ onAdvance }: WizardStepProps) => {
+  const ref = useRef<SettingsTabRef>(null);
+  const [isSaving, setIsSaving] = useState(false);
+
+  const handleNext = async () => {
+    setIsSaving(true);
+    try {
+      await ref.current?.saveSettings?.();
+      onAdvance();
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <h2 className="text-lg font-medium text-card-foreground">Company information</h2>
+        <p className="text-sm text-muted-foreground">Shown on every invoice. You can change this later in Settings.</p>
+      </div>
+      <CompanySettings ref={ref} />
+      <button
+        type="button"
+        onClick={handleNext}
+        disabled={isSaving}
+        className="w-full bg-primary text-primary-foreground py-2 px-4 rounded-lg hover:bg-primary/90 disabled:opacity-50"
+      >
+        {isSaving ? 'Saving…' : 'Next'}
+      </button>
+    </div>
+  );
+};
+
 interface WizardStep {
   key: string;
   render: (advance: () => void) => React.ReactNode;
@@ -103,7 +139,8 @@ export const SetupWizardPage = () => {
   const navigate = useNavigate();
 
   const steps: WizardStep[] = [
-    { key: 'admin', render: advance => <AdminAccountStep onAdvance={advance} /> }
+    { key: 'admin', render: advance => <AdminAccountStep onAdvance={advance} /> },
+    { key: 'company', render: advance => <CompanyInfoStep onAdvance={advance} /> }
   ];
 
   const advance = () => {

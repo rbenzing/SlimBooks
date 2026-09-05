@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import type * as ReactRouterDom from 'react-router-dom';
 import { SetupWizardPage } from './SetupWizardPage';
@@ -24,6 +24,16 @@ vi.mock('@/components/settings/CompanySettings', async () => {
     CompanySettings: React.forwardRef(() => <div>Company settings form</div>)
   };
 });
+
+vi.mock('@/components/settings/EmailSettings', () => ({
+  EmailSettings: () => <div>Email settings form</div>
+}));
+vi.mock('@/components/settings/StripeSettingsTab', () => ({
+  StripeSettingsTab: () => <div>Stripe settings form</div>
+}));
+vi.mock('@/components/settings/GoogleSettingsTab', () => ({
+  GoogleSettingsTab: () => <div>Google settings form</div>
+}));
 
 afterEach(() => {
   vi.clearAllMocks();
@@ -69,5 +79,29 @@ describe('SetupWizardPage', () => {
 
     expect(await screen.findByText('Company information')).toBeInTheDocument();
     expect(navigateMock).not.toHaveBeenCalled();
+  });
+
+  const advancePastCompanyStep = async () => {
+    fireEvent.click(screen.getByRole('button', { name: /^next$/i }));
+    await screen.findByText('Email');
+  };
+
+  it('reaches the dashboard by skipping every optional step', async () => {
+    completeSetup.mockResolvedValue({ success: true, user: { role: 'admin' }, session_token: 'tok' });
+    render(<MemoryRouter><SetupWizardPage /></MemoryRouter>);
+
+    fillAdminForm();
+    fireEvent.click(screen.getByRole('button', { name: /create administrator account/i }));
+    await screen.findByText('Company information');
+
+    await advancePastCompanyStep();
+    fireEvent.click(screen.getByRole('button', { name: /skip for now/i }));
+    await screen.findByText('Stripe');
+
+    fireEvent.click(screen.getByRole('button', { name: /skip for now/i }));
+    await screen.findByText('Google Sign-In');
+
+    fireEvent.click(screen.getByRole('button', { name: /skip for now/i }));
+    await waitFor(() => expect(navigateMock).toHaveBeenCalledWith('/dashboard', { replace: true }));
   });
 });

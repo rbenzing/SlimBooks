@@ -1,13 +1,16 @@
 // First-run setup wizard. Shown instead of the normal app whenever
-// GET /api/setup/status reports needsSetup: true (App.tsx). Steps 2-5 are
-// added by later tasks, appended to the `steps` array below.
+// GET /api/setup/status reports needsSetup: true (App.tsx).
 
 import { useState, useRef, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AlertCircle } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { CompanySettings } from '@/components/settings/CompanySettings';
+import { EmailSettings } from '@/components/settings/EmailSettings';
+import { StripeSettingsTab } from '@/components/settings/StripeSettingsTab';
+import { GoogleSettingsTab } from '@/components/settings/GoogleSettingsTab';
 import type { SettingsTabRef } from '@/types';
+import type { ForwardRefExoticComponent, RefAttributes } from 'react';
 
 interface WizardStepProps {
   onAdvance: () => void;
@@ -129,6 +132,55 @@ const CompanyInfoStep = ({ onAdvance }: WizardStepProps) => {
   );
 };
 
+interface IntegrationStepProps extends WizardStepProps {
+  title: string;
+  description: string;
+  Component: ForwardRefExoticComponent<RefAttributes<SettingsTabRef>>;
+}
+
+/** Steps 3-5: optional integrations, each reusing its real Settings tab. */
+const IntegrationStep = ({ title, description, Component, onAdvance }: IntegrationStepProps) => {
+  const ref = useRef<SettingsTabRef>(null);
+  const [isSaving, setIsSaving] = useState(false);
+
+  const handleSaveAndContinue = async () => {
+    setIsSaving(true);
+    try {
+      await ref.current?.saveSettings?.();
+    } finally {
+      setIsSaving(false);
+      onAdvance();
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <h2 className="text-lg font-medium text-card-foreground">{title}</h2>
+        <p className="text-sm text-muted-foreground">{description}</p>
+      </div>
+      <Component ref={ref} />
+      <div className="flex gap-3">
+        <button
+          type="button"
+          onClick={onAdvance}
+          className="flex-1 border border-border py-2 px-4 rounded-lg hover:bg-accent transition-colors"
+        >
+          Skip for now
+        </button>
+        <button
+          type="button"
+          onClick={handleSaveAndContinue}
+          disabled={isSaving}
+          className="flex-1 bg-primary text-primary-foreground py-2 px-4 rounded-lg hover:bg-primary/90 disabled:opacity-50"
+        >
+          {isSaving ? 'Saving…' : 'Save and continue'}
+        </button>
+      </div>
+    </div>
+  );
+};
+
 interface WizardStep {
   key: string;
   render: (advance: () => void) => React.ReactNode;
@@ -140,7 +192,40 @@ export const SetupWizardPage = () => {
 
   const steps: WizardStep[] = [
     { key: 'admin', render: advance => <AdminAccountStep onAdvance={advance} /> },
-    { key: 'company', render: advance => <CompanyInfoStep onAdvance={advance} /> }
+    { key: 'company', render: advance => <CompanyInfoStep onAdvance={advance} /> },
+    {
+      key: 'email',
+      render: advance => (
+        <IntegrationStep
+          title="Email"
+          description="Needed to send password resets and notifications. Optional — configure later in Settings."
+          Component={EmailSettings}
+          onAdvance={advance}
+        />
+      )
+    },
+    {
+      key: 'stripe',
+      render: advance => (
+        <IntegrationStep
+          title="Stripe"
+          description="Accept card payments on invoices. Optional — configure later in Settings."
+          Component={StripeSettingsTab}
+          onAdvance={advance}
+        />
+      )
+    },
+    {
+      key: 'google',
+      render: advance => (
+        <IntegrationStep
+          title="Google Sign-In"
+          description="Let users sign in with Google. Optional — configure later in Settings."
+          Component={GoogleSettingsTab}
+          onAdvance={advance}
+        />
+      )
+    }
   ];
 
   const advance = () => {

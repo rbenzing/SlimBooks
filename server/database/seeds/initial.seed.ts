@@ -1,10 +1,13 @@
 // Initial seed data for Slimbooks
-// Handles initialization of counters, admin user, and sample data
+// Handles initialization of counters and sample data
+//
+// The admin user is no longer seeded here. It used to be created from
+// ADMIN_PASSWORD, defaulting to the literal string "password" when that
+// variable was unset — the setup wizard (POST /api/setup) replaces this
+// entirely; see docs/adr/0018-setup-wizard-replaces-seeded-admin.md.
 
-import bcrypt from 'bcryptjs';
 import type { IDatabase, SeedData } from '../../types/database.types.js';
-import { appConfig } from '../../config/index.js';
-import { utcCalendarDay, utcNow } from '../../utils/utcTime.util.js';
+import { utcCalendarDay } from '../../utils/utcTime.util.js';
 
 /**
  * A calendar day relative to today, for the sample rows.
@@ -36,101 +39,6 @@ export const initializeCounters = async (db: IDatabase): Promise<void> => {
     };
 
     await seedData(db, counters);
-  }
-};
-
-/**
- * Initialize admin user if none exists
- */
-export const initializeAdminUser = async (db: IDatabase): Promise<void> => {
-  const userCheck = await db.getOne<{ count: number }>('SELECT COUNT(*) as count FROM users');
-
-  if (!userCheck || userCheck.count === 0) {
-    const defaultPassword = process.env.ADMIN_PASSWORD || 'password';
-    const hashedPassword = await bcrypt.hash(defaultPassword, 12);
-    
-    const adminUser: SeedData = {
-      table: 'users',
-      data: [{
-        name: 'Administrator',
-        email: 'admin@slimbooks.app',
-        username: 'admin',
-        password_hash: hashedPassword,
-        role: 'admin',
-        email_verified: 1,
-        created_at: utcNow(),
-        updated_at: utcNow()
-      }]
-    };
-    
-    await seedData(db, adminUser);
-    console.log('✓ Admin user created with email: admin@slimbooks.app');
-  }
-};
-
-/**
- * Initialize default application settings
- */
-export const initializeSettings = async (db: IDatabase): Promise<void> => {
-  const settingsCheck = await db.getOne<{ count: number }>('SELECT COUNT(*) as count FROM settings');
-
-  if (!settingsCheck || settingsCheck.count === 0) {
-    const defaultSettings: SeedData = {
-      table: 'settings',
-      data: [
-        {
-          key: 'app_name',
-          value: 'Slimbooks',
-          type: 'string',
-          description: 'Application name',
-          is_public: 1
-        },
-        {
-          key: 'app_version',
-          value: appConfig.version,
-          type: 'string',
-          description: 'Application version',
-          is_public: 1
-        },
-        {
-          key: 'default_currency',
-          value: 'USD',
-          type: 'string',
-          description: 'Default currency code',
-          is_public: 1
-        },
-        {
-          key: 'tax_rate',
-          value: '0',
-          type: 'number',
-          description: 'Default tax rate percentage',
-          is_public: 0
-        },
-        {
-          key: 'invoice_terms',
-          value: 'Payment is due within 30 days of invoice date.',
-          type: 'text',
-          description: 'Default invoice terms',
-          is_public: 0
-        },
-        {
-          key: 'company_name',
-          value: 'Your Company Name',
-          type: 'string',
-          description: 'Company name for invoices',
-          is_public: 0
-        },
-        {
-          key: 'company_email',
-          value: 'contact@yourcompany.com',
-          type: 'string',
-          description: 'Company email address',
-          is_public: 0
-        }
-      ]
-    };
-
-    await seedData(db, defaultSettings);
   }
 };
 
@@ -294,8 +202,6 @@ export const initializeAllSeeds = async (db: IDatabase, includeSampleData = fals
   try {
     // Always initialize these
     await initializeCounters(db);
-    await initializeAdminUser(db);
-    await initializeSettings(db);
 
     // Only in development
     if (includeSampleData && process.env.NODE_ENV !== 'production') {

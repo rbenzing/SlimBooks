@@ -2,6 +2,7 @@
 // Provides a single import point for all routes
 
 import { Router } from 'express';
+import setupRoutes from './setupRoutes.js';
 import userRoutes from './userRoutes.js';
 import authRoutes from './authRoutes.js';
 import clientRoutes from './clientRoutes.js';
@@ -63,6 +64,10 @@ export const createRoutes = (runtime: Runtime): Router => {
   // body, so app.ts mounts it ahead of the body parsers.
   router.use('/api/stripe', stripeRoutes);
   router.use('/api/email', emailRoutes);
+
+  // Whether this install still needs its first administrator. Public: a
+  // fresh install has no session to require one from.
+  router.use('/api/setup', setupRoutes);
 
   // What this instance resolved, for the SPA and for operators. Public and
   // secret-free by design: the bundle is built once and deployed anywhere, so

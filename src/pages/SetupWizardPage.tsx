@@ -9,6 +9,7 @@ import { CompanySettings } from '@/components/settings/CompanySettings';
 import { EmailSettings } from '@/components/settings/EmailSettings';
 import { StripeSettingsTab } from '@/components/settings/StripeSettingsTab';
 import { GoogleSettingsTab } from '@/components/settings/GoogleSettingsTab';
+import { Toaster } from '@/components/ui/sonner';
 import type { SettingsTabRef } from '@/types';
 import type { ForwardRefExoticComponent, RefAttributes } from 'react';
 
@@ -245,6 +246,7 @@ export const SetupWizardPage = () => {
         </div>
         {steps[stepIndex].render(advance)}
       </div>
+      <Toaster />
     </div>
   );
 };

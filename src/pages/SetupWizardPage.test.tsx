@@ -25,15 +25,24 @@ vi.mock('@/components/settings/CompanySettings', async () => {
   };
 });
 
-vi.mock('@/components/settings/EmailSettings', () => ({
-  EmailSettings: () => <div>Email settings form</div>
-}));
-vi.mock('@/components/settings/StripeSettingsTab', () => ({
-  StripeSettingsTab: () => <div>Stripe settings form</div>
-}));
-vi.mock('@/components/settings/GoogleSettingsTab', () => ({
-  GoogleSettingsTab: () => <div>Google settings form</div>
-}));
+vi.mock('@/components/settings/EmailSettings', async () => {
+  const React = await import('react');
+  return {
+    EmailSettings: React.forwardRef(() => <div>Email settings form</div>)
+  };
+});
+vi.mock('@/components/settings/StripeSettingsTab', async () => {
+  const React = await import('react');
+  return {
+    StripeSettingsTab: React.forwardRef(() => <div>Stripe settings form</div>)
+  };
+});
+vi.mock('@/components/settings/GoogleSettingsTab', async () => {
+  const React = await import('react');
+  return {
+    GoogleSettingsTab: React.forwardRef(() => <div>Google settings form</div>)
+  };
+});
 
 afterEach(() => {
   vi.clearAllMocks();
@@ -103,5 +112,11 @@ describe('SetupWizardPage', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /skip for now/i }));
     await waitFor(() => expect(navigateMock).toHaveBeenCalledWith('/dashboard', { replace: true }));
+  });
+
+  it('mounts a Toaster so the integration steps can surface save feedback', () => {
+    render(<MemoryRouter><SetupWizardPage /></MemoryRouter>);
+
+    expect(screen.getByRole('region', { name: /notifications/i })).toBeInTheDocument();
   });
 });

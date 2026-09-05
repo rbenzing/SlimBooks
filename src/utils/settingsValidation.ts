@@ -52,10 +52,19 @@ export const EmailServiceSchema = z.object({
   configured: z.boolean()
 });
 
+export const PasswordPolicySchema = z.object({
+  min_length: z.number().int().min(1),
+  require_uppercase: z.boolean(),
+  require_lowercase: z.boolean(),
+  require_numbers: z.boolean(),
+  require_special: z.boolean()
+});
+
 export const SecurityConfigSchema = z.object({
   require_email_verification: z.boolean(),
   max_failed_login_attempts: z.number().int().min(1).max(50),
-  account_lockout_duration: z.number().int().min(0)
+  account_lockout_duration: z.number().int().min(0),
+  password_policy: PasswordPolicySchema.optional()
 });
 
 export const ProjectSettingsSchema = z.object({
@@ -282,7 +291,14 @@ export function parseProjectSettingsWithDefaults(data: unknown): ProjectSettings
     security: {
       require_email_verification: true,
       max_failed_login_attempts: 5,
-      account_lockout_duration: 1800000
+      account_lockout_duration: 1800000,
+      password_policy: {
+        min_length: 8,
+        require_uppercase: false,
+        require_lowercase: false,
+        require_numbers: false,
+        require_special: false
+      }
     }
   };
 
@@ -292,7 +308,19 @@ export function parseProjectSettingsWithDefaults(data: unknown): ProjectSettings
       google_oauth: { ...defaultSettings.google_oauth, ...parsed.google_oauth },
       stripe: { ...defaultSettings.stripe, ...parsed.stripe },
       email: { ...defaultSettings.email, ...parsed.email },
-      security: { ...defaultSettings.security, ...parsed.security }
+      security: {
+        ...defaultSettings.security,
+        ...parsed.security,
+        // Merged explicitly: spreading `parsed.security` alone widens this
+        // nested object's own fields to optional in TS's inferred type (zod's
+        // `z.infer` here, unlike the flat scalar fields above, does not carry
+        // password_policy's required inner shape through the merge), which
+        // then fails to satisfy `ProjectSettings['security']['password_policy']`.
+        password_policy: {
+          ...defaultSettings.security.password_policy,
+          ...parsed.security?.password_policy
+        }
+      }
     };
   } catch (error) {
     console.warn('Using default project settings due to validation error:', error);

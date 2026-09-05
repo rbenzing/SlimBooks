@@ -351,6 +351,47 @@ describe('project settings', () => {
   it('raises rather than returning a partial object from the strict validator', () => {
     expect(() => validateProjectSettings({ email: {} })).toThrow(/invalid project settings/i);
   });
+
+  it('defaults security.password_policy when none was stored', () => {
+    // A missing password_policy must not vanish into `undefined` — the
+    // settings screen destructures its five fields on mount.
+    const result = parseProjectSettingsWithDefaults(null);
+
+    expect(result.security.password_policy).toEqual({
+      min_length: 8,
+      require_uppercase: false,
+      require_lowercase: false,
+      require_numbers: false,
+      require_special: false
+    });
+  });
+
+  it('carries a stored password_policy through instead of stripping it', () => {
+    // Zod drops any key a schema does not declare, silently: this is the
+    // regression the schema must not reintroduce.
+    const result = parseProjectSettingsWithDefaults({
+      security: {
+        require_email_verification: true,
+        max_failed_login_attempts: 5,
+        account_lockout_duration: 1800000,
+        password_policy: {
+          min_length: 12,
+          require_uppercase: true,
+          require_lowercase: false,
+          require_numbers: false,
+          require_special: false
+        }
+      }
+    });
+
+    expect(result.security.password_policy).toEqual({
+      min_length: 12,
+      require_uppercase: true,
+      require_lowercase: false,
+      require_numbers: false,
+      require_special: false
+    });
+  });
 });
 
 describe('validateInvoiceNumber', () => {

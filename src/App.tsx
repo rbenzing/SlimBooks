@@ -4,6 +4,7 @@ import { useTheme } from './hooks/useTheme.hook';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useAuth, ProtectedRoute } from './contexts/AuthContext';
+import { useSetupStatus } from './hooks/useSetupStatus.hook';
 import { ResponsiveLayout } from './components/ResponsiveLayout';
 import { Toaster } from './components/ui/sonner';
 import { useConnectionMonitor } from './hooks/useConnectionMonitor';
@@ -29,6 +30,7 @@ const RegisterPage = lazy(() => import('./pages/RegisterPage').then(m => ({ defa
 const VerifyEmailPage = lazy(() => import('./pages/VerifyEmailPage').then(m => ({ default: m.VerifyEmailPage })));
 const ForgotPasswordPage = lazy(() => import('./pages/ForgotPasswordPage').then(m => ({ default: m.ForgotPasswordPage })));
 const ResetPasswordPage = lazy(() => import('./pages/ResetPasswordPage').then(m => ({ default: m.ResetPasswordPage })));
+const SetupWizardPage = lazy(() => import('./pages/SetupWizardPage').then(m => ({ default: m.SetupWizardPage })));
 const NotFound = lazy(() => import('./pages/NotFound'));
 const PublicInvoiceView = lazy(() => import('./components/PublicInvoiceView'));
 
@@ -41,9 +43,16 @@ const RouteLoadingFallback = () => (
   </div>
 );
 
-const App = () => {
+/**
+ * Everything that used to be `App`'s body. Split out so `QueryClientProvider`
+ * can wrap it from `App` below: `useSetupStatus` is a query hook, and it must
+ * run before the loading gate here decides what to render — which is before
+ * this component's own JSX used to establish the provider.
+ */
+const AppContent = () => {
   const { isAuthenticated, loading } = useAuth();
-  
+  const { data: setupStatus, isLoading: setupStatusLoading } = useSetupStatus();
+
   // Initialize theme system
   useTheme();
 
@@ -72,10 +81,8 @@ const App = () => {
     }
   }, [isAuthenticated, startConnectionMonitoring, stopConnectionMonitoring]);
 
-  // Removed global recurring invoice processing - now handled only on invoice-related pages
-
-  // Show loading screen while auth is initializing
-  if (loading) {
+  // Show loading screen while auth or setup status is still resolving
+  if (loading || setupStatusLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-muted-foreground">Loading...</div>
@@ -83,160 +90,181 @@ const App = () => {
     );
   }
 
-  return (
-    <ErrorBoundary>
-      <QueryClientProvider client={queryClient}>
+  // A fresh install has no administrator yet. Every path renders the wizard
+  // instead of the normal app until the first admin exists — there is no
+  // authenticated session to protect in the meantime.
+  if (setupStatus?.needsSetup) {
+    return (
+      <ErrorBoundary>
         <Router>
           <Suspense fallback={<RouteLoadingFallback />}>
             <Routes>
-            {/* Public routes */}
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/register" element={<RegisterPage />} />
-            <Route path="/verify-email" element={<VerifyEmailPage />} />
-            <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-            <Route path="/reset-password" element={<ResetPasswordPage />} />
-            <Route path="/invoice/:id" element={<PublicInvoiceView />} />
-
-            {/* Root redirect */}
-            <Route path="/" element={
-              isAuthenticated ? (
-                <Navigate to="/dashboard" replace />
-              ) : (
-                <Navigate to="/login" replace />
-              )
-            } />
-
-            {/* Protected routes */}
-            <Route path="/dashboard" element={
-              <ProtectedRoute>
-                <ResponsiveLayout>
-                  <DashboardOverview />
-                </ResponsiveLayout>
-              </ProtectedRoute>
-            } />
-
-            <Route path="/clients" element={
-              <ProtectedRoute>
-                <ResponsiveLayout>
-                  <ClientManagement />
-                </ResponsiveLayout>
-              </ProtectedRoute>
-            } />
-
-            <Route path="/users" element={
-              <ProtectedRoute>
-                <ResponsiveLayout>
-                  <UserManagement />
-                </ResponsiveLayout>
-              </ProtectedRoute>
-            } />
-
-            <Route path="/clients/new" element={
-              <ProtectedRoute>
-                <ResponsiveLayout>
-                  <EditClientPage />
-                </ResponsiveLayout>
-              </ProtectedRoute>
-            } />
-
-            <Route path="/clients/edit/:id" element={
-              <ProtectedRoute>
-                <ResponsiveLayout>
-                  <EditClientPage />
-                </ResponsiveLayout>
-              </ProtectedRoute>
-            } />
-
-            <Route path="/invoices" element={
-              <ProtectedRoute>
-                <ResponsiveLayout>
-                  <InvoiceManagement />
-                </ResponsiveLayout>
-              </ProtectedRoute>
-            } />
-
-            <Route path="/invoices/create" element={
-              <ProtectedRoute>
-                <ResponsiveLayout>
-                  <CreateInvoicePage onBack={() => window.history.back()} />
-                </ResponsiveLayout>
-              </ProtectedRoute>
-            } />
-
-            <Route path="/invoices/edit/:id" element={
-              <ProtectedRoute>
-                <ResponsiveLayout>
-                  <EditInvoicePage />
-                </ResponsiveLayout>
-              </ProtectedRoute>
-            } />
-
-            <Route path="/recurring-invoices/create" element={
-              <ProtectedRoute>
-                <ResponsiveLayout>
-                  <CreateRecurringInvoicePage onBack={() => window.history.back()} />
-                </ResponsiveLayout>
-              </ProtectedRoute>
-            } />
-
-            <Route path="/recurring-invoices/edit/:id" element={
-              <ProtectedRoute>
-                <ResponsiveLayout>
-                  <CreateRecurringInvoicePage onBack={() => window.history.back()} />
-                </ResponsiveLayout>
-              </ProtectedRoute>
-            } />
-
-            <Route path="/expenses" element={
-              <ProtectedRoute>
-                <ResponsiveLayout>
-                  <ExpenseManagement />
-                </ResponsiveLayout>
-              </ProtectedRoute>
-            } />
-
-            <Route path="/payments" element={
-              <ProtectedRoute>
-                <ResponsiveLayout>
-                  <PaymentManagement />
-                </ResponsiveLayout>
-              </ProtectedRoute>
-            } />
-
-            <Route path="/reports" element={
-              <ProtectedRoute>
-                <ResponsiveLayout>
-                  <ReportsManagement />
-                </ResponsiveLayout>
-              </ProtectedRoute>
-            } />
-
-            <Route path="/settings" element={
-              <ProtectedRoute>
-                <ResponsiveLayout>
-                  <ResponsiveSettings />
-                </ResponsiveLayout>
-              </ProtectedRoute>
-            } />
-
-            <Route path="*" element={<NotFound />} />
-          </Routes>
+              <Route path="*" element={<SetupWizardPage />} />
+            </Routes>
           </Suspense>
-          <Toaster />
-
-          {/* Connection Lost Dialog - only show when authenticated and disconnected */}
-          <ConnectionLostDialog
-            isVisible={isAuthenticated && !isConnected}
-            retryCount={retryCount}
-            maxRetries={30}
-            isChecking={isChecking}
-            hasExceededMaxRetries={hasExceededMaxRetries}
-            lastError={lastError}
-          />
         </Router>
-      </QueryClientProvider>
+      </ErrorBoundary>
+    );
+  }
+
+  return (
+    <ErrorBoundary>
+      <Router>
+        <Suspense fallback={<RouteLoadingFallback />}>
+          <Routes>
+          {/* Public routes */}
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/register" element={<RegisterPage />} />
+          <Route path="/verify-email" element={<VerifyEmailPage />} />
+          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
+          <Route path="/invoice/:id" element={<PublicInvoiceView />} />
+
+          {/* Root redirect */}
+          <Route path="/" element={
+            isAuthenticated ? (
+              <Navigate to="/dashboard" replace />
+            ) : (
+              <Navigate to="/login" replace />
+            )
+          } />
+
+          {/* Protected routes */}
+          <Route path="/dashboard" element={
+            <ProtectedRoute>
+              <ResponsiveLayout>
+                <DashboardOverview />
+              </ResponsiveLayout>
+            </ProtectedRoute>
+          } />
+
+          <Route path="/clients" element={
+            <ProtectedRoute>
+              <ResponsiveLayout>
+                <ClientManagement />
+              </ResponsiveLayout>
+            </ProtectedRoute>
+          } />
+
+          <Route path="/users" element={
+            <ProtectedRoute>
+              <ResponsiveLayout>
+                <UserManagement />
+              </ResponsiveLayout>
+            </ProtectedRoute>
+          } />
+
+          <Route path="/clients/new" element={
+            <ProtectedRoute>
+              <ResponsiveLayout>
+                <EditClientPage />
+              </ResponsiveLayout>
+            </ProtectedRoute>
+          } />
+
+          <Route path="/clients/edit/:id" element={
+            <ProtectedRoute>
+              <ResponsiveLayout>
+                <EditClientPage />
+              </ResponsiveLayout>
+            </ProtectedRoute>
+          } />
+
+          <Route path="/invoices" element={
+            <ProtectedRoute>
+              <ResponsiveLayout>
+                <InvoiceManagement />
+              </ResponsiveLayout>
+            </ProtectedRoute>
+          } />
+
+          <Route path="/invoices/create" element={
+            <ProtectedRoute>
+              <ResponsiveLayout>
+                <CreateInvoicePage onBack={() => window.history.back()} />
+              </ResponsiveLayout>
+            </ProtectedRoute>
+          } />
+
+          <Route path="/invoices/edit/:id" element={
+            <ProtectedRoute>
+              <ResponsiveLayout>
+                <EditInvoicePage />
+              </ResponsiveLayout>
+            </ProtectedRoute>
+          } />
+
+          <Route path="/recurring-invoices/create" element={
+            <ProtectedRoute>
+              <ResponsiveLayout>
+                <CreateRecurringInvoicePage onBack={() => window.history.back()} />
+              </ResponsiveLayout>
+            </ProtectedRoute>
+          } />
+
+          <Route path="/recurring-invoices/edit/:id" element={
+            <ProtectedRoute>
+              <ResponsiveLayout>
+                <CreateRecurringInvoicePage onBack={() => window.history.back()} />
+              </ResponsiveLayout>
+            </ProtectedRoute>
+          } />
+
+          <Route path="/expenses" element={
+            <ProtectedRoute>
+              <ResponsiveLayout>
+                <ExpenseManagement />
+              </ResponsiveLayout>
+            </ProtectedRoute>
+          } />
+
+          <Route path="/payments" element={
+            <ProtectedRoute>
+              <ResponsiveLayout>
+                <PaymentManagement />
+              </ResponsiveLayout>
+            </ProtectedRoute>
+          } />
+
+          <Route path="/reports" element={
+            <ProtectedRoute>
+              <ResponsiveLayout>
+                <ReportsManagement />
+              </ResponsiveLayout>
+            </ProtectedRoute>
+          } />
+
+          <Route path="/settings" element={
+            <ProtectedRoute>
+              <ResponsiveLayout>
+                <ResponsiveSettings />
+              </ResponsiveLayout>
+            </ProtectedRoute>
+          } />
+
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+        </Suspense>
+        <Toaster />
+
+        {/* Connection Lost Dialog - only show when authenticated and disconnected */}
+        <ConnectionLostDialog
+          isVisible={isAuthenticated && !isConnected}
+          retryCount={retryCount}
+          maxRetries={30}
+          isChecking={isChecking}
+          hasExceededMaxRetries={hasExceededMaxRetries}
+          lastError={lastError}
+        />
+      </Router>
     </ErrorBoundary>
   );
 };
+
+const App = () => (
+  <QueryClientProvider client={queryClient}>
+    <AppContent />
+  </QueryClientProvider>
+);
 
 export default App;

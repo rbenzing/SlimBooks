@@ -129,6 +129,43 @@ export class AuthService {
     }
   }
 
+  // First-admin bootstrap on an empty install. A dedicated endpoint rather
+  // than register()+login(): register() does not return a token today (a
+  // pre-existing, unrelated gap), and this needs the caller signed in the
+  // moment it succeeds so the wizard's later, admin-only steps can save.
+  async completeSetup(data: { name: string; email: string; username: string; password: string }): Promise<AuthResponse> {
+    try {
+      const response = await fetch(`${API_BASE}/setup`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        return { success: false, message: result.error || result.message || 'Setup failed. Please try again.' };
+      }
+
+      if (result.success && result.data?.user && result.data?.token) {
+        this.currentUser = result.data.user;
+        this.sessionToken = result.data.token;
+
+        return {
+          success: true,
+          user: result.data.user,
+          session_token: result.data.token,
+          message: result.message
+        };
+      }
+
+      return result;
+    } catch (error) {
+      console.error('Setup error:', error);
+      return { success: false, message: 'Setup failed. Please try again.' };
+    }
+  }
+
   // Complete login process - Backend now handles this
   private async completeLogin(user: User): Promise<void> {
     // Backend API already handles updating login attempts and last login time

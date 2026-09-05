@@ -20,6 +20,7 @@ interface AuthContextType {
   loading: boolean;
   login: (email: string, password: string, rememberMe?: boolean) => Promise<AuthResponse>;
   register: (name: string, email: string, password: string, confirmPassword: string) => Promise<AuthResponse>;
+  completeSetup: (name: string, email: string, username: string, password: string) => Promise<AuthResponse>;
   logout: () => void;
   isAuthenticated: boolean;
   isAdmin: boolean;
@@ -192,6 +193,25 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
 
 
+  const completeSetup = async (
+    name: string, email: string, username: string, password: string
+  ): Promise<AuthResponse> => {
+    try {
+      const response = await authService.completeSetup({ name, email, username, password });
+
+      if (response.success && response.user && response.session_token) {
+        setAuthTokens(response.session_token, response.refresh_token, TokenPersistence.Persistent);
+        setUser(response.user);
+        authService.setCurrentUser(response.user);
+      }
+
+      return response;
+    } catch (error) {
+      console.error('Setup error:', error);
+      return { success: false, message: 'Setup failed. Please try again.' };
+    }
+  };
+
   const logout = () => {
     clearSession();
   };
@@ -215,6 +235,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     loading,
     login,
     register,
+    completeSetup,
     logout,
     isAuthenticated: !!user,
     isAdmin: user?.role === 'admin',

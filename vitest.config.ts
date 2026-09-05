@@ -19,7 +19,7 @@ export default defineConfig({
     // which read local parts, so they hold at any offset.
     env: { TZ: 'America/New_York' },
     setupFiles: ['./src/test/setup.ts'],
-    include: ['src/test/**/*.test.{ts,tsx}', 'server/**/*.test.ts'],
+    include: ['src/**/*.test.{ts,tsx}', 'server/**/*.test.ts'],
     exclude: ['node_modules', 'dist', '.git'],
     coverage: {
       provider: 'v8',

@@ -3,6 +3,7 @@
 
 import { useState, useRef, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import { AlertCircle } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { CompanySettings } from '@/components/settings/CompanySettings';
@@ -190,6 +191,7 @@ interface WizardStep {
 export const SetupWizardPage = () => {
   const [stepIndex, setStepIndex] = useState(0);
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
   const steps: WizardStep[] = [
     { key: 'admin', render: advance => <AdminAccountStep onAdvance={advance} /> },
@@ -231,6 +233,9 @@ export const SetupWizardPage = () => {
 
   const advance = () => {
     if (stepIndex >= steps.length - 1) {
+      // AppContent's own useSetupStatus() stays mounted throughout the wizard;
+      // without this it never learns setup is done and never leaves this page.
+      queryClient.invalidateQueries({ queryKey: ['setup-status'] });
       navigate('/dashboard', { replace: true });
       return;
     }

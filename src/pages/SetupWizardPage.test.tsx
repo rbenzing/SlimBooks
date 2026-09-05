@@ -2,6 +2,7 @@ import { describe, it, expect, vi, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import type * as ReactRouterDom from 'react-router-dom';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { SetupWizardPage } from './SetupWizardPage';
 
 const { completeSetup, navigateMock } = vi.hoisted(() => ({
@@ -48,6 +49,15 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
+const createQueryClient = () => new QueryClient({ defaultOptions: { queries: { retry: false } } });
+
+const renderWizard = (queryClient: QueryClient = createQueryClient()) =>
+  render(
+    <QueryClientProvider client={queryClient}>
+      <MemoryRouter><SetupWizardPage /></MemoryRouter>
+    </QueryClientProvider>
+  );
+
 const fillAdminForm = () => {
   fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Ada Admin' } });
   fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'ada@example.com' } });
@@ -58,7 +68,7 @@ const fillAdminForm = () => {
 
 describe('SetupWizardPage', () => {
   it('rejects a mismatched confirmation without calling completeSetup', async () => {
-    render(<MemoryRouter><SetupWizardPage /></MemoryRouter>);
+    renderWizard();
 
     fillAdminForm();
     fireEvent.change(screen.getByLabelText('Confirm password'), { target: { value: 'something else' } });
@@ -70,7 +80,7 @@ describe('SetupWizardPage', () => {
 
   it('shows the server error and does not advance when setup fails', async () => {
     completeSetup.mockResolvedValue({ success: false, message: 'Setup has already been completed.' });
-    render(<MemoryRouter><SetupWizardPage /></MemoryRouter>);
+    renderWizard();
 
     fillAdminForm();
     fireEvent.click(screen.getByRole('button', { name: /create administrator account/i }));
@@ -81,7 +91,7 @@ describe('SetupWizardPage', () => {
 
   it('advances to the company step after the admin account is created', async () => {
     completeSetup.mockResolvedValue({ success: true, user: { role: 'admin' }, session_token: 'tok' });
-    render(<MemoryRouter><SetupWizardPage /></MemoryRouter>);
+    renderWizard();
 
     fillAdminForm();
     fireEvent.click(screen.getByRole('button', { name: /create administrator account/i }));
@@ -95,9 +105,11 @@ describe('SetupWizardPage', () => {
     await screen.findByText('Email');
   };
 
-  it('reaches the dashboard by skipping every optional step', async () => {
+  it('reaches the dashboard by skipping every optional step, invalidating setup-status so AppContent leaves the wizard', async () => {
     completeSetup.mockResolvedValue({ success: true, user: { role: 'admin' }, session_token: 'tok' });
-    render(<MemoryRouter><SetupWizardPage /></MemoryRouter>);
+    const queryClient = createQueryClient();
+    const invalidateQueriesSpy = vi.spyOn(queryClient, 'invalidateQueries');
+    renderWizard(queryClient);
 
     fillAdminForm();
     fireEvent.click(screen.getByRole('button', { name: /create administrator account/i }));
@@ -112,10 +124,12 @@ describe('SetupWizardPage', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /skip for now/i }));
     await waitFor(() => expect(navigateMock).toHaveBeenCalledWith('/dashboard', { replace: true }));
+
+    expect(invalidateQueriesSpy).toHaveBeenCalledWith({ queryKey: ['setup-status'] });
   });
 
   it('mounts a Toaster so the integration steps can surface save feedback', () => {
-    render(<MemoryRouter><SetupWizardPage /></MemoryRouter>);
+    renderWizard();
 
     expect(screen.getByRole('region', { name: /notifications/i })).toBeInTheDocument();
   });

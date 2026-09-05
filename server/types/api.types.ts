@@ -391,6 +391,13 @@ export interface ProjectSettingsRequest {
       require_email_verification?: boolean;
       max_failed_login_attempts?: number;
       account_lockout_duration?: number;
+      password_policy?: {
+        min_length?: number;
+        require_uppercase?: boolean;
+        require_lowercase?: boolean;
+        require_numbers?: boolean;
+        require_special?: boolean;
+      };
     };
   };
 }

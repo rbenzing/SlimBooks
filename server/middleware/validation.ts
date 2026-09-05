@@ -49,12 +49,32 @@ export const validationRules = {
     .withMessage(`Email must be less than ${validationConfig.maxFieldLengths.email} characters`),
   
   password: body('password')
-    .isLength({ 
-      min: validationConfig.password.minLength, 
-      max: validationConfig.password.maxLength 
+    .isLength({
+      min: validationConfig.password.minLength,
+      max: validationConfig.password.maxLength
     })
     .withMessage(`Password must be between ${validationConfig.password.minLength} and ${validationConfig.password.maxLength} characters`),
-  
+
+  /**
+   * A password being *created* (register, reset), as opposed to `password`
+   * above, which only ever checks a password being *authenticated* at login.
+   * A login must accept whatever was valid when the password was set, not
+   * re-validate it against today's policy — so this rule is never applied to
+   * `login`.
+   */
+  newPassword: body('password').custom(async (value: string) => {
+    const { settingsService } = await import('../services/SettingsService.js');
+    const { validatePasswordAgainstPolicy } = await import('../utils/passwordPolicy.util.js');
+
+    const policy = await settingsService.getPasswordPolicy();
+    const violations = validatePasswordAgainstPolicy(value, policy);
+
+    if (violations.length > 0) {
+      throw new Error(violations.join(', '));
+    }
+    return true;
+  }),
+
   name: body('name')
     .trim()
     .isLength({ min: 1, max: validationConfig.maxFieldLengths.name })
@@ -177,11 +197,18 @@ export const validationSets = {
     // Requiring them here would have refused the accounts the API accepts.
     body('userData.password')
       .optional()
-      .isLength({
-        min: validationConfig.password.minLength,
-        max: validationConfig.password.maxLength
-      })
-      .withMessage(`Password must be between ${validationConfig.password.minLength} and ${validationConfig.password.maxLength} characters`),
+      .custom(async (value: string) => {
+        const { settingsService } = await import('../services/SettingsService.js');
+        const { validatePasswordAgainstPolicy } = await import('../utils/passwordPolicy.util.js');
+
+        const policy = await settingsService.getPasswordPolicy();
+        const violations = validatePasswordAgainstPolicy(value, policy);
+
+        if (violations.length > 0) {
+          throw new Error(violations.join(', '));
+        }
+        return true;
+      }),
     body('userData.role')
       .optional()
       .isIn(['user', 'admin'])
@@ -389,16 +416,16 @@ export const validationSets = {
   register: [
     validationRules.name,
     validationRules.email,
-    validationRules.password
+    validationRules.newPassword
   ] as ValidationChain[],
-  
+
   forgotPassword: [
     validationRules.email
   ] as ValidationChain[],
-  
+
   resetPassword: [
     body('token').notEmpty().withMessage('Reset token is required'),
-    validationRules.password
+    validationRules.newPassword
   ] as ValidationChain[],
 
   // Invoice design template validation (invoice_design_templates, /api/templates)

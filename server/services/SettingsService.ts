@@ -387,6 +387,16 @@ export class SettingsService {
   }
 
   /**
+   * The live password policy: whatever is stored, or the default when
+   * nothing has been configured yet — the same rule `resolveProjectSettings`
+   * already applies to every other security field.
+   */
+  async getPasswordPolicy(): Promise<NonNullable<ProjectSettings['security']['password_policy']>> {
+    const { security } = await this.resolveProjectSettings();
+    return security.password_policy as NonNullable<ProjectSettings['security']['password_policy']>;
+  }
+
+  /**
    * Update project settings
    *
    * Two rules govern what actually reaches the database:

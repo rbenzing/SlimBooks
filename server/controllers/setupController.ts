@@ -5,10 +5,12 @@
 import { type Request, type Response } from 'express';
 import bcrypt from 'bcryptjs';
 import { databaseService } from '../core/DatabaseService.js';
-import { authConfig, validationConfig } from '../config/index.js';
+import { authConfig } from '../config/index.js';
 import { userService } from '../services/UserService.js';
 import { asyncHandler, generateToken, ValidationError } from '../middleware/index.js';
 import { utcNow } from '../utils/utcTime.util.js';
+import { settingsService } from '../services/SettingsService.js';
+import { validatePasswordAgainstPolicy } from '../utils/passwordPolicy.util.js';
 
 /** Thrown when a concurrent request already claimed the first-admin slot. */
 class SetupAlreadyCompletedError extends Error {}
@@ -56,11 +58,10 @@ export const completeSetup = asyncHandler(async (req: Request, res: Response): P
     throw new ValidationError('Password is required');
   }
 
-  // Length-only for now. Task 5 points this at the live, DB-backed password
-  // policy, alongside every other password-creating call site.
-  const { minLength, maxLength } = validationConfig.password;
-  if (password.length < minLength || password.length > maxLength) {
-    throw new ValidationError(`Password must be between ${minLength} and ${maxLength} characters`);
+  const policy = await settingsService.getPasswordPolicy();
+  const violations = validatePasswordAgainstPolicy(password, policy);
+  if (violations.length > 0) {
+    throw new ValidationError(violations.join(', '));
   }
 
   const existing = await databaseService.getOne<{ count: number }>('SELECT COUNT(*) as count FROM users');

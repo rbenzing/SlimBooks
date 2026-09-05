@@ -34,7 +34,10 @@ export const SecuritySettingsTab = forwardRef<SecuritySettingsRef>((props, ref) 
     security: {
       require_email_verification: true,
       max_failed_login_attempts: 5,
-      account_lockout_duration: 30 * LOCKOUT_MINUTE
+      account_lockout_duration: 30 * LOCKOUT_MINUTE,
+      password_policy: {
+        min_length: 8, require_uppercase: false, require_lowercase: false, require_numbers: false, require_special: false
+      }
     }
   });
 
@@ -95,6 +98,20 @@ export const SecuritySettingsTab = forwardRef<SecuritySettingsRef>((props, ref) 
     setSettings(prev => ({
       ...prev,
       security: { ...prev.security, [field]: value }
+    }));
+  };
+
+  const passwordPolicy = settings?.security?.password_policy ?? {
+    min_length: 8, require_uppercase: false, require_lowercase: false, require_numbers: false, require_special: false
+  };
+
+  const handlePasswordPolicyChange = (
+    field: keyof typeof passwordPolicy,
+    value: number | boolean
+  ) => {
+    setSettings(prev => ({
+      ...prev,
+      security: { ...prev.security, password_policy: { ...passwordPolicy, [field]: value } }
     }));
   };
 
@@ -208,6 +225,52 @@ export const SecuritySettingsTab = forwardRef<SecuritySettingsRef>((props, ref) 
                 className={themeClasses.input}
               />
             </div>
+          </div>
+        </div>
+
+        {/* Password policy */}
+        <div className="bg-card rounded-lg shadow-sm border border-border p-6">
+          <div className="flex items-center mb-4">
+            <Shield className="h-5 w-5 text-primary mr-2" />
+            <h4 className="text-md font-medium text-card-foreground">Password Policy</h4>
+          </div>
+          <p className="text-sm text-muted-foreground mb-4">
+            Applies to every new or changed password, including the one created by the setup wizard.
+          </p>
+
+          <div className="space-y-4">
+            <div>
+              <label htmlFor="password-min-length" className="block text-sm font-medium text-muted-foreground mb-2">
+                Minimum Length
+              </label>
+              <input
+                id="password-min-length"
+                type="number"
+                value={passwordPolicy.min_length}
+                onChange={(e) => handlePasswordPolicyChange('min_length', parseInt(e.target.value) || 8)}
+                min="8"
+                max="128"
+                className={themeClasses.input}
+              />
+            </div>
+
+            {([
+              ['require_uppercase', 'Require an uppercase letter'],
+              ['require_lowercase', 'Require a lowercase letter'],
+              ['require_numbers', 'Require a number'],
+              ['require_special', 'Require a special character']
+            ] as const).map(([field, label]) => (
+              <div key={field} className="flex items-center justify-between">
+                <label htmlFor={`password-${field}`} className="text-sm font-medium text-card-foreground">{label}</label>
+                <input
+                  id={`password-${field}`}
+                  type="checkbox"
+                  checked={passwordPolicy[field]}
+                  onChange={(e) => handlePasswordPolicyChange(field, e.target.checked)}
+                  className="h-4 w-4"
+                />
+              </div>
+            ))}
           </div>
         </div>
       </div>

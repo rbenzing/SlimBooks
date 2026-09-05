@@ -154,7 +154,18 @@ export const updateProjectSettings = asyncHandler(async (req: Request<object, ob
         require_email_verification: false,
         max_failed_login_attempts: 5,
         account_lockout_duration: 30,
-        ...settings.security
+        ...settings.security,
+        // Merged field-by-field, not replaced wholesale: a partial policy from
+        // the client (e.g. only `min_length` changed) must not blank out the
+        // other rules, and every field must resolve to satisfy `ProjectSettings`.
+        password_policy: {
+          min_length: 8,
+          require_uppercase: false,
+          require_lowercase: false,
+          require_numbers: false,
+          require_special: false,
+          ...settings.security?.password_policy
+        }
       }
     };
 

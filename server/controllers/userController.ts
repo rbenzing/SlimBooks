@@ -5,7 +5,7 @@ import { type Request, type Response } from 'express';
 import bcrypt from 'bcryptjs';
 import { userService } from '../services/UserService.js';
 import { authService } from '../services/AuthService.js';
-import { authConfig, validationConfig } from '../config/index.js';
+import { authConfig } from '../config/index.js';
 import {
   NotFoundError,
   ValidationError,
@@ -20,6 +20,8 @@ import {
   type UnlockUserResponse
 } from '../types/api.types.js';
 import { type MutationOutcome } from '../types/index.js';
+import { settingsService } from '../services/SettingsService.js';
+import { validatePasswordAgainstPolicy } from '../utils/passwordPolicy.util.js';
 
 /**
  * How many accounts the management screen may see.
@@ -121,12 +123,11 @@ export const createUser = asyncHandler(async (req: Request<object, object, Creat
   const created = { ...rest } as Parameters<typeof userService.createUser>[0];
 
   if (typeof password === 'string' && password.length > 0) {
-    const { minLength, maxLength } = validationConfig.password;
+    const policy = await settingsService.getPasswordPolicy();
+    const violations = validatePasswordAgainstPolicy(password, policy);
 
-    if (password.length < minLength || password.length > maxLength) {
-      throw new ValidationError(
-        `Password must be between ${minLength} and ${maxLength} characters`
-      );
+    if (violations.length > 0) {
+      throw new ValidationError(violations.join(', '));
     }
 
     created.password_hash = await bcrypt.hash(password, authConfig.bcryptRounds);
@@ -403,12 +404,11 @@ export const resetUserPassword = asyncHandler(async (
     throw new ValidationError('A new password is required');
   }
 
-  const { minLength, maxLength } = validationConfig.password;
+  const policy = await settingsService.getPasswordPolicy();
+  const violations = validatePasswordAgainstPolicy(newPassword, policy);
 
-  if (newPassword.length < minLength || newPassword.length > maxLength) {
-    throw new ValidationError(
-      `Password must be between ${minLength} and ${maxLength} characters`
-    );
+  if (violations.length > 0) {
+    throw new ValidationError(violations.join(', '));
   }
 
   const target = await userService.getUserById(userId);

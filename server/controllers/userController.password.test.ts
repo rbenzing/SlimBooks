@@ -8,12 +8,15 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { Request, Response } from 'express';
+import { DEFAULT_PASSWORD_POLICY } from '../utils/passwordPolicy.util.js';
 
 const updateUserPassword = vi.fn();
 const getUserById = vi.fn();
+const getPasswordPolicy = vi.fn();
 
 vi.mock('../services/AuthService.js', () => ({ authService: { updateUserPassword } }));
 vi.mock('../services/UserService.js', () => ({ userService: { getUserById } }));
+vi.mock('../services/SettingsService.js', () => ({ settingsService: { getPasswordPolicy } }));
 
 const { resetUserPassword } = await import('./userController.js');
 
@@ -36,6 +39,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   getUserById.mockResolvedValue({ id: 7, email: 'ada@example.com', role: 'user' });
   updateUserPassword.mockResolvedValue(true);
+  getPasswordPolicy.mockResolvedValue(DEFAULT_PASSWORD_POLICY);
 });
 
 describe('resetUserPassword', () => {

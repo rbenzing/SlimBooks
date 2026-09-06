@@ -312,6 +312,32 @@ describe('project settings', () => {
 
     await expect(settingsService.getProjectSettings()).rejects.toThrow(/failed to get project settings/i);
   });
+
+  it('stores and reads back google_oauth.redirect_uri', async () => {
+    await settingsService.updateProjectSettings({
+      google_oauth: { redirect_uri: 'https://example.com/callback' } as never
+    });
+
+    const written = new Map(db.queries.map(q => [q.params[0], q.params[1]]));
+    expect(written.get('google_oauth.redirect_uri')).toBe(JSON.stringify('https://example.com/callback'));
+
+    db.getMany.mockReturnValue([
+      { key: 'google_oauth.redirect_uri', value: JSON.stringify('https://example.com/callback') }
+    ]);
+    const settings = await settingsService.getProjectSettings();
+    expect(settings.google_oauth.redirect_uri).toBe('https://example.com/callback');
+  });
+
+  it('stores and reads back stripe.currency', async () => {
+    await settingsService.updateProjectSettings({ stripe: { currency: 'eur' } as never });
+
+    const written = new Map(db.queries.map(q => [q.params[0], q.params[1]]));
+    expect(written.get('stripe.currency')).toBe(JSON.stringify('eur'));
+
+    db.getMany.mockReturnValue([{ key: 'stripe.currency', value: JSON.stringify('eur') }]);
+    const settings = await settingsService.getProjectSettings();
+    expect(settings.stripe.currency).toBe('eur');
+  });
 });
 
 /**

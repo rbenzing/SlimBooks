@@ -28,6 +28,7 @@ export const StripeSettingsTab = forwardRef<SettingsTabRef>((props, ref) => {
   const [publishableKey, setPublishableKey] = useState('');
   const [secretKey, setSecretKey] = useState('');
   const [webhookSecret, setWebhookSecret] = useState('');
+  const [currency, setCurrency] = useState('usd');
 
   const [isLoading, setIsLoading] = useState(true);
   const [isTestingConnection, setIsTestingConnection] = useState(false);
@@ -56,6 +57,7 @@ export const StripeSettingsTab = forwardRef<SettingsTabRef>((props, ref) => {
       }
       const projectSettings = await sqliteService.getProjectSettings();
       setEnvConfigured(projectSettings?.stripe?.env_configured ?? false);
+      setCurrency(projectSettings?.stripe?.currency ?? 'usd');
     } catch (error) {
       console.error('Error loading Stripe status:', error);
       toast.error('Failed to load Stripe status');
@@ -87,6 +89,7 @@ export const StripeSettingsTab = forwardRef<SettingsTabRef>((props, ref) => {
           ...current.stripe,
           enabled: isEnabled,
           publishable_key: publishableKey,
+          currency,
           ...(secretKey && { secret_key: secretKey }),
           ...(webhookSecret && { webhook_secret: webhookSecret })
         }
@@ -106,7 +109,7 @@ export const StripeSettingsTab = forwardRef<SettingsTabRef>((props, ref) => {
       console.error('Error saving Stripe settings:', error);
       toast.error('Failed to save Stripe settings');
     }
-  }, [isEnabled, publishableKey, secretKey, webhookSecret, loadStatus]);
+  }, [isEnabled, publishableKey, secretKey, webhookSecret, currency, loadStatus]);
 
   useImperativeHandle(ref, () => ({ saveSettings }), [saveSettings]);
 
@@ -339,6 +342,23 @@ export const StripeSettingsTab = forwardRef<SettingsTabRef>((props, ref) => {
                 <Copy className="h-4 w-4" />
               </button>
             </div>
+          </div>
+
+          <div>
+            <label htmlFor="stripe-currency" className="block text-sm font-medium text-muted-foreground mb-2">
+              Currency
+            </label>
+            <input
+              id="stripe-currency"
+              type="text"
+              value={currency}
+              onChange={(e) => setCurrency(e.target.value.toLowerCase())}
+              placeholder="usd"
+              className={themeClasses.input}
+            />
+            <p className="text-xs text-muted-foreground mt-1">
+              The currency a payment link is created in — separate from the display currency in General settings.
+            </p>
           </div>
 
           <div>

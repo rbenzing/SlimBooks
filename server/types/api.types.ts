@@ -371,11 +371,13 @@ export interface ProjectSettingsRequest {
     google_oauth?: {
       enabled?: boolean;
       client_id?: string;
+      redirect_uri?: string;
       configured?: boolean;
     };
     stripe?: {
       enabled?: boolean;
       publishable_key?: string;
+      currency?: string;
       configured?: boolean;
     };
     email?: {

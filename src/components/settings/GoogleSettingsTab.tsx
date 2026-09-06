@@ -87,7 +87,7 @@ export const GoogleSettingsTab = forwardRef<SettingsTabRef>((props, ref) => {
 
   useImperativeHandle(ref, () => ({ saveSettings }), [saveSettings]);
 
-  const update = (field: 'enabled' | 'client_id', value: boolean | string) => {
+  const update = (field: 'enabled' | 'client_id' | 'redirect_uri', value: boolean | string) => {
     setSettings(prev => prev && ({
       ...prev,
       google_oauth: { ...prev.google_oauth, [field]: value }
@@ -184,6 +184,20 @@ export const GoogleSettingsTab = forwardRef<SettingsTabRef>((props, ref) => {
                   value={google?.client_id || ''}
                   onChange={(e) => update('client_id', e.target.value)}
                   placeholder="Your Google OAuth Client ID"
+                  className={themeClasses.input}
+                />
+              </div>
+
+              <div>
+                <label htmlFor="google-redirect-uri" className="block text-sm font-medium text-muted-foreground mb-2">
+                  Redirect URI
+                </label>
+                <input
+                  id="google-redirect-uri"
+                  type="text"
+                  value={google?.redirect_uri || ''}
+                  onChange={(e) => update('redirect_uri', e.target.value)}
+                  placeholder="https://your-host/api/auth/google/callback"
                   className={themeClasses.input}
                 />
               </div>

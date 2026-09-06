@@ -235,9 +235,12 @@ export class SettingsService {
     const googleClientId = readString(settingsMap, 'google_oauth.client_id') ?? envString('GOOGLE_CLIENT_ID');
     const googleClientSecret = readString(settingsMap, 'google_oauth.client_secret') ?? envString('GOOGLE_CLIENT_SECRET');
 
+    const googleRedirectUri = readString(settingsMap, 'google_oauth.redirect_uri') ?? envString('GOOGLE_REDIRECT_URI');
+
     const stripeSecretKey = readString(settingsMap, 'stripe.secret_key') ?? envString('STRIPE_SECRET_KEY');
     const stripePublishableKey = readString(settingsMap, 'stripe.publishable_key') ?? envString('STRIPE_PUBLISHABLE_KEY');
     const stripeWebhookSecret = readString(settingsMap, 'stripe.webhook_secret') ?? envString('STRIPE_WEBHOOK_SECRET');
+    const stripeCurrency = readString(settingsMap, 'stripe.currency') ?? envString('DEFAULT_CURRENCY');
 
     const smtpHost = readString(settingsMap, 'email.smtp_host') ?? envString('SMTP_HOST');
     const smtpUser = readString(settingsMap, 'email.smtp_user') ?? envString('SMTP_USER');
@@ -257,6 +260,7 @@ export class SettingsService {
         enabled: readBoolean(settingsMap, 'google_oauth.enabled') ?? googleConfiguredInEnv,
         client_id: googleClientId ?? '',
         ...(googleClientSecret && { client_secret: googleClientSecret }),
+        redirect_uri: googleRedirectUri ?? '',
         configured: !!(googleClientId && googleClientSecret),
         env_configured: googleConfiguredInEnv
       },
@@ -270,6 +274,7 @@ export class SettingsService {
           ?? envBoolean('STRIPE_TEST_MODE')
           ?? !stripeSecretKey?.startsWith('sk_live_'),
         publishable_key: stripePublishableKey ?? '',
+        currency: stripeCurrency ?? 'usd',
         ...(stripeSecretKey && { secret_key: stripeSecretKey }),
         ...(stripeWebhookSecret && { webhook_secret: stripeWebhookSecret }),
         configured: !!(stripePublishableKey && stripeSecretKey),
@@ -318,6 +323,7 @@ export class SettingsService {
         google_oauth: {
           enabled: google_oauth.enabled,
           client_id: google_oauth.client_id,
+          redirect_uri: google_oauth.redirect_uri ?? '',
           configured: google_oauth.configured,
           env_configured: google_oauth.env_configured ?? false
         },
@@ -326,6 +332,7 @@ export class SettingsService {
           test_mode: stripe.test_mode ?? true,
           // Publishable by name and by design — it ships in the browser.
           publishable_key: stripe.publishable_key,
+          currency: stripe.currency ?? 'usd',
           configured: stripe.configured,
           webhook_configured: stripe.webhook_configured ?? false,
           env_configured: stripe.env_configured ?? false

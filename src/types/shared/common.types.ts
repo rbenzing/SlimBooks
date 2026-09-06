@@ -108,6 +108,7 @@ export interface ProjectSettings {
     client_id: string;
     // Write-only: the server never returns it.
     client_secret?: string;
+    redirect_uri?: string;
     configured: boolean;
     /** True when the credentials came from .env rather than the settings screen. */
     env_configured?: boolean;
@@ -115,6 +116,7 @@ export interface ProjectSettings {
   stripe: {
     enabled: boolean;
     publishable_key: string;
+    currency?: string;
     // Write-only: the server never returns these. Present only when an admin
     // has just typed a new value; `configured` is what the UI reads.
     secret_key?: string;

@@ -18,6 +18,7 @@ export const GoogleOAuthSchema = z.object({
   enabled: z.boolean(),
   client_id: z.string(),
   client_secret: z.string().optional(),
+  redirect_uri: z.string().optional(),
   configured: z.boolean(),
   env_configured: z.boolean().optional()
 });
@@ -34,6 +35,7 @@ export const GoogleOAuthSchema = z.object({
 export const StripeSchema = z.object({
   enabled: z.boolean(),
   publishable_key: z.string(),
+  currency: z.string().optional(),
   secret_key: z.string().optional(),
   webhook_secret: z.string().optional(),
   test_mode: z.boolean().optional(),
@@ -271,11 +273,13 @@ export function parseProjectSettingsWithDefaults(data: unknown): ProjectSettings
       enabled: false,
       client_id: '',
       client_secret: '',
+      redirect_uri: '',
       configured: false
     },
     stripe: {
       enabled: false,
       publishable_key: '',
+      currency: '',
       secret_key: '',
       configured: false
     },

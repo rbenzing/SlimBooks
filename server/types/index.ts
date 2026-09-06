@@ -184,6 +184,7 @@ export interface ProjectSettings {
     enabled: boolean;
     client_id: string;
     client_secret?: string;
+    redirect_uri?: string;
     configured: boolean;
     /** True when the credentials came from .env rather than the settings screen. */
     env_configured?: boolean;
@@ -191,6 +192,7 @@ export interface ProjectSettings {
   stripe: {
     enabled: boolean;
     publishable_key: string;
+    currency?: string;
     secret_key?: string;
     webhook_secret?: string;
     test_mode?: boolean;

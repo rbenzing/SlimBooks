@@ -172,6 +172,14 @@ Read only when the scheduler feature is enabled.
 The first administrator is no longer seeded from an environment variable — it
 is created through the setup wizard shown on an empty install's first boot.
 
+The password policy — minimum length, and whether an uppercase letter,
+lowercase letter, number or special character is required — is not an
+environment variable either. It lives entirely in Settings → Security
+(`security.password_policy.{min_length, require_uppercase, require_lowercase,
+require_numbers, require_special}`), defaults to an 8-character minimum with
+none of the four character-class rules on, and applies to every password
+created or changed afterward — including the one the setup wizard creates.
+
 Generate the three secrets with `./scripts/generate-secrets.sh` — see
 [secrets](secrets.md).
 

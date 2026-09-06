@@ -55,7 +55,11 @@ export const EmailServiceSchema = z.object({
 });
 
 export const PasswordPolicySchema = z.object({
-  min_length: z.number().int().min(1),
+  // 128 mirrors `MAX_PASSWORD_LENGTH` in server/utils/passwordPolicy.util.ts —
+  // that ceiling is enforced regardless of policy, so a min_length above it
+  // would make every password permanently rejected. Hardcoded because this
+  // client-side file can't easily import a server-side constant.
+  min_length: z.number().int().min(1).max(128),
   require_uppercase: z.boolean(),
   require_lowercase: z.boolean(),
   require_numbers: z.boolean(),

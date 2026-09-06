@@ -43,9 +43,13 @@ Upgrade instructions live in
   uppercase letter, lowercase letter, number or special character is
   required), in Settings → Security. Applies to every new or changed
   password, including the one the setup wizard creates.
-- **`GOOGLE_REDIRECT_URI` and `DEFAULT_CURRENCY`** can now also be set from
-  Settings → Google and Settings → Stripe respectively, taking precedence
-  over `.env` the same way every other credential on those tabs already does.
+- **`GOOGLE_REDIRECT_URI` and `DEFAULT_CURRENCY`** can now also be stored in
+  Settings → Google and Settings → Stripe respectively, and are resolved
+  through the same settings-precedence system as every other field on those
+  tabs. Neither value is read by anything at runtime yet — Stripe still
+  takes its currency from the invoice being charged, and the Google Sign-In
+  flow does not yet consume the stored redirect URI — so today this only
+  changes where the value can be stored and read back, not behavior.
 
 ### Changed
 

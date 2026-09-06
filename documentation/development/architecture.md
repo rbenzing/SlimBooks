@@ -117,7 +117,7 @@ The server never formats a date for display. See
 
 ## Types
 
-Three declarations, maintained by hand, and **nothing generates one from
+Four declarations, maintained by hand, and **nothing generates one from
 another** ([ADR-0014](../adr/0014-dual-type-declarations.md)):
 
 | File | Serves |
@@ -125,6 +125,13 @@ another** ([ADR-0014](../adr/0014-dual-type-declarations.md)):
 | `src/types/domain/[entity].types.ts` | The React application |
 | `server/types/index.ts` | Server domain and row shapes |
 | `server/types/api.types.ts` | Request and response contracts |
+| `src/utils/settingsValidation.ts` | Zod schemas (`SecurityConfigSchema`, `GoogleOAuthSchema`, `StripeSchema`, etc.) that validate a settings shape before it's saved — applies only when the change touches a settings object |
+
+The fourth is easy to forget because it fails silently: Zod strips any object
+key a schema doesn't declare instead of erroring, so a new settings field can
+pass validation and vanish before it reaches the database. This has already
+happened twice at Critical severity in this codebase — once for
+`password_policy`, once for `redirect_uri`/`currency`.
 
 Import as `import type { Invoice } from '@/types';`, never relatively. Enums
 use the const-object pattern.
@@ -147,10 +154,14 @@ A half-updated schema **compiles and fails at runtime**. In order:
 4. `src/types/domain/[entity].types.ts`
 5. `server/types/index.ts`
 6. `server/types/api.types.ts`
-7. Service methods — **including INSERT column lists and UPDATE whitelists**
-8. Seed data
-9. Verify against the real database
-10. The full gate: `npm run lint && npm test && npm run build`
+7. `src/utils/settingsValidation.ts` — only when the change touches a
+   settings shape; its Zod schemas silently strip any key they don't
+   declare instead of erroring, so a new field can pass validation and
+   vanish before it reaches the database
+8. Service methods — **including INSERT column lists and UPDATE whitelists**
+9. Seed data
+10. Verify against the real database
+11. The full gate: `npm run lint && npm test && npm run build`
 
 Notes that catch people:
 

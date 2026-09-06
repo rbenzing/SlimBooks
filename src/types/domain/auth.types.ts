@@ -169,10 +169,10 @@ export interface SecuritySettings {
 // Default settings
 export const DEFAULT_PASSWORD_REQUIREMENTS: PasswordRequirements = {
   min_length: 8,
-  require_uppercase: true,
-  require_lowercase: true,
-  require_numbers: true,
-  require_special_chars: true
+  require_uppercase: false,
+  require_lowercase: false,
+  require_numbers: false,
+  require_special_chars: false
 };
 
 export const DEFAULT_SECURITY_SETTINGS: SecuritySettings = {

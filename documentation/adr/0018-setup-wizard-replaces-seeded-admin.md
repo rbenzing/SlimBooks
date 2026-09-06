@@ -58,3 +58,11 @@ security hole.
   pre-existing, unrelated gap — and the wizard needs a genuine session the
   moment its first step succeeds, so its later, admin-only steps (Stripe,
   Google) can save.
+- **`POST /api/setup` is public and carries no dedicated rate limit** — it
+  requires no auth (by design, there is no admin yet to authenticate as),
+  and unlike `/api/auth/login` it has no login-style attempt throttle of
+  its own, only the same general per-IP request budget every endpoint
+  shares. On a fresh install left reachable from the internet before setup
+  is completed, the first caller to reach the endpoint becomes the
+  administrator. Operators should not expose a fresh install to the public
+  internet before completing setup.

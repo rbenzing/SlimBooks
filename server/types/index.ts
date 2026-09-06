@@ -231,31 +231,6 @@ export interface ProjectSettings {
   };
 }
 
-export interface ProjectSetting {
-  id: number;
-  setting_key: string;
-  setting_value: string;
-  category?: string;
-  created_at: number;
-  updated_at: number;
-  email?: Partial<ProjectSettings['email']>;
-  google_oauth?: {
-    enabled?: boolean;
-    client_id?: string;
-    configured?: boolean;
-  };
-  stripe?: {
-    enabled?: boolean;
-    publishable_key?: string;
-    configured?: boolean;
-  };
-  security?: {
-    require_email_verification?: boolean;
-    max_failed_login_attempts?: number;
-    account_lockout_duration?: number;
-  };
-}
-
 export interface InvoiceWithClient extends Invoice {
   client_name?: string;
   client_email?: string;

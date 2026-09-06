@@ -63,6 +63,10 @@ export const validationRules = {
    * `login`.
    */
   newPassword: body('password').custom(async (value: string) => {
+    if (typeof value !== 'string' || value.length === 0) {
+      throw new Error('Password is required');
+    }
+
     const { settingsService } = await import('../services/SettingsService.js');
     const { validatePasswordAgainstPolicy } = await import('../utils/passwordPolicy.util.js');
 
@@ -198,6 +202,10 @@ export const validationSets = {
     body('userData.password')
       .optional()
       .custom(async (value: string) => {
+        if (typeof value !== 'string' || value.length === 0) {
+          throw new Error('Password is required');
+        }
+
         const { settingsService } = await import('../services/SettingsService.js');
         const { validatePasswordAgainstPolicy } = await import('../utils/passwordPolicy.util.js');
 
@@ -436,6 +444,10 @@ export const validationSets = {
   // controller; only `newPassword`'s policy compliance belongs here.
   changePassword: [
     body('newPassword').custom(async (value: string) => {
+      if (typeof value !== 'string' || value.length === 0) {
+        throw new Error('Password is required');
+      }
+
       const { settingsService } = await import('../services/SettingsService.js');
       const { validatePasswordAgainstPolicy } = await import('../utils/passwordPolicy.util.js');
 

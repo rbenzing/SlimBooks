@@ -20,14 +20,15 @@ runtime.**
 
 ## Decision
 
-Three declarations are maintained by hand, and a schema change updates all
-three:
+Four declarations are maintained by hand, and a schema change updates all
+four that apply (the fourth only when the change touches a settings shape):
 
 | File | Serves |
 |---|---|
 | `src/types/domain/[entity].types.ts` | The React application |
 | `server/types/index.ts` | Server-side domain and row shapes |
 | `server/types/api.types.ts` | Request and response contracts |
+| `src/utils/settingsValidation.ts` | Zod schemas (`SecurityConfigSchema`, `GoogleOAuthSchema`, `StripeSchema`, etc.) that validate a settings shape before it's saved |
 
 Frontend code imports as `import type { Invoice } from '@/types';` — never
 relatively. Enums use the const-object pattern.
@@ -37,6 +38,11 @@ relatively. Enums use the const-object pattern.
 - A schema change has a checklist, and skipping a step produces a runtime
   failure rather than a compile error. The checklist is in
   [development/architecture.md](../development/architecture.md).
+- **The fourth declaration fails silently, not loudly:** Zod strips any
+  object key a schema in `settingsValidation.ts` doesn't declare instead of
+  erroring, so a new settings field can pass validation and vanish before it
+  reaches the database. This has already happened twice at Critical
+  severity — once for `password_policy`, once for `redirect_uri`/`currency`.
 - **Report payloads are the sharpest edge:** the server's return shape and the
   frontend type must match exactly, or the UI crashes on
   `Object.entries(undefined)`. Both sides get checked.

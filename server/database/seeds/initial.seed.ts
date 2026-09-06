@@ -4,7 +4,7 @@
 // The admin user is no longer seeded here. It used to be created from
 // ADMIN_PASSWORD, defaulting to the literal string "password" when that
 // variable was unset — the setup wizard (POST /api/setup) replaces this
-// entirely; see docs/adr/0018-setup-wizard-replaces-seeded-admin.md.
+// entirely; see documentation/adr/0018-setup-wizard-replaces-seeded-admin.md.
 
 import type { IDatabase, SeedData } from '../../types/database.types.js';
 import { utcCalendarDay } from '../../utils/utcTime.util.js';

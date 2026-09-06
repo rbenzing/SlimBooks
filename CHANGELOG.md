@@ -33,6 +33,19 @@ Upgrade instructions live in
   the per-row reason for each failure the API returned, the date span of the
   rows that landed, and a button that widens the list's date filter to show
   them.
+- **A setup wizard on first boot.** An empty install no longer seeds an
+  administrator from `ADMIN_PASSWORD` (which defaulted to the literal
+  password `"password"` when that variable was left unset) — it shows a
+  guided flow instead: create the administrator account, enter company
+  information, then optionally connect Email, Stripe and Google Sign-In.
+  Each optional step can be skipped and configured later from Settings.
+- **A configurable password policy** (minimum length, and whether an
+  uppercase letter, lowercase letter, number or special character is
+  required), in Settings → Security. Applies to every new or changed
+  password, including the one the setup wizard creates.
+- **`GOOGLE_REDIRECT_URI` and `DEFAULT_CURRENCY`** can now also be set from
+  Settings → Google and Settings → Stripe respectively, taking precedence
+  over `.env` the same way every other credential on those tabs already does.
 
 ### Changed
 

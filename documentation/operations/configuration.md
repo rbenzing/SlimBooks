@@ -168,7 +168,9 @@ Read only when the scheduler feature is enabled.
 | `MAX_FAILED_LOGIN_ATTEMPTS` | `5` | legacy | Before lockout. |
 | `ACCOUNT_LOCKOUT_DURATION` | `1800000` | legacy | 30 minutes. A locked account gets HTTP 423. |
 | `REQUIRE_EMAIL_VERIFICATION` | `false` | legacy | |
-| `ADMIN_PASSWORD` | — | legacy | Used only when seeding an empty database. |
+
+The first administrator is no longer seeded from an environment variable — it
+is created through the setup wizard shown on an empty install's first boot.
 
 Generate the three secrets with `./scripts/generate-secrets.sh` — see
 [secrets](secrets.md).
@@ -209,18 +211,18 @@ all present.
 | `STRIPE_SECRET_KEY` | — | legacy | Server-side only; never sent to the browser. |
 | `STRIPE_PUBLISHABLE_KEY` | — | legacy | |
 | `STRIPE_WEBHOOK_SECRET` | — | legacy | Without it, clients can pay but invoices are not marked paid — there is no verified way to know the payment happened. |
-| `DEFAULT_CURRENCY` | `usd` | legacy | Used when an invoice does not name one. |
+| `DEFAULT_CURRENCY` | `usd` | legacy | Used when an invoice does not name one. Can also be set from Settings → Stripe. |
 
 The integration counts as configured when the secret and publishable keys are
 both present.
 
 ## Google OAuth
 
-| Variable | Read by |
-|---|---|
-| `GOOGLE_CLIENT_ID` | legacy |
-| `GOOGLE_CLIENT_SECRET` | legacy |
-| `GOOGLE_REDIRECT_URI` | legacy |
+| Variable | Read by | Notes |
+|---|---|---|
+| `GOOGLE_CLIENT_ID` | legacy | |
+| `GOOGLE_CLIENT_SECRET` | legacy | |
+| `GOOGLE_REDIRECT_URI` | legacy | Can also be set from Settings → Google. |
 
 Configured when the id and secret are both present.
 

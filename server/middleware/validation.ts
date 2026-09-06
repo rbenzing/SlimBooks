@@ -428,6 +428,27 @@ export const validationSets = {
     validationRules.newPassword
   ] as ValidationChain[],
 
+  // Self-service password change. The request body uses `newPassword`, not
+  // `password` (see `changePassword` in authController.ts), so this cannot
+  // reuse `validationRules.newPassword` — same reason `createUser` above
+  // defines its own inline check on `userData.password` rather than reusing
+  // it. `currentPassword`'s non-empty requirement is already enforced by the
+  // controller; only `newPassword`'s policy compliance belongs here.
+  changePassword: [
+    body('newPassword').custom(async (value: string) => {
+      const { settingsService } = await import('../services/SettingsService.js');
+      const { validatePasswordAgainstPolicy } = await import('../utils/passwordPolicy.util.js');
+
+      const policy = await settingsService.getPasswordPolicy();
+      const violations = validatePasswordAgainstPolicy(value, policy);
+
+      if (violations.length > 0) {
+        throw new Error(violations.join(', '));
+      }
+      return true;
+    })
+  ] as ValidationChain[],
+
   // Invoice design template validation (invoice_design_templates, /api/templates)
   getTemplateById: [
     validationRules.id

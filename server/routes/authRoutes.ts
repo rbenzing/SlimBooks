@@ -69,8 +69,10 @@ router.put('/profile',
 );
 
 // Change password (requires authentication)
-router.post('/change-password', 
+router.post('/change-password',
   requireAuth,
+  validationSets.changePassword,
+  validateRequest,
   changePassword
 );
 

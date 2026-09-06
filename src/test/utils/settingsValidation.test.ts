@@ -392,6 +392,35 @@ describe('project settings', () => {
       require_special: false
     });
   });
+
+  it('defaults google_oauth.redirect_uri and stripe.currency when none was stored', () => {
+    const result = parseProjectSettingsWithDefaults(null);
+
+    expect(result.google_oauth.redirect_uri).toBe('');
+    expect(result.stripe.currency).toBe('');
+  });
+
+  it('carries a stored google_oauth.redirect_uri and stripe.currency through instead of stripping them', () => {
+    // Zod drops any key a schema does not declare, silently: this is the
+    // regression the schema must not reintroduce.
+    const result = parseProjectSettingsWithDefaults({
+      google_oauth: {
+        enabled: true,
+        client_id: 'client-id',
+        redirect_uri: 'https://example.com/callback',
+        configured: true
+      },
+      stripe: {
+        enabled: true,
+        publishable_key: 'pk_test_x',
+        currency: 'eur',
+        configured: true
+      }
+    });
+
+    expect(result.google_oauth.redirect_uri).toBe('https://example.com/callback');
+    expect(result.stripe.currency).toBe('eur');
+  });
 });
 
 describe('validateInvoiceNumber', () => {

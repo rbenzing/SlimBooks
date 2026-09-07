@@ -12,6 +12,8 @@ Upgrade instructions live in
 
 ## [Unreleased]
 
+## [2.4.0] — 2026-09-07
+
 ### Added
 
 - **Two company settings: fiscal year start month and accounting basis**
@@ -337,6 +339,7 @@ Earlier history is in the git log.
 
 ---
 
+[2.4.0]: https://github.com/rbenzing/SlimBooks/releases/tag/v2.4.0
 [2.3.0]: https://github.com/rbenzing/SlimBooks/releases/tag/v2.3.0
 [2.2.0]: https://github.com/rbenzing/SlimBooks/releases/tag/v2.2.0
 [2.1.1]: https://github.com/rbenzing/SlimBooks/releases/tag/v2.1.1

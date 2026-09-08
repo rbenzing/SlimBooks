@@ -15,6 +15,8 @@ import { validatePasswordAgainstPolicy } from '../utils/passwordPolicy.util.js';
 /** Thrown when a concurrent request already claimed the first-admin slot. */
 class SetupAlreadyCompletedError extends Error {}
 
+const CLAIM_KEY = 'setup.admin_created';
+
 /**
  * Whether an install still needs its first administrator.
  *
@@ -30,6 +32,40 @@ export const getSetupStatus = asyncHandler(async (_req: Request, res: Response):
 });
 
 /**
+ * Deletes the claim row if it no longer refers to a real admin.
+ *
+ * The claim's `value` is the id of the user it created. If that user no
+ * longer exists — an operator emptied the `users` table while `settings`
+ * survived — the claim is orphaned: nothing will ever satisfy it, and
+ * `completeSetup` would 409 forever with no way through the UI. A claim
+ * written by 2.4.0 stores the literal string `"true"` instead of an id;
+ * `Number('true')` is `NaN`, which is treated the same as "no user found"
+ * and falls back to the users-count check.
+ *
+ * Deliberately outside any transaction: two requests racing through this at
+ * once both deleting the same already-orphaned row is harmless (the second
+ * DELETE affects zero rows), and neither this function nor its absence
+ * decides who wins the claim below — the `INSERT IGNORE`/`INSERT OR IGNORE`
+ * does, exactly as it always has.
+ */
+const repairOrphanedClaim = async (): Promise<void> => {
+  const claim = await databaseService.getOne<{ value: string }>(
+    "SELECT value FROM settings WHERE `key` = ?",
+    [CLAIM_KEY]
+  );
+  if (!claim) return;
+
+  const claimedUserId = Number(claim.value);
+  const claimedUserExists = Number.isInteger(claimedUserId)
+    ? !!(await userService.getUserById(claimedUserId))
+    : ((await databaseService.getOne<{ count: number }>('SELECT COUNT(*) as count FROM users'))?.count ?? 0) > 0;
+
+  if (!claimedUserExists) {
+    await databaseService.executeQuery("DELETE FROM settings WHERE `key` = ?", [CLAIM_KEY]);
+  }
+};
+
+/**
  * Create the first administrator.
  *
  * Guarded by a claim row in `settings` rather than a count-then-insert: two
@@ -39,6 +75,11 @@ export const getSetupStatus = asyncHandler(async (_req: Request, res: Response):
  * of two concurrent callers can win — the loser's insert reports zero rows
  * changed rather than throwing, on both engines. See `insertIgnoreLive.test.ts`
  * for proof against SQLite and MySQL/MariaDB.
+ *
+ * The claim's value is the created admin's user id, not a bare boolean, so a
+ * later request can tell a genuinely completed setup apart from an orphaned
+ * claim (see `repairOrphanedClaim`) — a stranded install repairs itself on
+ * its next setup attempt.
  */
 export const completeSetup = asyncHandler(async (req: Request, res: Response): Promise<void> => {
   const { name, email, username, password } = req.body as {
@@ -64,6 +105,8 @@ export const completeSetup = asyncHandler(async (req: Request, res: Response): P
     throw new ValidationError(violations.join(', '));
   }
 
+  await repairOrphanedClaim();
+
   const existing = await databaseService.getOne<{ count: number }>('SELECT COUNT(*) as count FROM users');
   if (existing && existing.count > 0) {
     res.status(409).json({ success: false, error: 'Setup has already been completed.' });
@@ -78,7 +121,7 @@ export const completeSetup = asyncHandler(async (req: Request, res: Response): P
     userId = await databaseService.withTransaction(async () => {
       const claim = await databaseService.executeQuery(
         databaseService.dialect.insertIgnore('settings', ['key', 'value', 'category', 'created_at', 'updated_at']),
-        ['setup.admin_created', JSON.stringify(true), 'setup', now, now]
+        [CLAIM_KEY, 'pending', 'setup', now, now]
       );
 
       if (claim.changes === 0) {
@@ -91,7 +134,14 @@ export const completeSetup = asyncHandler(async (req: Request, res: Response): P
         [name.trim(), email.trim(), username.trim(), hashedPassword, now, now]
       );
 
-      return insert.lastInsertRowid;
+      const newUserId = insert.lastInsertRowid;
+
+      await databaseService.executeQuery(
+        "UPDATE settings SET value = ? WHERE `key` = ?",
+        [String(newUserId), CLAIM_KEY]
+      );
+
+      return newUserId;
     });
   } catch (error) {
     if (error instanceof SetupAlreadyCompletedError) {

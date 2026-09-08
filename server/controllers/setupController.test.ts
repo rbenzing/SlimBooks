@@ -144,6 +144,66 @@ describe('POST /api/setup', () => {
     expect(count?.count).toBe(1);
   });
 
+  it('repairs an orphaned claim left by a deleted admin, and creates a new one', async () => {
+    await postJson(`${origin}/api/setup`, validPayload);
+
+    // Simulate an operator deleting the users table directly while the claim
+    // row survives — the exact scenario that used to strand an install.
+    await db.executeQuery('DELETE FROM users');
+
+    const res = await postJson(`${origin}/api/setup`, {
+      name: 'Grace Admin', email: 'grace@example.com', username: 'grace', password: 'correct horse battery staple'
+    });
+
+    expect(res.status).toBe(201);
+    const data = res.body.data as { user: { email: string } };
+    expect(data.user.email).toBe('grace@example.com');
+
+    const count = await db.getOne<{ count: number }>('SELECT COUNT(*) as count FROM users');
+    expect(count?.count).toBe(1);
+  });
+
+  it('treats a legacy true-valued claim on an empty users table as orphaned', async () => {
+    // 2.4.0's claim row stored the literal string "true", not a user id.
+    // A pre-existing install upgrading into this code must not be stranded
+    // by its own old claim row.
+    await db.executeQuery(
+      "INSERT INTO settings (`key`, value, category, created_at, updated_at) VALUES (?, ?, ?, ?, ?)",
+      ['setup.admin_created', JSON.stringify(true), 'setup', Date.now(), Date.now()]
+    );
+
+    const res = await postJson(`${origin}/api/setup`, validPayload);
+
+    expect(res.status).toBe(201);
+  });
+
+  it('still refuses a second submission when the claimed admin genuinely exists', async () => {
+    await postJson(`${origin}/api/setup`, validPayload);
+
+    const second = await postJson(`${origin}/api/setup`, {
+      name: 'Grace Admin', email: 'grace@example.com', username: 'grace', password: 'correct horse battery staple'
+    });
+
+    expect(second.status).toBe(409);
+    const count = await db.getOne<{ count: number }>('SELECT COUNT(*) as count FROM users');
+    expect(count?.count).toBe(1);
+  });
+
+  it('lets exactly one of two simultaneous submissions through', async () => {
+    const [first, second] = await Promise.all([
+      postJson(`${origin}/api/setup`, validPayload),
+      postJson(`${origin}/api/setup`, {
+        name: 'Grace Admin', email: 'grace@example.com', username: 'grace', password: 'correct horse battery staple'
+      })
+    ]);
+
+    const statuses = [first.status, second.status].sort();
+    expect(statuses).toEqual([201, 409]);
+
+    const count = await db.getOne<{ count: number }>('SELECT COUNT(*) as count FROM users');
+    expect(count?.count).toBe(1);
+  });
+
   it('rejects a missing field with 400 and creates nothing', async () => {
     const res = await postJson(`${origin}/api/setup`, { name: 'Ada Admin', email: 'ada@example.com' });
 

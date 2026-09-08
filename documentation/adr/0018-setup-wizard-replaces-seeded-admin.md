@@ -24,8 +24,12 @@ with no separate `setup_complete` flag to fall out of sync with reality.
 `POST /api/setup` creates that admin, guarded by `dialect.insertIgnore` on a
 claim row in `settings` rather than a count-then-insert: two concurrent
 submissions both reading a count of zero and both proceeding is exactly the
-race a plain check cannot close. The frontend gates all rendering on this
-status, alongside its existing auth-loading gate, and shows a multi-step
+race a plain check cannot close. The claim row's value is the created admin's
+user id, not a bare flag — if that user is later deleted while the claim
+survives, the next setup attempt finds the claim orphaned, deletes it, and
+proceeds, rather than 409ing forever with no way through the UI. The
+frontend gates all rendering on this status, alongside its existing
+auth-loading gate, and shows a multi-step
 wizard instead of the login screen while it reports `needsSetup: true`. The
 wizard's later steps (company info, Email, Stripe, Google) reuse the exact
 Settings-tab components and save paths the authenticated app already has,
@@ -53,6 +57,16 @@ security hole.
   the normal authenticated app with blank company settings rather than
   resuming the wizard. Accepted rather than engineered around, given the
   one-time, users-table-is-the-only-signal design.
+- **A rejected earlier design conditioned the admin insert itself
+  (`INSERT INTO users ... WHERE NOT EXISTS (SELECT 1 FROM users)`) instead of
+  keeping a separate claim row.** Correct under real concurrency — tested
+  live against MariaDB, every run ended with exactly one admin — but roughly
+  a quarter of losing requests failed with a lock error
+  (`ER_AUTOINC_READ_FAILED`, from the table-level AUTO-INC lock this
+  statement shape takes) instead of a clean `409`, and the database wrappers
+  on both engines strip error codes on the way out, so the controller cannot
+  tell that failure apart from a real one. The `INSERT IGNORE` claim, backed
+  by a `UNIQUE` index rather than gap locking, does not have this problem.
 - A dedicated `POST /api/setup` was chosen over reusing `register`/`login`:
   `register` does not currently return a token or sign the caller in — a
   pre-existing, unrelated gap — and the wizard needs a genuine session the

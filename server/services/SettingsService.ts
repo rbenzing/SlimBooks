@@ -372,7 +372,8 @@ export class SettingsService {
       stripe: { enabled: false, publishable_key: '', configured: false },
       email: { enabled: false, configured: false },
       security: {
-        require_email_verification: security.require_email_verification ?? false
+        require_email_verification: security.require_email_verification ?? false,
+        password_policy: security.password_policy
       }
     };
   }

@@ -39,12 +39,6 @@ export class AuthService {
         return { success: false, message: 'Passwords do not match' };
       }
 
-      // Check password strength
-      const passwordValidation = AuthUtils.validatePassword(data.password, DEFAULT_SECURITY_SETTINGS.password_requirements);
-      if (!passwordValidation.isValid) {
-        return { success: false, message: passwordValidation.errors.join(', ') };
-      }
-
       // Call backend registration API
       const response = await fetch(`${API_BASE}/auth/register`, {
         method: 'POST',

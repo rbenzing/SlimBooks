@@ -62,16 +62,6 @@ describe('register', () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it('rejects a weak password and says why', async () => {
-    const result = await auth.register({
-      ...validRegistration, password: 'short', confirm_password: 'short'
-    });
-
-    expect(result.success).toBe(false);
-    expect(result.message).toBeTruthy();
-    expect(fetchMock).not.toHaveBeenCalled();
-  });
-
   it('never sends the password confirmation as the password', async () => {
     await auth.register(validRegistration);
 

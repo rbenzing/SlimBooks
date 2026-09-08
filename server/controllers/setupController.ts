@@ -10,7 +10,7 @@ import { userService } from '../services/UserService.js';
 import { asyncHandler, generateToken, ValidationError } from '../middleware/index.js';
 import { utcNow } from '../utils/utcTime.util.js';
 import { settingsService } from '../services/SettingsService.js';
-import { validatePasswordAgainstPolicy } from '../utils/passwordPolicy.util.js';
+import { validatePasswordAgainstPolicy } from '../shared/passwordPolicy.util.js';
 
 /** Thrown when a concurrent request already claimed the first-admin slot. */
 class SetupAlreadyCompletedError extends Error {}

@@ -2,11 +2,15 @@ import React, { useState, useEffect } from 'react';
 import { useSearchParams, Link, useNavigate } from 'react-router-dom';
 import { Lock, Eye, EyeOff, CheckCircle, AlertCircle, ArrowLeft } from 'lucide-react';
 import { AuthUtils } from '@/utils/api';
-import { DEFAULT_PASSWORD_REQUIREMENTS } from '@/types';
+import { useProjectSettings } from '@/hooks/useProjectSettings';
+import { PasswordRequirementsChecklist } from '@/components/PasswordRequirementsChecklist';
+import { validatePasswordAgainstPolicy, DEFAULT_PASSWORD_POLICY } from '@shared/passwordPolicy.util';
 
 export const ResetPasswordPage: React.FC = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const { settings: projectSettings } = useProjectSettings();
+  const passwordPolicy = projectSettings?.security?.password_policy ?? DEFAULT_PASSWORD_POLICY;
   const [formData, setFormData] = useState({
     password: '',
     confirmPassword: ''
@@ -81,9 +85,9 @@ export const ResetPasswordPage: React.FC = () => {
       }
 
       // Validate password
-      const passwordValidation = AuthUtils.validatePassword(formData.password, DEFAULT_PASSWORD_REQUIREMENTS);
-      if (!passwordValidation.isValid) {
-        setError(passwordValidation.errors.join(', '));
+      const violations = validatePasswordAgainstPolicy(formData.password, passwordPolicy);
+      if (violations.length > 0) {
+        setError(violations.join(', '));
         return;
       }
 
@@ -309,6 +313,8 @@ export const ResetPasswordPage: React.FC = () => {
                     </div>
                   </div>
                 )}
+
+                <PasswordRequirementsChecklist password={formData.password} policy={passwordPolicy} />
               </div>
 
               <div>

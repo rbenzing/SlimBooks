@@ -21,7 +21,7 @@ import {
 } from '../types/api.types.js';
 import { type MutationOutcome } from '../types/index.js';
 import { settingsService } from '../services/SettingsService.js';
-import { validatePasswordAgainstPolicy } from '../utils/passwordPolicy.util.js';
+import { validatePasswordAgainstPolicy } from '../shared/passwordPolicy.util.js';
 
 /**
  * How many accounts the management screen may see.

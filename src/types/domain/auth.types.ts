@@ -149,37 +149,19 @@ export interface TwoFactorSetup {
 // EmailSettings moved to domain/settings.types.ts to avoid duplication
 // Import if needed: import { EmailSettings } from './settings.types';
 
-export interface PasswordRequirements {
-  min_length: number;
-  require_uppercase: boolean;
-  require_lowercase: boolean;
-  require_numbers: boolean;
-  require_special_chars: boolean;
-}
-
 export interface SecuritySettings {
   session_timeout: number; // minutes
   max_failed_attempts: number;
   lockout_duration: number; // minutes
-  password_requirements: PasswordRequirements;
   require_email_verification: boolean;
   allow_google_oauth: boolean;
 }
 
 // Default settings
-export const DEFAULT_PASSWORD_REQUIREMENTS: PasswordRequirements = {
-  min_length: 8,
-  require_uppercase: false,
-  require_lowercase: false,
-  require_numbers: false,
-  require_special_chars: false
-};
-
 export const DEFAULT_SECURITY_SETTINGS: SecuritySettings = {
   session_timeout: 480, // 8 hours
   max_failed_attempts: 5,
   lockout_duration: 30, // 30 minutes
-  password_requirements: DEFAULT_PASSWORD_REQUIREMENTS,
   require_email_verification: true,
   allow_google_oauth: true
 };

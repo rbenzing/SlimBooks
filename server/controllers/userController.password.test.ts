@@ -8,7 +8,7 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { Request, Response } from 'express';
-import { DEFAULT_PASSWORD_POLICY } from '../utils/passwordPolicy.util.js';
+import { DEFAULT_PASSWORD_POLICY } from '../shared/passwordPolicy.util.js';
 
 const updateUserPassword = vi.fn();
 const getUserById = vi.fn();

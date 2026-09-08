@@ -52,13 +52,15 @@ export default defineConfig({
         'src/contexts/**': { statements: 90, branches: 85, functions: 90, lines: 90 },
         'server/services/**': { statements: 90, branches: 85, functions: 90, lines: 90 },
         'server/middleware/**': { statements: 90, branches: 85, functions: 90, lines: 90 },
-        'server/utils/**': { statements: 90, branches: 85, functions: 90, lines: 90 }
+        'server/utils/**': { statements: 90, branches: 85, functions: 90, lines: 90 },
+        'server/shared/**': { statements: 90, branches: 85, functions: 90, lines: 90 }
       }
     }
   },
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, './src')
+      '@': path.resolve(__dirname, './src'),
+      '@shared': path.resolve(__dirname, './server/shared')
     }
   }
 });

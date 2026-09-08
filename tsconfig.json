@@ -3,7 +3,8 @@
   "include": ["src"],
   "compilerOptions": {
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "@shared/*": ["./server/shared/*"]
     },
     "noImplicitAny": false,
     "noUnusedParameters": false,

@@ -1,8 +1,6 @@
 // Single source of truth for auth token persistence (read + write).
 // Nothing else in the app may touch localStorage/sessionStorage for auth keys.
 
-import { type PasswordRequirements } from '@/types';
-
 const TOKEN_KEY = 'auth_token';
 const REFRESH_TOKEN_KEY = 'refresh_token';
 const REMEMBER_ME_KEY = 'remember_me';
@@ -144,35 +142,6 @@ export class AuthUtils {
   static isValidEmail(email: string): boolean {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return emailRegex.test(email);
-  }
-
-  static validatePassword(password: string, requirements: Partial<PasswordRequirements>): { isValid: boolean; errors: string[] } {
-    const errors: string[] = [];
-
-    if (password.length < (requirements.min_length || 8)) {
-      errors.push(`Password must be at least ${requirements.min_length || 8} characters long`);
-    }
-
-    if (requirements.require_uppercase && !/[A-Z]/.test(password)) {
-      errors.push('Password must contain at least one uppercase letter');
-    }
-
-    if (requirements.require_lowercase && !/[a-z]/.test(password)) {
-      errors.push('Password must contain at least one lowercase letter');
-    }
-
-    if (requirements.require_numbers && !/\d/.test(password)) {
-      errors.push('Password must contain at least one number');
-    }
-
-    if (requirements.require_special_chars && !/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
-      errors.push('Password must contain at least one special character');
-    }
-
-    return {
-      isValid: errors.length === 0,
-      errors
-    };
   }
 
   static calculatePasswordStrength(password: string): { score: number; level: string; feedback: string[] } {

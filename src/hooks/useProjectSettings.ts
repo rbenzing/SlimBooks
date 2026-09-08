@@ -41,7 +41,8 @@ export const useProjectSettings = () => {
             security: {
               require_email_verification: Boolean(typedSettings.security?.require_email_verification ?? true),
               max_failed_login_attempts: Number(typedSettings.security?.max_failed_login_attempts) || 5,
-              account_lockout_duration: Number(typedSettings.security?.account_lockout_duration) || 1800000
+              account_lockout_duration: Number(typedSettings.security?.account_lockout_duration) || 1800000,
+              password_policy: typedSettings.security?.password_policy
             }
           };
           setSettings(convertedSettings);
@@ -75,7 +76,8 @@ export const useProjectSettings = () => {
           security: {
             require_email_verification: true,
             max_failed_login_attempts: 5,
-            account_lockout_duration: 1800000
+            account_lockout_duration: 1800000,
+            password_policy: undefined
           }
         });
       } finally {

@@ -2,6 +2,7 @@
 // Centralized validation for all application settings using Zod schemas
 
 import { z } from 'zod';
+import { MAX_PASSWORD_LENGTH } from '@shared/passwordPolicy.util';
 import type {
   ProjectSettings,
   CurrencySettings,
@@ -55,11 +56,7 @@ export const EmailServiceSchema = z.object({
 });
 
 export const PasswordPolicySchema = z.object({
-  // 128 mirrors `MAX_PASSWORD_LENGTH` in server/utils/passwordPolicy.util.ts —
-  // that ceiling is enforced regardless of policy, so a min_length above it
-  // would make every password permanently rejected. Hardcoded because this
-  // client-side file can't easily import a server-side constant.
-  min_length: z.number().int().min(1).max(128),
+  min_length: z.number().int().min(1).max(MAX_PASSWORD_LENGTH),
   require_uppercase: z.boolean(),
   require_lowercase: z.boolean(),
   require_numbers: z.boolean(),

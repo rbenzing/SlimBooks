@@ -227,7 +227,7 @@ export interface ProjectSettings {
       require_lowercase: boolean;
       require_numbers: boolean;
       require_special: boolean;
-    };
+    } | undefined;
   };
 }
 

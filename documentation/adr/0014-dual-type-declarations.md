@@ -43,6 +43,18 @@ relatively. Enums use the const-object pattern.
   erroring, so a new settings field can pass validation and vanish before it
   reaches the database. This has already happened twice at Critical
   severity — once for `password_policy`, once for `redirect_uri`/`currency`.
+- **A fifth thing exists that is not duplicated: `server/shared/passwordPolicy.util.ts`.**
+  Password validation used to be one of the four hand-copied declarations too —
+  the client kept its own version with a different field name for one
+  requirement (`require_special_chars` vs. the server's `require_special`) and
+  a narrower special-character rule, and the two could reach different
+  verdicts on the same password. `server/shared/` is a directory whose one
+  rule is "dependency-free, therefore safe to bundle into the browser,"
+  enforced by a test — the client reaches it through the `@shared/*` alias
+  registered in `vite.config.ts`, `vitest.config.ts` and `tsconfig.json`.
+  This is not a general escape hatch from the four-declarations rule above:
+  it works here only because password validation has no view-shape or
+  row-shape concerns to diverge on in the first place.
 - **Report payloads are the sharpest edge:** the server's return shape and the
   frontend type must match exactly, or the UI crashes on
   `Object.entries(undefined)`. Both sides get checked.

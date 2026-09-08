@@ -33,14 +33,12 @@
     "emitDecoratorMetadata": true,
     "paths": {
       "@/*": ["./src/*"],
-      "@/server/*": ["./*"],
-      "@/shared/*": ["../src/types/*"]
+      "@/server/*": ["./*"]
     }
   },
   "include": [
     "./**/*.ts",
-    "./**/*.js",
-    "../src/types/**/*.ts"
+    "./**/*.js"
   ],
   "exclude": [
     "./node_modules",

@@ -68,7 +68,7 @@ export const validationRules = {
     }
 
     const { settingsService } = await import('../services/SettingsService.js');
-    const { validatePasswordAgainstPolicy } = await import('../utils/passwordPolicy.util.js');
+    const { validatePasswordAgainstPolicy } = await import('../shared/passwordPolicy.util.js');
 
     const policy = await settingsService.getPasswordPolicy();
     const violations = validatePasswordAgainstPolicy(value, policy);
@@ -207,7 +207,7 @@ export const validationSets = {
         }
 
         const { settingsService } = await import('../services/SettingsService.js');
-        const { validatePasswordAgainstPolicy } = await import('../utils/passwordPolicy.util.js');
+        const { validatePasswordAgainstPolicy } = await import('../shared/passwordPolicy.util.js');
 
         const policy = await settingsService.getPasswordPolicy();
         const violations = validatePasswordAgainstPolicy(value, policy);
@@ -449,7 +449,7 @@ export const validationSets = {
       }
 
       const { settingsService } = await import('../services/SettingsService.js');
-      const { validatePasswordAgainstPolicy } = await import('../utils/passwordPolicy.util.js');
+      const { validatePasswordAgainstPolicy } = await import('../shared/passwordPolicy.util.js');
 
       const policy = await settingsService.getPasswordPolicy();
       const violations = validatePasswordAgainstPolicy(value, policy);

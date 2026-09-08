@@ -5,7 +5,9 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Eye, EyeOff, Mail, Lock, User, AlertCircle, CheckCircle, Check, X } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { AuthUtils } from '@/utils/api';
-import { DEFAULT_PASSWORD_REQUIREMENTS } from '@/types';
+import { useProjectSettings } from '@/hooks/useProjectSettings';
+import { PasswordRequirementsChecklist } from '@/components/PasswordRequirementsChecklist';
+import { validatePasswordAgainstPolicy, DEFAULT_PASSWORD_POLICY } from '@shared/passwordPolicy.util';
 
 export const RegisterPage: React.FC = () => {
   const [formData, setFormData] = useState({
@@ -27,6 +29,8 @@ export const RegisterPage: React.FC = () => {
 
   const { register } = useAuth();
   const navigate = useNavigate();
+  const { settings: projectSettings } = useProjectSettings();
+  const passwordPolicy = projectSettings?.security?.password_policy ?? DEFAULT_PASSWORD_POLICY;
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -64,9 +68,9 @@ export const RegisterPage: React.FC = () => {
       }
 
       // Validate password
-      const passwordValidation = AuthUtils.validatePassword(formData.password, DEFAULT_PASSWORD_REQUIREMENTS);
-      if (!passwordValidation.isValid) {
-        setError(passwordValidation.errors.join(', '));
+      const violations = validatePasswordAgainstPolicy(formData.password, passwordPolicy);
+      if (violations.length > 0) {
+        setError(violations.join(', '));
         return;
       }
 
@@ -232,6 +236,8 @@ export const RegisterPage: React.FC = () => {
                   )}
                 </div>
               )}
+
+              <PasswordRequirementsChecklist password={formData.password} policy={passwordPolicy} />
             </div>
 
             <div>

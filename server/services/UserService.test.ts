@@ -118,12 +118,6 @@ describe('reads', () => {
     expect(db.getOne.mock.calls[0][0]).toMatch(/SELECT \* FROM users WHERE email = \?/);
   });
 
-  it('decodes a URL-encoded Google id before matching', async () => {
-    await userService.getUserByGoogleId('g%2B123');
-
-    expect(db.getOne.mock.calls[0][1]).toEqual(['g+123']);
-  });
-
   it('pages users', async () => {
     await userService.getAllUsers({ limit: 10, offset: 30 });
 
@@ -154,7 +148,6 @@ describe('reads', () => {
   it('rejects an invalid id or email', async () => {
     await expect(userService.getUserById(0)).rejects.toThrow(/id/i);
     await expect(userService.getUserByEmail('')).rejects.toThrow(/email/i);
-    await expect(userService.getUserByGoogleId('')).rejects.toThrow(/google id/i);
   });
 
   it('answers false for an invalid id or blank email rather than querying', async () => {

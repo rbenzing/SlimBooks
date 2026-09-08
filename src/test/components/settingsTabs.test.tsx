@@ -14,7 +14,6 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import type * as UseSettingsHook from '@/hooks/useSettings.hook';
 
@@ -46,11 +45,9 @@ vi.mock('@/hooks/useSettings.hook', async () => {
 });
 
 import { SecuritySettingsTab } from '@/components/settings/SecuritySettingsTab';
-import { GoogleSettingsTab } from '@/components/settings/GoogleSettingsTab';
 import { ResponsiveSettings } from '@/components/ResponsiveSettings';
 
 const projectSettings = (over: Record<string, unknown> = {}) => ({
-  google_oauth: { enabled: false, client_id: '', client_secret: '', configured: false },
   stripe: { enabled: false, publishable_key: '', secret_key: '', configured: false },
   email: {
     enabled: false, smtp_host: '', smtp_port: 587,
@@ -79,15 +76,6 @@ const renderTab = async (ui: React.ReactElement, heading: RegExp) => {
 };
 
 const renderSecurity = () => renderTab(<SecuritySettingsTab />, /^Security$/);
-const renderGoogle = () => renderTab(<GoogleSettingsTab />, /^Google OAuth$/);
-
-/** Google switched on, which is when its credential fields exist. */
-const renderGoogleEnabled = async (over: Record<string, unknown> = {}) => {
-  getProjectSettings.mockResolvedValue(projectSettings({
-    google_oauth: { enabled: true, client_id: '', configured: false, ...over }
-  }));
-  return renderGoogle();
-};
 
 const companySettings = () => ({
   companyName: '', ownerName: '', email: '', phone: '', address: '',
@@ -220,90 +208,6 @@ describe('email verification gate', () => {
   });
 });
 
-describe('Google tab', () => {
-  it('asks for the OAuth credentials', async () => {
-    await renderGoogleEnabled();
-
-    expect(screen.getByLabelText(/client id/i)).toBeTruthy();
-    expect(screen.getByLabelText(/^client secret$/i)).toBeTruthy();
-  });
-
-  it('masks the client secret by default', async () => {
-    await renderGoogleEnabled();
-
-    expect((screen.getByLabelText(/^client secret$/i) as HTMLInputElement).type).toBe('password');
-  });
-
-  it('reveals the client secret on request', async () => {
-    const user = userEvent.setup();
-    await renderGoogleEnabled();
-
-    await user.click(screen.getByLabelText(/show client secret/i));
-
-    expect((screen.getByLabelText(/^client secret$/i) as HTMLInputElement).type).toBe('text');
-  });
-
-  it('shows the stored credentials', async () => {
-    getProjectSettings.mockResolvedValue(projectSettings({
-      google_oauth: { enabled: true, client_id: 'client-123', client_secret: 'secret', configured: true }
-    }));
-
-    await renderGoogle();
-
-    expect((screen.getByLabelText(/client id/i) as HTMLInputElement).value).toBe('client-123');
-  });
-
-  it('carries its own enable switch', async () => {
-    // The tab is always reachable now, so this is where Google gets turned on.
-    await renderGoogle();
-
-    expect(screen.getByLabelText(/enable google oauth/i)).toBeTruthy();
-  });
-
-  it('hides the credential fields until the integration is switched on', async () => {
-    await renderGoogle();
-
-    expect(screen.queryByLabelText(/client id/i)).toBeNull();
-  });
-
-  it('switches on automatically when .env already carries the credentials', async () => {
-    // A deployment that put the credentials in .env has already decided.
-    getProjectSettings.mockResolvedValue(projectSettings({
-      google_oauth: { enabled: true, client_id: 'id', configured: true, env_configured: true }
-    }));
-
-    await renderGoogle();
-
-    expect((screen.getByLabelText(/enable google oauth/i) as HTMLInputElement).checked).toBe(true);
-    expect(screen.getByText(/found in your .env file/i)).toBeTruthy();
-  });
-
-  it('warns while the integration is unconfigured', async () => {
-    await renderGoogleEnabled();
-
-    expect(screen.getByText(/not configured yet/i)).toBeTruthy();
-  });
-
-  it('does not warn once configured', async () => {
-    getProjectSettings.mockResolvedValue(projectSettings({
-      google_oauth: { enabled: true, client_id: 'id', client_secret: 's', configured: true }
-    }));
-
-    await renderGoogle();
-
-    expect(screen.queryByText(/not configured yet/i)).toBeNull();
-  });
-
-  it('leaves the credential fields editable', async () => {
-    const user = userEvent.setup();
-    await renderGoogleEnabled();
-
-    await user.type(screen.getByLabelText(/client id/i), 'abc');
-
-    expect((screen.getByLabelText(/client id/i) as HTMLInputElement).value).toBe('abc');
-  });
-});
-
 /**
  * Settings tab list.
  *
@@ -314,7 +218,7 @@ describe('Google tab', () => {
 describe('Settings tab list', () => {
   const expectedTabNames = [
     'Company & Tax', 'General', 'Shipping', 'Email Settings', 'Notifications',
-    'Appearance', 'Google OAuth', 'Stripe', 'Security', 'Backup & Restore'
+    'Appearance', 'Stripe', 'Security', 'Backup & Restore'
   ];
 
   const renderSettings = (initialEntries: string[] = ['/settings']) =>
@@ -324,7 +228,7 @@ describe('Settings tab list', () => {
       </MemoryRouter>
     );
 
-  it('shows exactly the merged ten tabs — no separate Tax Rates or bare Company', async () => {
+  it('shows exactly the merged nine tabs — no separate Tax Rates or bare Company', async () => {
     renderSettings();
     await screen.findByLabelText(/fiscal year starts/i);
 

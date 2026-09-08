@@ -38,13 +38,6 @@ vi.mock('@/components/settings/StripeSettingsTab', async () => {
     StripeSettingsTab: React.forwardRef(() => <div>Stripe settings form</div>)
   };
 });
-vi.mock('@/components/settings/GoogleSettingsTab', async () => {
-  const React = await import('react');
-  return {
-    GoogleSettingsTab: React.forwardRef(() => <div>Google settings form</div>)
-  };
-});
-
 afterEach(() => {
   vi.clearAllMocks();
 });
@@ -118,9 +111,6 @@ describe('SetupWizardPage', () => {
     await advancePastCompanyStep();
     fireEvent.click(screen.getByRole('button', { name: /skip for now/i }));
     await screen.findByText('Stripe');
-
-    fireEvent.click(screen.getByRole('button', { name: /skip for now/i }));
-    await screen.findByText('Google Sign-In');
 
     fireEvent.click(screen.getByRole('button', { name: /skip for now/i }));
     await waitFor(() => expect(navigateMock).toHaveBeenCalledWith('/dashboard', { replace: true }));

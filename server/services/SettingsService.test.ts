@@ -313,21 +313,6 @@ describe('project settings', () => {
     await expect(settingsService.getProjectSettings()).rejects.toThrow(/failed to get project settings/i);
   });
 
-  it('stores and reads back google_oauth.redirect_uri', async () => {
-    await settingsService.updateProjectSettings({
-      google_oauth: { redirect_uri: 'https://example.com/callback' } as never
-    });
-
-    const written = new Map(db.queries.map(q => [q.params[0], q.params[1]]));
-    expect(written.get('google_oauth.redirect_uri')).toBe(JSON.stringify('https://example.com/callback'));
-
-    db.getMany.mockReturnValue([
-      { key: 'google_oauth.redirect_uri', value: JSON.stringify('https://example.com/callback') }
-    ]);
-    const settings = await settingsService.getProjectSettings();
-    expect(settings.google_oauth.redirect_uri).toBe('https://example.com/callback');
-  });
-
 });
 
 /**
@@ -343,9 +328,6 @@ describe('project settings redaction', () => {
       { key: 'stripe.secret_key', value: JSON.stringify('sk_live_supersecret') },
       { key: 'stripe.publishable_key', value: JSON.stringify('pk_live_public') },
       { key: 'stripe.webhook_secret', value: JSON.stringify('whsec_supersecret') },
-      { key: 'google_oauth.enabled', value: 'true' },
-      { key: 'google_oauth.client_id', value: JSON.stringify('client-id') },
-      { key: 'google_oauth.client_secret', value: JSON.stringify('google-supersecret') },
       { key: 'email.smtp_host', value: JSON.stringify('smtp.example.com') },
       { key: 'email.smtp_user', value: JSON.stringify('mailer') },
       { key: 'email.smtp_pass', value: JSON.stringify('smtp-supersecret') },
@@ -377,7 +359,6 @@ describe('project settings redaction', () => {
 
     expect(settings.stripe.configured).toBe(true);
     expect(settings.stripe.webhook_configured).toBe(true);
-    expect(settings.google_oauth.configured).toBe(true);
     expect(settings.email.configured).toBe(true);
   });
 
@@ -393,13 +374,6 @@ describe('project settings redaction', () => {
     expect(JSON.stringify(settings)).not.toMatch(/supersecret/);
   });
 
-  it('tells the login screen what it needs to offer Google sign-in', async () => {
-    const settings = await settingsService.getPublicProjectSettings();
-
-    expect(settings.google_oauth.enabled).toBe(true);
-    expect(settings.google_oauth.client_id).toBe('client-id');
-  });
-
   it('does not disclose the mail server to anyone who has not signed in', async () => {
     const settings = await settingsService.getPublicProjectSettings();
 
@@ -407,16 +381,6 @@ describe('project settings redaction', () => {
     expect(settings.stripe.publishable_key).toBe('');
   });
 
-  it('withholds the Google client id while the integration is off', async () => {
-    db.getMany.mockReturnValue([
-      { key: 'google_oauth.enabled', value: 'false' },
-      { key: 'google_oauth.client_id', value: JSON.stringify('client-id') }
-    ]);
-
-    const settings = await settingsService.getPublicProjectSettings();
-
-    expect(settings.google_oauth.client_id).toBe('');
-  });
 });
 
 describe('stripe credentials', () => {

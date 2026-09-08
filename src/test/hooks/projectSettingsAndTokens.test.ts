@@ -38,7 +38,6 @@ import { useTokenRefresh } from '@/hooks/useTokenRefresh';
 import { useIsMobile } from '@/hooks/useMobile';
 
 const storedSettings = (over: Record<string, unknown> = {}) => ({
-  google_oauth: { enabled: true, client_id: 'gid', configured: true },
   stripe: { enabled: false, publishable_key: '', configured: false },
   email: {
     enabled: true, smtp_host: 'smtp.example.com', smtp_port: 2525,
@@ -81,17 +80,16 @@ describe('useProjectSettings', () => {
     expect(result.current.isLoading).toBe(false);
     expect(result.current.error).toBeNull();
     expect(result.current.settings).toMatchObject({
-      google_oauth: { enabled: true, client_id: 'gid' },
       email: { smtp_host: 'smtp.example.com', smtp_port: 2525 }
     });
   });
 
-  it('always resolves to all four sections', async () => {
+  it('always resolves to all three sections', async () => {
     // The settings screens destructure these on mount; a missing one crashes.
     const { result } = await renderSettings();
 
     expect(Object.keys(result.current.settings ?? {}).sort())
-      .toEqual(['email', 'google_oauth', 'security', 'stripe']);
+      .toEqual(['email', 'security', 'stripe']);
   });
 
   it('coerces missing fields rather than passing undefined to the form', async () => {
@@ -100,7 +98,6 @@ describe('useProjectSettings', () => {
     const { result } = await renderSettings();
 
     expect(result.current.settings).toMatchObject({
-      google_oauth: { enabled: false, client_id: '', configured: false },
       email: { smtp_port: 587 }
     });
   });

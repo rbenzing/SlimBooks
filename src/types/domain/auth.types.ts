@@ -154,7 +154,6 @@ export interface SecuritySettings {
   max_failed_attempts: number;
   lockout_duration: number; // minutes
   require_email_verification: boolean;
-  allow_google_oauth: boolean;
 }
 
 // Default settings
@@ -162,8 +161,7 @@ export const DEFAULT_SECURITY_SETTINGS: SecuritySettings = {
   session_timeout: 480, // 8 hours
   max_failed_attempts: 5,
   lockout_duration: 30, // 30 minutes
-  require_email_verification: true,
-  allow_google_oauth: true
+  require_email_verification: true
 };
 
 // Email template names

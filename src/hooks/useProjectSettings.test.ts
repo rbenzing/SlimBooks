@@ -14,7 +14,6 @@ beforeEach(() => vi.clearAllMocks());
 describe('useProjectSettings', () => {
   it('carries the password policy through from a public settings response', async () => {
     getProjectSettings.mockResolvedValue({
-      google_oauth: { enabled: false, client_id: '', configured: false },
       stripe: { enabled: false, publishable_key: '', configured: false },
       email: { enabled: false, configured: false },
       security: {

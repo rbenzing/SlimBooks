@@ -25,7 +25,6 @@ const LOCKOUT_MINUTE = 60000;
  */
 export const SecuritySettingsTab = forwardRef<SecuritySettingsRef>((props, ref) => {
   const [settings, setSettings] = useState<ProjectSettings>({
-    google_oauth: { enabled: false, client_id: '', client_secret: '', configured: false },
     stripe: { enabled: false, publishable_key: '', secret_key: '', configured: false },
     email: {
       enabled: false, smtp_host: '', smtp_port: 587,

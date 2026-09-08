@@ -218,25 +218,20 @@ export class SettingsService {
    * and watch the old one keep being used. Leaving a field blank in the UI
    * stores nothing, so the `.env` value comes back through.
    *
-   * SERVER-SIDE ONLY: the result carries the Stripe secret key, the SMTP
-   * password and the OAuth client secret. Anything that answers an HTTP
-   * request must use `getProjectSettings` or `getPublicProjectSettings`.
+   * SERVER-SIDE ONLY: the result carries the Stripe secret key and the SMTP
+   * password. Anything that answers an HTTP request must use
+   * `getProjectSettings` or `getPublicProjectSettings`.
    */
   private async resolveProjectSettings(): Promise<ProjectSettings> {
     const dbSettings = await databaseService.getMany<{key: string, value: string}>(
-      'SELECT `key`, value FROM settings WHERE `key` LIKE ? OR `key` LIKE ? OR `key` LIKE ? OR `key` LIKE ?',
-      ['google_oauth.%', 'stripe.%', 'email.%', 'security.%']
+      'SELECT `key`, value FROM settings WHERE `key` LIKE ? OR `key` LIKE ? OR `key` LIKE ?',
+      ['stripe.%', 'email.%', 'security.%']
     );
 
     const settingsMap: Record<string, string> = {};
     dbSettings.forEach(setting => {
       settingsMap[setting.key] = setting.value;
     });
-
-    const googleClientId = readString(settingsMap, 'google_oauth.client_id') ?? envString('GOOGLE_CLIENT_ID');
-    const googleClientSecret = readString(settingsMap, 'google_oauth.client_secret') ?? envString('GOOGLE_CLIENT_SECRET');
-
-    const googleRedirectUri = readString(settingsMap, 'google_oauth.redirect_uri') ?? envString('GOOGLE_REDIRECT_URI');
 
     const stripeSecretKey = readString(settingsMap, 'stripe.secret_key') ?? envString('STRIPE_SECRET_KEY');
     const stripePublishableKey = readString(settingsMap, 'stripe.publishable_key') ?? envString('STRIPE_PUBLISHABLE_KEY');
@@ -252,18 +247,9 @@ export class SettingsService {
     // .env has already decided to use it, and making it also hunt for a toggle
     // is a second answer to a question already answered. An explicit toggle
     // still wins, so it can be switched back off without editing .env.
-    const googleConfiguredInEnv = !!(envString('GOOGLE_CLIENT_ID') && envString('GOOGLE_CLIENT_SECRET'));
     const stripeConfiguredInEnv = !!(envString('STRIPE_SECRET_KEY') && envString('STRIPE_PUBLISHABLE_KEY'));
 
     return {
-      google_oauth: {
-        enabled: readBoolean(settingsMap, 'google_oauth.enabled') ?? googleConfiguredInEnv,
-        client_id: googleClientId ?? '',
-        ...(googleClientSecret && { client_secret: googleClientSecret }),
-        redirect_uri: googleRedirectUri ?? '',
-        configured: !!(googleClientId && googleClientSecret),
-        env_configured: googleConfiguredInEnv
-      },
       stripe: {
         enabled: readBoolean(settingsMap, 'stripe.enabled') ?? stripeConfiguredInEnv,
         env_configured: stripeConfiguredInEnv,
@@ -316,16 +302,9 @@ export class SettingsService {
    */
   async getProjectSettings(): Promise<ProjectSettings> {
     try {
-      const { google_oauth, stripe, email, security } = await this.resolveProjectSettings();
+      const { stripe, email, security } = await this.resolveProjectSettings();
 
       return {
-        google_oauth: {
-          enabled: google_oauth.enabled,
-          client_id: google_oauth.client_id,
-          redirect_uri: google_oauth.redirect_uri ?? '',
-          configured: google_oauth.configured,
-          env_configured: google_oauth.env_configured ?? false
-        },
         stripe: {
           enabled: stripe.enabled,
           test_mode: stripe.test_mode ?? true,
@@ -354,19 +333,13 @@ export class SettingsService {
   /**
    * Project settings for callers that have not signed in.
    *
-   * The login screen needs to know whether to offer the Google button and
-   * whether verification is required; it has no business knowing the SMTP host
-   * or that Stripe exists.
+   * The login screen needs to know whether verification is required; it has no
+   * business knowing the SMTP host or that Stripe exists.
    */
   async getPublicProjectSettings(): Promise<ProjectSettings> {
-    const { google_oauth, security } = await this.resolveProjectSettings();
+    const { security } = await this.resolveProjectSettings();
 
     return {
-      google_oauth: {
-        enabled: google_oauth.enabled,
-        client_id: google_oauth.enabled ? google_oauth.client_id : '',
-        configured: google_oauth.configured
-      },
       stripe: { enabled: false, publishable_key: '', configured: false },
       email: { enabled: false, configured: false },
       security: {

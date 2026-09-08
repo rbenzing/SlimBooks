@@ -15,15 +15,6 @@ import type {
 // PROJECT SETTINGS SCHEMAS (OAuth, Stripe, Email, Security)
 // ========================================
 
-export const GoogleOAuthSchema = z.object({
-  enabled: z.boolean(),
-  client_id: z.string(),
-  client_secret: z.string().optional(),
-  redirect_uri: z.string().optional(),
-  configured: z.boolean(),
-  env_configured: z.boolean().optional()
-});
-
 /**
  * Stripe project settings.
  *
@@ -70,7 +61,6 @@ export const SecurityConfigSchema = z.object({
 });
 
 export const ProjectSettingsSchema = z.object({
-  google_oauth: GoogleOAuthSchema.optional(),
   stripe: StripeSchema.optional(),
   email: EmailServiceSchema.optional(),
   security: SecurityConfigSchema.optional()
@@ -269,13 +259,6 @@ export function validateNotificationSettings(data: unknown): z.infer<typeof Noti
 
 export function parseProjectSettingsWithDefaults(data: unknown): ProjectSettings {
   const defaultSettings: ProjectSettings = {
-    google_oauth: {
-      enabled: false,
-      client_id: '',
-      client_secret: '',
-      redirect_uri: '',
-      configured: false
-    },
     stripe: {
       enabled: false,
       publishable_key: '',
@@ -308,7 +291,6 @@ export function parseProjectSettingsWithDefaults(data: unknown): ProjectSettings
   try {
     const parsed = ProjectSettingsSchema.parse(data);
     return {
-      google_oauth: { ...defaultSettings.google_oauth, ...parsed.google_oauth },
       stripe: { ...defaultSettings.stripe, ...parsed.stripe },
       email: { ...defaultSettings.email, ...parsed.email },
       security: {

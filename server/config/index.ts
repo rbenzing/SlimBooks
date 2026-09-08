@@ -161,16 +161,6 @@ export interface StripeConfig {
 }
 
 /**
- * Google OAuth configuration interface
- */
-export interface GoogleConfig {
-  clientId: string | undefined;
-  clientSecret: string | undefined;
-  redirectUri: string | undefined;
-  isConfigured: boolean;
-}
-
-/**
  * Application configuration interface
  */
 export interface AppConfig {
@@ -231,7 +221,6 @@ export interface AppConfigComplete {
   auth: AuthConfig;
   email: EmailConfig;
   stripe: StripeConfig;
-  google: GoogleConfig;
   app: AppConfig;
   logging: LoggingConfig;
   validation: ValidationConfig;
@@ -362,18 +351,6 @@ export const stripeConfig: StripeConfig = {
 };
 
 /**
- * Google OAuth configuration
- */
-export const googleConfig: GoogleConfig = {
-  clientId: process.env.GOOGLE_CLIENT_ID,
-  clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-  redirectUri: process.env.GOOGLE_REDIRECT_URI,
-
-  // Check if Google OAuth is configured
-  isConfigured: !!(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET)
-};
-
-/**
  * Application metadata
  */
 export const appConfig: AppConfig = {
@@ -438,7 +415,6 @@ export const getAllConfig = (): AppConfigComplete => ({
   auth: authConfig,
   email: emailConfig,
   stripe: stripeConfig,
-  google: googleConfig,
   app: appConfig,
   logging: loggingConfig,
   validation: validationConfig
@@ -478,7 +454,6 @@ export const validateConfig = (): void => {
   const services: string[] = [];
   if (emailConfig.isConfigured) services.push('Email');
   if (stripeConfig.isConfigured) services.push('Stripe');
-  if (googleConfig.isConfigured) services.push('OAuth');
 
   console.log(`✅ Config validated | Services: ${services.length > 0 ? services.join(', ') : 'None'} | Email verification: ${authConfig.requireEmailVerification ? 'On' : 'Off'}`);
 };
@@ -490,7 +465,6 @@ const config: AppConfigComplete = {
   auth: authConfig,
   email: emailConfig,
   stripe: stripeConfig,
-  google: googleConfig,
   app: appConfig,
   logging: loggingConfig,
   validation: validationConfig

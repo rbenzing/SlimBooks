@@ -20,11 +20,6 @@ export const useProjectSettings = () => {
         if (projectSettings && typeof projectSettings === 'object') {
           const typedSettings = projectSettings as Partial<ProjectSettings>;
           const convertedSettings: ProjectSettings = {
-            google_oauth: {
-              enabled: Boolean(typedSettings.google_oauth?.enabled),
-              client_id: String(typedSettings.google_oauth?.client_id || ''),
-              configured: Boolean(typedSettings.google_oauth?.configured)
-            },
             stripe: {
               enabled: Boolean(typedSettings.stripe?.enabled),
               publishable_key: String(typedSettings.stripe?.publishable_key || ''),
@@ -55,11 +50,6 @@ export const useProjectSettings = () => {
         
         // Set default settings if loading fails
         setSettings({
-          google_oauth: {
-            enabled: false,
-            client_id: '',
-            configured: false
-          },
           stripe: {
             enabled: false,
             publishable_key: '',
@@ -97,11 +87,6 @@ export const useProjectSettings = () => {
       if (projectSettings && typeof projectSettings === 'object') {
         const typedSettings = projectSettings as Partial<ProjectSettings>;
         const convertedSettings: ProjectSettings = {
-          google_oauth: {
-            enabled: Boolean(typedSettings.google_oauth?.enabled),
-            client_id: String(typedSettings.google_oauth?.client_id || ''),
-            configured: Boolean(typedSettings.google_oauth?.configured)
-          },
           stripe: {
             enabled: Boolean(typedSettings.stripe?.enabled),
             publishable_key: String(typedSettings.stripe?.publishable_key || ''),

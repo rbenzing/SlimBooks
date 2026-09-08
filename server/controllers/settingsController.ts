@@ -126,12 +126,6 @@ export const updateProjectSettings = asyncHandler(async (req: Request<object, ob
   try {
     // Ensure all required properties have default values for exactOptionalPropertyTypes
     const projectSettings = {
-      google_oauth: {
-        enabled: false,
-        client_id: '',
-        configured: false,
-        ...settings.google_oauth
-      },
       stripe: {
         enabled: false,
         publishable_key: '',

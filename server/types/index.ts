@@ -180,15 +180,6 @@ export interface Setting extends BaseEntity {
 
 // Complete project configuration structure (copied from shared types)
 export interface ProjectSettings {
-  google_oauth: {
-    enabled: boolean;
-    client_id: string;
-    client_secret?: string;
-    redirect_uri?: string;
-    configured: boolean;
-    /** True when the credentials came from .env rather than the settings screen. */
-    env_configured?: boolean;
-  };
   stripe: {
     enabled: boolean;
     publishable_key: string;

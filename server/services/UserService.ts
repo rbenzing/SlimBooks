@@ -60,20 +60,6 @@ export class UserService {
   }
 
   /**
-   * Get user by Google ID
-   */
-  async getUserByGoogleId(googleId: string): Promise<User | null> {
-    if (!googleId || typeof googleId !== 'string') {
-      throw new Error('Valid Google ID is required');
-    }
-
-    return databaseService.getOne<User>(
-      'SELECT * FROM users WHERE google_id = ?', 
-      [decodeURIComponent(googleId)]
-    );
-  }
-
-  /**
    * Create new user
    */
   async createUser(userData: {

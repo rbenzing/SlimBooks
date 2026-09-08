@@ -88,25 +88,6 @@ export const getUserByEmail = asyncHandler(async (req: Request, res: Response): 
 });
 
 /**
- * Get user by Google ID
- */
-export const getUserByGoogleId = asyncHandler(async (req: Request, res: Response): Promise<void> => {
-  const { googleId } = req.params;
-  
-  if (!googleId) {
-    throw new ValidationError('Valid Google ID is required');
-  }
-
-  const user = await userService.getUserByGoogleId(googleId);
-
-  if (!user) {
-    throw new NotFoundError('User');
-  }
-
-  res.json({ success: true, data: user });
-});
-
-/**
  * Create new user
  */
 export const createUser = asyncHandler(async (req: Request<object, object, CreateUserRequest>, res: Response): Promise<void> => {

@@ -103,16 +103,6 @@ export interface ProjectSettingRecord {
 
 // Complete project configuration structure
 export interface ProjectSettings {
-  google_oauth: {
-    enabled: boolean;
-    client_id: string;
-    // Write-only: the server never returns it.
-    client_secret?: string;
-    redirect_uri?: string;
-    configured: boolean;
-    /** True when the credentials came from .env rather than the settings screen. */
-    env_configured?: boolean;
-  };
   stripe: {
     enabled: boolean;
     publishable_key: string;

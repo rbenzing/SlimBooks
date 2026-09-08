@@ -9,7 +9,6 @@ import { useAuth } from '@/contexts/AuthContext';
 import { CompanySettings } from '@/components/settings/CompanySettings';
 import { EmailSettings } from '@/components/settings/EmailSettings';
 import { StripeSettingsTab } from '@/components/settings/StripeSettingsTab';
-import { GoogleSettingsTab } from '@/components/settings/GoogleSettingsTab';
 import { Toaster } from '@/components/ui/sonner';
 import type { SettingsTabRef } from '@/types';
 import type { ForwardRefExoticComponent, RefAttributes } from 'react';
@@ -214,17 +213,6 @@ export const SetupWizardPage = () => {
           title="Stripe"
           description="Accept card payments on invoices. Optional — configure later in Settings."
           Component={StripeSettingsTab}
-          onAdvance={advance}
-        />
-      )
-    },
-    {
-      key: 'google',
-      render: advance => (
-        <IntegrationStep
-          title="Google Sign-In"
-          description="Let users sign in with Google. Optional — configure later in Settings."
-          Component={GoogleSettingsTab}
           onAdvance={advance}
         />
       )

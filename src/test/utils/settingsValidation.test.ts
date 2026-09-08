@@ -304,7 +304,7 @@ describe('project settings', () => {
     // Every settings screen destructures these four sections on mount.
     const result = parseProjectSettingsWithDefaults('not an object');
 
-    expect(Object.keys(result).sort()).toEqual(['email', 'google_oauth', 'security', 'stripe']);
+    expect(Object.keys(result).sort()).toEqual(['email', 'security', 'stripe']);
     expect(result.email.smtp_port).toBe(587);
     expect(result.security.max_failed_login_attempts).toBe(5);
   });
@@ -312,7 +312,6 @@ describe('project settings', () => {
   it('defaults every integration to disabled', () => {
     const result = parseProjectSettingsWithDefaults(null);
 
-    expect(result.google_oauth.enabled).toBe(false);
     expect(result.stripe.enabled).toBe(false);
     expect(result.email.enabled).toBe(false);
   });
@@ -393,31 +392,6 @@ describe('project settings', () => {
     });
   });
 
-  it('defaults google_oauth.redirect_uri when none was stored', () => {
-    const result = parseProjectSettingsWithDefaults(null);
-
-    expect(result.google_oauth.redirect_uri).toBe('');
-  });
-
-  it('carries a stored google_oauth.redirect_uri through instead of stripping it', () => {
-    // Zod drops any key a schema does not declare, silently: this is the
-    // regression the schema must not reintroduce.
-    const result = parseProjectSettingsWithDefaults({
-      google_oauth: {
-        enabled: true,
-        client_id: 'client-id',
-        redirect_uri: 'https://example.com/callback',
-        configured: true
-      },
-      stripe: {
-        enabled: true,
-        publishable_key: 'pk_test_x',
-        configured: true
-      }
-    });
-
-    expect(result.google_oauth.redirect_uri).toBe('https://example.com/callback');
-  });
 });
 
 describe('validateInvoiceNumber', () => {

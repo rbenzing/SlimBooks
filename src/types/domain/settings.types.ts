@@ -297,12 +297,6 @@ export const validateShippingRateArray = (data: unknown): ShippingRate[] => {
 };
 
 // Project Settings TypeScript interfaces
-export interface GoogleOAuthSettings {
-  enabled: boolean;
-  client_id: string;
-  client_secret?: string;
-  configured: boolean;
-}
 
 /**
  * Stripe integration settings combining all fields from component and API usage

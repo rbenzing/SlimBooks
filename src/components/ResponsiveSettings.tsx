@@ -8,7 +8,6 @@ import { EmailSettings } from './settings/EmailSettings';
 import { StripeSettingsTab } from './settings/StripeSettingsTab';
 import { NotificationSettingsTab } from './settings/NotificationSettingsTab';
 import { AppearanceSettingsTab } from './settings/AppearanceSettingsTab';
-import { GoogleSettingsTab } from './settings/GoogleSettingsTab';
 import { SecuritySettingsTab, type SecuritySettingsRef } from './settings/SecuritySettingsTab';
 import { DatabaseBackupSection } from './settings/DatabaseBackupSection';
 import { themeClasses, getButtonClasses } from '@/utils/themeUtils.util';
@@ -38,7 +37,6 @@ const settingsTabs: SettingsTab[] = [
   { id: 'email', name: 'Email Settings' },
   { id: 'notifications', name: 'Notifications' },
   { id: 'appearance', name: 'Appearance' },
-  { id: 'google', name: 'Google OAuth' },
   { id: 'stripe', name: 'Stripe' },
   { id: 'security', name: 'Security' },
   { id: 'backup', name: 'Backup & Restore' }
@@ -59,7 +57,6 @@ export const ResponsiveSettings = () => {
   const shippingSettingsRef = useRef<SettingsTabRef>(null);
   const emailSettingsRef = useRef<SettingsTabRef>(null);
   const stripeSettingsRef = useRef<SettingsTabRef>(null);
-  const googleSettingsRef = useRef<SettingsTabRef>(null);
   const notificationSettingsRef = useRef<SettingsTabRef>(null);
   const appearanceSettingsRef = useRef<SettingsTabRef>(null);
 
@@ -116,9 +113,6 @@ export const ResponsiveSettings = () => {
         case 'appearance':
           settingsRef = appearanceSettingsRef.current;
           break;
-        case 'google':
-          settingsRef = googleSettingsRef.current;
-          break;
         case 'security':
           settingsRef = securitySettingsRef.current;
           break;
@@ -155,7 +149,6 @@ export const ResponsiveSettings = () => {
       case 'stripe': return <StripeSettingsTab ref={stripeSettingsRef} />;
       case 'notifications': return <NotificationSettingsTab ref={notificationSettingsRef} />;
       case 'appearance': return <AppearanceSettingsTab ref={appearanceSettingsRef} />;
-      case 'google': return <GoogleSettingsTab ref={googleSettingsRef} />;
       case 'security': return <SecuritySettingsTab ref={securitySettingsRef} />;
       case 'backup': return <DatabaseBackupSection />;
       default: return <CompanySettings ref={companySettingsRef} />;

@@ -1,6 +1,6 @@
 # Settings
 
-Ten tabs. Anything saved here **takes precedence over the server's
+Nine tabs. Anything saved here **takes precedence over the server's
 environment file**, so Settings is the place to configure a running install.
 
 | Tab | For |
@@ -11,7 +11,6 @@ environment file**, so Settings is the place to configure a running install.
 | [Email Settings](#email) | SMTP delivery |
 | [Notifications](#notifications) | In-app notification behaviour |
 | [Appearance](#appearance) | Theme and colour preset |
-| [Google OAuth](#google-oauth) | Sign in with Google |
 | [Stripe](#stripe) | Card payments |
 | [Security](#security) | Authentication policy |
 | [Backup & Restore](#backup--restore) | Download and restore the database |
@@ -90,11 +89,6 @@ the six corners and edge centres.
 Both apply across the whole application. Nothing in the interface hard-codes a
 colour, so a preset changes everything consistently.
 
-## Google OAuth
-
-Client id, secret and redirect URI for "Sign in with Google". Setting the id
-and secret switches the integration on.
-
 ## Stripe
 
 Publishable key, secret key and webhook signing secret for card payments.
@@ -127,7 +121,7 @@ is in [backup and restore](../operations/backup-and-restore.md).
 
 ## Missing tabs or greyed-out options
 
-Features are switched on by whoever runs the server. If Stripe, email, Google
-sign-in or PDF export is absent, it is disabled or unavailable on that host —
-ask your administrator, who can check `/api/health` to see what the install
-actually resolved.
+Features are switched on by whoever runs the server. If Stripe, email or PDF
+export is absent, it is disabled or unavailable on that host — ask your
+administrator, who can check `/api/health` to see what the install actually
+resolved.

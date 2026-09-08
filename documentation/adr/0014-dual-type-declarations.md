@@ -28,7 +28,7 @@ four that apply (the fourth only when the change touches a settings shape):
 | `src/types/domain/[entity].types.ts` | The React application |
 | `server/types/index.ts` | Server-side domain and row shapes |
 | `server/types/api.types.ts` | Request and response contracts |
-| `src/utils/settingsValidation.ts` | Zod schemas (`SecurityConfigSchema`, `GoogleOAuthSchema`, `StripeSchema`, etc.) that validate a settings shape before it's saved |
+| `src/utils/settingsValidation.ts` | Zod schemas (`SecurityConfigSchema`, `PasswordPolicySchema`, `StripeSchema`, etc.) that validate a settings shape before it's saved |
 
 Frontend code imports as `import type { Invoice } from '@/types';` — never
 relatively. Enums use the const-object pattern.

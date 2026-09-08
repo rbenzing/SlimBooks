@@ -101,7 +101,6 @@ Administrative. Most routes require admin.
 | GET | `/api/users` | Admin | List |
 | GET | `/api/users/:id` | Admin | One user |
 | GET | `/api/users/email/:email` | Admin\* | Look up by email |
-| GET | `/api/users/google/:googleId` | Admin | Look up by Google ID |
 | POST | `/api/users` | Admin | Create |
 | PUT | `/api/users/:id` | Admin | Update name, email, username or role |
 | DELETE | `/api/users/:id` | Admin | Delete |

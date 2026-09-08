@@ -12,6 +12,16 @@ Upgrade instructions live in
 
 ## [Unreleased]
 
+### Added
+
+- **Register and Reset Password now show a live checklist of the
+  admin-configured password requirements as you type**, instead of leaving
+  you to guess and find out only after submitting.
+- **The password policy is now exposed to unauthenticated visitors via the
+  public project-settings endpoint**, so pre-login forms can check a
+  password against the real, admin-configured requirements instead of a
+  hardcoded guess.
+
 ### Changed
 
 - **Stripe now charges in the same currency Settings → General displays**,
@@ -27,10 +37,6 @@ Upgrade instructions live in
   record of setup completion survived, `/setup` would refuse to run again
   with no way through the UI. The next setup attempt now recognises this and
   proceeds.
-- **A request to change your own password, register, or reset a password
-  with a missing password field returned an internal error message instead
-  of a clean validation error.** (This was introduced in 2.4.0's password
-  policy change and is fixed here as part of unifying password validation.)
 
 ### Removed
 

@@ -77,9 +77,9 @@ own timezone and in the format you choose in Settings.
 **Currency and formatting come from Settings.** Change them in one place and
 every screen follows.
 
-**Some features depend on your install.** PDF export, email, Stripe and
-sign-in-with-Google are each switched on by whoever runs the server. If a
-button you expect is missing, that is usually why — ask your administrator.
+**Some features depend on your install.** PDF export, email and Stripe are
+each switched on by whoever runs the server. If a button you expect is
+missing, that is usually why — ask your administrator.
 
 **Deleting may be reversible.** Depending on how your install is configured,
 deleted records may be retained and hidden rather than destroyed. Ask before

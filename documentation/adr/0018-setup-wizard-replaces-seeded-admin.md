@@ -11,9 +11,9 @@ literal string `"password"` when that variable was unset. There was no
 first-run flow of any kind: an operator who forgot to set `ADMIN_PASSWORD`
 got a working, guessable administrator account and no warning.
 
-Separately, most integration config (Email, Stripe, Google OAuth,
-login-security settings) already has a DB-backed Settings screen that takes
-precedence over its `.env` fallback, via `SettingsService.resolveProjectSettings()`.
+Separately, most integration config (Email, Stripe, login-security settings)
+already has a DB-backed Settings screen that takes precedence over its `.env`
+fallback, via `SettingsService.resolveProjectSettings()`.
 Nothing walked an operator through actually using any of it.
 
 ## Decision
@@ -31,7 +31,7 @@ proceeds, rather than 409ing forever with no way through the UI. The
 frontend gates all rendering on this status, alongside its existing
 auth-loading gate, and shows a multi-step
 wizard instead of the login screen while it reports `needsSetup: true`. The
-wizard's later steps (company info, Email, Stripe, Google) reuse the exact
+wizard's later steps (company info, Email, Stripe) reuse the exact
 Settings-tab components and save paths the authenticated app already has,
 via the `SettingsTabRef` imperative-save pattern.
 
@@ -70,8 +70,8 @@ security hole.
 - A dedicated `POST /api/setup` was chosen over reusing `register`/`login`:
   `register` does not currently return a token or sign the caller in — a
   pre-existing, unrelated gap — and the wizard needs a genuine session the
-  moment its first step succeeds, so its later, admin-only steps (Stripe,
-  Google) can save.
+  moment its first step succeeds, so its later, admin-only steps (Stripe)
+  can save.
 - **`POST /api/setup` is public and carries no dedicated rate limit** — it
   requires no auth (by design, there is no admin yet to authenticate as),
   and unlike `/api/auth/login` it has no login-style attempt throttle of

@@ -42,6 +42,23 @@ export const getSetupStatus = asyncHandler(async (_req: Request, res: Response):
  * `Number('true')` is `NaN`, which is treated the same as "no user found"
  * and falls back to the users-count check.
  *
+ * A persisted `value` of `'pending'` is never treated as orphaned. `'pending'`
+ * is the placeholder `completeSetup`'s transaction writes before it inserts
+ * the admin and then overwrites with the real user id — it is only ever
+ * observable, by a separate request reading it back, while that transaction
+ * is genuinely still in flight on this process's single shared SQLite
+ * connection. A crash mid-transaction rolls the whole transaction back via
+ * SQLite's own recovery, taking the placeholder row with it — it can never
+ * persist as a stale `'pending'` for a later request to find. Without this
+ * check, `repairOrphanedClaim` running concurrently with an in-progress
+ * `completeSetup` would read `'pending'`, get `NaN` from `Number('pending')`,
+ * fall back to the users-count check (still zero, since the in-progress
+ * request hasn't committed yet), conclude the claim is orphaned, and delete
+ * it — and because SQLite has no per-request connection isolation, that
+ * DELETE would execute inside the *other* request's still-open transaction,
+ * silently removing the guard while it is mid-write and leaving no claim
+ * behind for a later request to collide with.
+ *
  * Deliberately outside any transaction: two requests racing through this at
  * once both deleting the same already-orphaned row is harmless (the second
  * DELETE affects zero rows), and neither this function nor its absence
@@ -54,6 +71,7 @@ const repairOrphanedClaim = async (): Promise<void> => {
     [CLAIM_KEY]
   );
   if (!claim) return;
+  if (claim.value === 'pending') return; // an in-flight, uncommitted claim — never treat as orphaned
 
   const claimedUserId = Number(claim.value);
   const claimedUserExists = Number.isInteger(claimedUserId)

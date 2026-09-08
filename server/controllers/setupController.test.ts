@@ -177,6 +177,34 @@ describe('POST /api/setup', () => {
     expect(res.status).toBe(201);
   });
 
+  it('treats a persisted "pending" claim as in-flight, never orphaned', async () => {
+    // 'pending' is the placeholder completeSetup's transaction writes before
+    // it inserts the admin and overwrites it with the real user id. It can
+    // only be *read back* by another request while that transaction is
+    // genuinely still open on the process's single shared SQLite connection
+    // — a crash rolls the whole transaction back, taking the placeholder
+    // with it, so a persisted 'pending' always means someone else is mid-claim
+    // right now. This test drives repairOrphanedClaim to that exact durable
+    // state directly (rather than timing two real concurrent requests, which
+    // would be flaky) to prove it no longer treats 'pending' the same as an
+    // orphaned claim: before the fix, Number('pending') is NaN, the users
+    // table is still empty, and the claim was deleted out from under the
+    // in-progress request — opening the door to a second admin. With the
+    // fix, the claim survives, so the INSERT IGNORE below collides with it
+    // and the request is refused with a clean 409, exactly as if the first
+    // request's transaction were still genuinely in flight.
+    await db.executeQuery(
+      "INSERT INTO settings (`key`, value, category, created_at, updated_at) VALUES (?, ?, ?, ?, ?)",
+      ['setup.admin_created', 'pending', 'setup', Date.now(), Date.now()]
+    );
+
+    const res = await postJson(`${origin}/api/setup`, validPayload);
+
+    expect(res.status).toBe(409);
+    const count = await db.getOne<{ count: number }>('SELECT COUNT(*) as count FROM users');
+    expect(count?.count).toBe(0);
+  });
+
   it('still refuses a second submission when the claimed admin genuinely exists', async () => {
     await postJson(`${origin}/api/setup`, validPayload);
 

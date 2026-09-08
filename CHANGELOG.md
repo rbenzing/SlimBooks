@@ -12,6 +12,36 @@ Upgrade instructions live in
 
 ## [Unreleased]
 
+### Changed
+
+- **Stripe now charges in the same currency Settings → General displays**,
+  instead of always USD. An install whose display currency was already set
+  to something other than USD will begin charging Stripe in that currency —
+  see ADR-0019. The separate Settings → Stripe currency field is removed;
+  there is one currency setting now, not two that could disagree.
+
+### Fixed
+
+- **A setup install stranded by a deleted administrator now repairs
+  itself.** If the `users` table was ever emptied while the database's
+  record of setup completion survived, `/setup` would refuse to run again
+  with no way through the UI. The next setup attempt now recognises this and
+  proceeds.
+- **A request to change your own password, register, or reset a password
+  with a missing password field returned an internal error message instead
+  of a clean validation error.** (This was introduced in 2.4.0's password
+  policy change and is fixed here as part of unifying password validation.)
+
+### Removed
+
+- **The Google Sign-In settings tab, login button, and `GOOGLE_CLIENT_ID` /
+  `GOOGLE_CLIENT_SECRET` / `GOOGLE_REDIRECT_URI`.** No Google sign-in feature
+  has ever existed behind this configuration — filling it in produced a
+  working-looking toggle and a button that errored when clicked. Removing
+  the environment variables from `.env.example` does not reject them at
+  boot; an existing `.env` that still sets them keeps working, since
+  anything set but not listed is already ignored.
+
 ## [2.4.0] — 2026-09-07
 
 ### Added

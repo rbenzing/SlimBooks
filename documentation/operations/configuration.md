@@ -219,20 +219,10 @@ all present.
 | `STRIPE_SECRET_KEY` | — | legacy | Server-side only; never sent to the browser. |
 | `STRIPE_PUBLISHABLE_KEY` | — | legacy | |
 | `STRIPE_WEBHOOK_SECRET` | — | legacy | Without it, clients can pay but invoices are not marked paid — there is no verified way to know the payment happened. |
-| `DEFAULT_CURRENCY` | `usd` | legacy | Used when an invoice does not name one. Can also be set from Settings → Stripe. |
+| `DEFAULT_CURRENCY` | `usd` | legacy | The fallback for the single display/charge currency setting in Settings → General, shown throughout the app until that screen is opened for the first time. Slimbooks charges in the same currency it displays — see ADR-0019. |
 
 The integration counts as configured when the secret and publishable keys are
 both present.
-
-## Google OAuth
-
-| Variable | Read by | Notes |
-|---|---|---|
-| `GOOGLE_CLIENT_ID` | legacy | |
-| `GOOGLE_CLIENT_SECRET` | legacy | |
-| `GOOGLE_REDIRECT_URI` | legacy | Can also be set from Settings → Google. |
-
-Configured when the id and secret are both present.
 
 ## Backups and logging
 

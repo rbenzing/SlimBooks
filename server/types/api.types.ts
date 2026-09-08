@@ -377,7 +377,6 @@ export interface ProjectSettingsRequest {
     stripe?: {
       enabled?: boolean;
       publishable_key?: string;
-      currency?: string;
       configured?: boolean;
     };
     email?: {

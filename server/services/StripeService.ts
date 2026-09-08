@@ -240,7 +240,7 @@ export class StripeService {
       throw new Error('Invoice amount must be greater than zero to collect payment');
     }
 
-    const currency = (invoice.currency || 'USD').toLowerCase();
+    const { currency } = await this.getCredentials();
 
     // Payment links take a Price, not an inline amount, so the price and its
     // product are created first. `product_data` keeps that to one round trip.

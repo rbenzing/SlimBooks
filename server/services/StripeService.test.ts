@@ -17,6 +17,7 @@
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { createDatabaseMock, flattenSql } from './databaseMock.test-helper.js';
+import type { StripeCredentials } from './SettingsService.js';
 
 const db = createDatabaseMock();
 vi.mock('../core/DatabaseService.js', () => ({ databaseService: db }));
@@ -50,13 +51,14 @@ vi.mock('stripe', () => {
 const { stripeService, StripeNotConfiguredError, toStripeAmount, fromStripeAmount } =
   await import('./StripeService.js');
 
-const configured = (overrides: Record<string, unknown> = {}) => ({
+const configured = (overrides: Partial<StripeCredentials> = {}) => ({
   enabled: true,
   testMode: true,
   secretKey: 'sk_test_key',
   publishableKey: 'pk_test_key',
   webhookSecret: 'whsec_test',
   configured: true,
+  currency: 'usd',
   ...overrides
 });
 
@@ -239,6 +241,15 @@ describe('createPaymentLinkForInvoice', () => {
       currency: 'usd',
       unit_amount: 12000
     }));
+  });
+
+  it('prices in the currency configured in Settings, not the invoice\'s own currency field', async () => {
+    getStripeCredentials.mockReturnValue(configured({ currency: 'gbp' }));
+    db.getOne.mockReturnValue(anInvoice({ currency: 'EUR' }));
+
+    await stripeService.createPaymentLinkForInvoice(7);
+
+    expect(stripeApi.prices.create).toHaveBeenCalledWith(expect.objectContaining({ currency: 'gbp' }));
   });
 
   it('charges the total, not the pre-tax amount', async () => {

@@ -52,6 +52,7 @@ Consequences  What follows — good, bad, and the rules everyone now has to foll
 | [0015](0015-theme-as-design-system.md) | The theme is a design system, not ad-hoc utility classes | Accepted |
 | [0017](0017-last-admin-invariant.md) | The last-administrator invariant lives in the statement, not around it | Accepted |
 | [0018](0018-setup-wizard-replaces-seeded-admin.md) | The first administrator comes from an interactive wizard, not `ADMIN_PASSWORD` | Accepted |
+| [0019](0019-single-currency-per-install.md) | Slimbooks is single-currency per install | Accepted |
 
 ## Adding one
 

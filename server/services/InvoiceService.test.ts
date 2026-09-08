@@ -456,18 +456,16 @@ describe('public invoice links', () => {
       .rejects.toThrow(/invalid or expired/i);
   });
 
-  it('parses company and currency settings for the public view', async () => {
+  it('parses company settings for the public view', async () => {
     db.getOne.mockImplementation((sql: string, params: unknown[] = []) => {
       if (/FROM invoices/.test(sql)) return { id: 5 };
       if (params[0] === 'company_settings') return { value: '{"name":"Slimbooks"}' };
-      if (params[0] === 'currency_settings') return { value: '{"code":"USD"}' };
       return undefined;
     });
 
     const result = await invoiceService.getPublicInvoiceById(5, tokenFor(5));
 
     expect(result.companySettings).toEqual({ name: 'Slimbooks' });
-    expect(result.currencySettings).toEqual({ code: 'USD' });
   });
 
   it('issues a token that the reader accepts', async () => {

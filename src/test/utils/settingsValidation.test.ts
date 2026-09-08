@@ -393,14 +393,13 @@ describe('project settings', () => {
     });
   });
 
-  it('defaults google_oauth.redirect_uri and stripe.currency when none was stored', () => {
+  it('defaults google_oauth.redirect_uri when none was stored', () => {
     const result = parseProjectSettingsWithDefaults(null);
 
     expect(result.google_oauth.redirect_uri).toBe('');
-    expect(result.stripe.currency).toBe('');
   });
 
-  it('carries a stored google_oauth.redirect_uri and stripe.currency through instead of stripping them', () => {
+  it('carries a stored google_oauth.redirect_uri through instead of stripping it', () => {
     // Zod drops any key a schema does not declare, silently: this is the
     // regression the schema must not reintroduce.
     const result = parseProjectSettingsWithDefaults({
@@ -413,13 +412,11 @@ describe('project settings', () => {
       stripe: {
         enabled: true,
         publishable_key: 'pk_test_x',
-        currency: 'eur',
         configured: true
       }
     });
 
     expect(result.google_oauth.redirect_uri).toBe('https://example.com/callback');
-    expect(result.stripe.currency).toBe('eur');
   });
 });
 

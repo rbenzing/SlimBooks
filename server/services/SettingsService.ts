@@ -71,6 +71,7 @@ export interface StripeCredentials {
   publishableKey: string;
   webhookSecret: string;
   configured: boolean;
+  currency: string;
 }
 
 /**
@@ -240,7 +241,6 @@ export class SettingsService {
     const stripeSecretKey = readString(settingsMap, 'stripe.secret_key') ?? envString('STRIPE_SECRET_KEY');
     const stripePublishableKey = readString(settingsMap, 'stripe.publishable_key') ?? envString('STRIPE_PUBLISHABLE_KEY');
     const stripeWebhookSecret = readString(settingsMap, 'stripe.webhook_secret') ?? envString('STRIPE_WEBHOOK_SECRET');
-    const stripeCurrency = readString(settingsMap, 'stripe.currency') ?? envString('DEFAULT_CURRENCY');
 
     const smtpHost = readString(settingsMap, 'email.smtp_host') ?? envString('SMTP_HOST');
     const smtpUser = readString(settingsMap, 'email.smtp_user') ?? envString('SMTP_USER');
@@ -274,7 +274,6 @@ export class SettingsService {
           ?? envBoolean('STRIPE_TEST_MODE')
           ?? !stripeSecretKey?.startsWith('sk_live_'),
         publishable_key: stripePublishableKey ?? '',
-        currency: stripeCurrency ?? 'usd',
         ...(stripeSecretKey && { secret_key: stripeSecretKey }),
         ...(stripeWebhookSecret && { webhook_secret: stripeWebhookSecret }),
         configured: !!(stripePublishableKey && stripeSecretKey),
@@ -332,7 +331,6 @@ export class SettingsService {
           test_mode: stripe.test_mode ?? true,
           // Publishable by name and by design — it ships in the browser.
           publishable_key: stripe.publishable_key,
-          currency: stripe.currency ?? 'usd',
           configured: stripe.configured,
           webhook_configured: stripe.webhook_configured ?? false,
           env_configured: stripe.env_configured ?? false
@@ -380,9 +378,16 @@ export class SettingsService {
 
   /**
    * Stripe credentials for server-side use. Never serialise this.
+   *
+   * `currency` is sourced from the General settings display currency, not
+   * from a Stripe-specific setting — Slimbooks charges in the same currency
+   * it displays, by design (ADR-0019). `DEFAULT_CURRENCY` is this value's
+   * `.env` fallback for an install that has never opened Settings → General.
    */
   async getStripeCredentials(): Promise<StripeCredentials> {
     const { stripe } = await this.resolveProjectSettings();
+    const currencySettings = await this.getSettingByKey('general.currency_format_settings') as { currency?: string } | null;
+    const currency = (currencySettings?.currency || envString('DEFAULT_CURRENCY') || 'usd').toLowerCase();
 
     return {
       enabled: stripe.enabled,
@@ -390,7 +395,8 @@ export class SettingsService {
       secretKey: stripe.secret_key ?? '',
       publishableKey: stripe.publishable_key,
       webhookSecret: stripe.webhook_secret ?? '',
-      configured: stripe.configured
+      configured: stripe.configured,
+      currency
     };
   }
 

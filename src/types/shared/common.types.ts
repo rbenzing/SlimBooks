@@ -116,7 +116,6 @@ export interface ProjectSettings {
   stripe: {
     enabled: boolean;
     publishable_key: string;
-    currency?: string;
     // Write-only: the server never returns these. Present only when an admin
     // has just typed a new value; `configured` is what the UI reads.
     secret_key?: string;

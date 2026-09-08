@@ -36,7 +36,6 @@ export const GoogleOAuthSchema = z.object({
 export const StripeSchema = z.object({
   enabled: z.boolean(),
   publishable_key: z.string(),
-  currency: z.string().optional(),
   secret_key: z.string().optional(),
   webhook_secret: z.string().optional(),
   test_mode: z.boolean().optional(),
@@ -280,7 +279,6 @@ export function parseProjectSettingsWithDefaults(data: unknown): ProjectSettings
     stripe: {
       enabled: false,
       publishable_key: '',
-      currency: '',
       secret_key: '',
       configured: false
     },

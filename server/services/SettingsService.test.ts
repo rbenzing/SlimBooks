@@ -328,16 +328,6 @@ describe('project settings', () => {
     expect(settings.google_oauth.redirect_uri).toBe('https://example.com/callback');
   });
 
-  it('stores and reads back stripe.currency', async () => {
-    await settingsService.updateProjectSettings({ stripe: { currency: 'eur' } as never });
-
-    const written = new Map(db.queries.map(q => [q.params[0], q.params[1]]));
-    expect(written.get('stripe.currency')).toBe(JSON.stringify('eur'));
-
-    db.getMany.mockReturnValue([{ key: 'stripe.currency', value: JSON.stringify('eur') }]);
-    const settings = await settingsService.getProjectSettings();
-    expect(settings.stripe.currency).toBe('eur');
-  });
 });
 
 /**
@@ -456,6 +446,29 @@ describe('stripe credentials', () => {
       configured: true,
       secretKey: 'sk_test_env'
     });
+  });
+
+  it('sources currency from the general display-currency setting', async () => {
+    db.getMany.mockReturnValue([]);
+    db.getOne.mockReturnValue({ value: JSON.stringify({ currency: 'EUR' }) });
+
+    expect((await settingsService.getStripeCredentials()).currency).toBe('eur');
+  });
+
+  it('falls back to DEFAULT_CURRENCY when no display-currency setting is stored', async () => {
+    db.getMany.mockReturnValue([]);
+    db.getOne.mockReturnValue(undefined);
+    process.env.DEFAULT_CURRENCY = 'GBP';
+
+    expect((await settingsService.getStripeCredentials()).currency).toBe('gbp');
+  });
+
+  it('defaults currency to usd when nothing is stored or set', async () => {
+    db.getMany.mockReturnValue([]);
+    db.getOne.mockReturnValue(undefined);
+    delete process.env.DEFAULT_CURRENCY;
+
+    expect((await settingsService.getStripeCredentials()).currency).toBe('usd');
   });
 
   it('prefers a key saved in settings over the one in .env', async () => {

@@ -14,6 +14,5 @@ export interface PublicInvoiceTokenPayload extends JwtPayload {
  */
 export interface PublicInvoiceDisplay extends InvoiceWithClient {
   companySettings?: Record<string, unknown> | null;
-  currencySettings?: Record<string, unknown> | null;
   invoiceTemplate?: string;
 }

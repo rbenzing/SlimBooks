@@ -192,7 +192,6 @@ export interface ProjectSettings {
   stripe: {
     enabled: boolean;
     publishable_key: string;
-    currency?: string;
     secret_key?: string;
     webhook_secret?: string;
     test_mode?: boolean;

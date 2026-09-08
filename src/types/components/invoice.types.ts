@@ -6,8 +6,7 @@ import type {
   InvoiceTemplate,
   InvoiceTemplateFormData,
   Client,
-  CompanySettings,
-  CurrencySettings
+  CompanySettings
 } from '@/types';
 
 /**
@@ -28,7 +27,6 @@ export interface InvoiceWithClient extends Invoice {
  */
 export interface PublicInvoiceData extends InvoiceWithClient {
   companySettings?: CompanySettings | null;
-  currencySettings?: CurrencySettings | null;
   invoiceTemplate?: string;
 }
 

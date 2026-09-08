@@ -134,9 +134,8 @@ export class InvoiceService {
       }
 
       // Get company settings for public display (independent reads)
-      const [companySettings, currencySettings, invoiceTemplate] = await Promise.all([
+      const [companySettings, invoiceTemplate] = await Promise.all([
         databaseService.getOne<{value: string}>(SETTING_BY_KEY, ['company_settings', 'company']),
-        databaseService.getOne<{value: string}>(SETTING_BY_KEY, ['currency_settings', 'currency']),
         databaseService.getOne<{value: string}>(SETTING_BY_KEY, ['invoice_template', 'appearance'])
       ]);
 
@@ -144,7 +143,6 @@ export class InvoiceService {
       return {
         ...invoice,
         companySettings: companySettings ? JSON.parse(companySettings.value) : null,
-        currencySettings: currencySettings ? JSON.parse(currencySettings.value) : null,
         invoiceTemplate: invoiceTemplate?.value || 'modern-blue'
       };
 

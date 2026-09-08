@@ -24,8 +24,7 @@ import {
   parseInvoiceNumberSettingsWithDefaults,
   parsePaginationSettingsWithDefaults,
   parseProjectSettingsWithDefaults,
-  validateInvoiceNumber,
-  validatePassword
+  validateInvoiceNumber
 } from '@/utils/settingsValidation';
 
 const currency = (over: Record<string, unknown> = {}) => ({
@@ -411,58 +410,5 @@ describe('validateInvoiceNumber', () => {
     expect(validateInvoiceNumber('')).toBe(false);
     expect(validateInvoiceNumber('I'.repeat(21))).toBe(false);
     expect(validateInvoiceNumber('I'.repeat(20))).toBe(true);
-  });
-});
-
-describe('validatePassword', () => {
-  it('accepts a password meeting the default policy', () => {
-    expect(validatePassword('Str0ngPass')).toEqual({ isValid: true, errors: [] });
-  });
-
-  it('reports every rule broken, not just the first', () => {
-    // Showing one error at a time makes the user guess repeatedly.
-    const result = validatePassword('short');
-
-    expect(result.isValid).toBe(false);
-    expect(result.errors.length).toBeGreaterThan(1);
-  });
-
-  it('names the length requirement', () => {
-    expect(validatePassword('Ab1').errors.join(' ')).toMatch(/at least 8 characters/);
-  });
-
-  it('requires each default character class', () => {
-    expect(validatePassword('str0ngpass').errors.join(' ')).toMatch(/uppercase/);
-    expect(validatePassword('STR0NGPASS').errors.join(' ')).toMatch(/lowercase/);
-    expect(validatePassword('StrongPass').errors.join(' ')).toMatch(/number/);
-  });
-
-  it('does not require a special character by default', () => {
-    expect(validatePassword('Str0ngPass').isValid).toBe(true);
-  });
-
-  it('honours a stricter policy', () => {
-    const strict = {
-      minLength: 12,
-      requireUppercase: true,
-      requireLowercase: true,
-      requireNumbers: true,
-      requireSpecialChars: true
-    };
-
-    expect(validatePassword('Str0ngPass', strict).isValid).toBe(false);
-    expect(validatePassword('Str0ngPass!x1', strict).isValid).toBe(true);
-  });
-
-  it('honours a relaxed policy', () => {
-    const relaxed = {
-      minLength: 4,
-      requireUppercase: false,
-      requireLowercase: false,
-      requireNumbers: false,
-      requireSpecialChars: false
-    };
-
-    expect(validatePassword('abcd', relaxed)).toEqual({ isValid: true, errors: [] });
   });
 });

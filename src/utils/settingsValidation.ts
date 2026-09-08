@@ -383,41 +383,6 @@ export function validateInvoiceNumber(invoiceNumber: string): boolean {
   return /^[A-Z0-9-_]{1,20}$/.test(invoiceNumber);
 }
 
-export function validatePassword(password: string, requirements = {
-  minLength: 8,
-  requireUppercase: true,
-  requireLowercase: true,
-  requireNumbers: true,
-  requireSpecialChars: false
-}): { isValid: boolean; errors: string[] } {
-  const errors: string[] = [];
-
-  if (password.length < requirements.minLength) {
-    errors.push(`Password must be at least ${requirements.minLength} characters long`);
-  }
-
-  if (requirements.requireUppercase && !/[A-Z]/.test(password)) {
-    errors.push('Password must contain at least one uppercase letter');
-  }
-
-  if (requirements.requireLowercase && !/[a-z]/.test(password)) {
-    errors.push('Password must contain at least one lowercase letter');
-  }
-
-  if (requirements.requireNumbers && !/\d/.test(password)) {
-    errors.push('Password must contain at least one number');
-  }
-
-  if (requirements.requireSpecialChars && !/[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]/.test(password)) {
-    errors.push('Password must contain at least one special character');
-  }
-
-  return {
-    isValid: errors.length === 0,
-    errors
-  };
-}
-
 // ========================================
 // TYPE EXPORTS
 // ========================================

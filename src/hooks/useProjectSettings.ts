@@ -2,6 +2,35 @@ import { useState, useEffect } from 'react';
 import { sqliteService } from '@/services/sqlite.svc';
 import { type ProjectSettings } from '@/types';
 
+/**
+ * Converts the raw (partial, loosely-typed) result of getProjectSettings()
+ * into a fully-typed ProjectSettings object, coercing each field and
+ * falling back to sane defaults. Shared by the initial load and
+ * refreshSettings() so the field list (including password_policy) can't
+ * drift between the two.
+ */
+const buildProjectSettings = (typedSettings: Partial<ProjectSettings>): ProjectSettings => ({
+  stripe: {
+    enabled: Boolean(typedSettings.stripe?.enabled),
+    publishable_key: String(typedSettings.stripe?.publishable_key || ''),
+    configured: Boolean(typedSettings.stripe?.configured)
+  },
+  email: {
+    enabled: Boolean(typedSettings.email?.enabled),
+    smtp_host: String(typedSettings.email?.smtp_host || ''),
+    smtp_port: Number(typedSettings.email?.smtp_port) || 587,
+    smtp_user: String(typedSettings.email?.smtp_user || ''),
+    email_from: String(typedSettings.email?.email_from || ''),
+    configured: Boolean(typedSettings.email?.configured)
+  },
+  security: {
+    require_email_verification: Boolean(typedSettings.security?.require_email_verification ?? true),
+    max_failed_login_attempts: Number(typedSettings.security?.max_failed_login_attempts) || 5,
+    account_lockout_duration: Number(typedSettings.security?.account_lockout_duration) || 1800000,
+    password_policy: typedSettings.security?.password_policy
+  }
+});
+
 export const useProjectSettings = () => {
   const [settings, setSettings] = useState<ProjectSettings | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -19,28 +48,7 @@ export const useProjectSettings = () => {
         // Type-safe conversion from database result to ProjectSettings
         if (projectSettings && typeof projectSettings === 'object') {
           const typedSettings = projectSettings as Partial<ProjectSettings>;
-          const convertedSettings: ProjectSettings = {
-            stripe: {
-              enabled: Boolean(typedSettings.stripe?.enabled),
-              publishable_key: String(typedSettings.stripe?.publishable_key || ''),
-              configured: Boolean(typedSettings.stripe?.configured)
-            },
-            email: {
-              enabled: Boolean(typedSettings.email?.enabled),
-              smtp_host: String(typedSettings.email?.smtp_host || ''),
-              smtp_port: Number(typedSettings.email?.smtp_port) || 587,
-              smtp_user: String(typedSettings.email?.smtp_user || ''),
-              email_from: String(typedSettings.email?.email_from || ''),
-              configured: Boolean(typedSettings.email?.configured)
-            },
-            security: {
-              require_email_verification: Boolean(typedSettings.security?.require_email_verification ?? true),
-              max_failed_login_attempts: Number(typedSettings.security?.max_failed_login_attempts) || 5,
-              account_lockout_duration: Number(typedSettings.security?.account_lockout_duration) || 1800000,
-              password_policy: typedSettings.security?.password_policy
-            }
-          };
-          setSettings(convertedSettings);
+          setSettings(buildProjectSettings(typedSettings));
         } else {
           throw new Error('Invalid project settings format');
         }
@@ -86,27 +94,7 @@ export const useProjectSettings = () => {
       // Type-safe conversion from database result to ProjectSettings
       if (projectSettings && typeof projectSettings === 'object') {
         const typedSettings = projectSettings as Partial<ProjectSettings>;
-        const convertedSettings: ProjectSettings = {
-          stripe: {
-            enabled: Boolean(typedSettings.stripe?.enabled),
-            publishable_key: String(typedSettings.stripe?.publishable_key || ''),
-            configured: Boolean(typedSettings.stripe?.configured)
-          },
-          email: {
-            enabled: Boolean(typedSettings.email?.enabled),
-            smtp_host: String(typedSettings.email?.smtp_host || ''),
-            smtp_port: Number(typedSettings.email?.smtp_port) || 587,
-            smtp_user: String(typedSettings.email?.smtp_user || ''),
-            email_from: String(typedSettings.email?.email_from || ''),
-            configured: Boolean(typedSettings.email?.configured)
-          },
-          security: {
-            require_email_verification: Boolean(typedSettings.security?.require_email_verification ?? true),
-            max_failed_login_attempts: Number(typedSettings.security?.max_failed_login_attempts) || 5,
-            account_lockout_duration: Number(typedSettings.security?.account_lockout_duration) || 1800000
-          }
-        };
-        setSettings(convertedSettings);
+        setSettings(buildProjectSettings(typedSettings));
       } else {
         throw new Error('Invalid project settings format');
       }

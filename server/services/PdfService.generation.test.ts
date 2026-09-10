@@ -48,7 +48,7 @@ const makePage = (over: Record<string, unknown> = {}) => ({
 const makeBrowser = (page: ReturnType<typeof makePage>) => ({
   newPage: vi.fn().mockResolvedValue(page),
   close: vi.fn().mockResolvedValue(undefined),
-  isConnected: vi.fn().mockReturnValue(true)
+  connected: true
 });
 
 /** Puts the service in an initialised state over the given page. */
@@ -103,7 +103,7 @@ describe('lifecycle', () => {
 
   it('reports a disconnected browser', async () => {
     const browser = await withPage(makePage());
-    browser.isConnected.mockReturnValue(false);
+    browser.connected = false;
 
     expect(pdfService.getStatus()).toEqual({ initialized: true, browserConnected: false });
   });

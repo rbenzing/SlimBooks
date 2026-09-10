@@ -53,7 +53,7 @@
     "zod": "^3.23.8"
   },
   "optionalDependencies": {
-    "puppeteer": "^24.14.0"
+    "puppeteer": "^25.10.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.9.0",

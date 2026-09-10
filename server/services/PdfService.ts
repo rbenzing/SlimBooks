@@ -292,7 +292,7 @@ export class PdfService {
   getStatus(): { initialized: boolean; browserConnected: boolean } {
     return {
       initialized: this.isInitialized,
-      browserConnected: !!(this.browser && this.browser.isConnected())
+      browserConnected: !!(this.browser && this.browser.connected)
     };
   }
 

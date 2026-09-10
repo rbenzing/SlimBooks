@@ -36,12 +36,12 @@ const contentTypeFor = (key: string): string => {
 export const createUploadsRoute = (runtime: Runtime): Router => {
   const router = Router();
 
-  router.get('/*', async (req: Request<Record<string, string>>, res) => {
-    // Express has already percent-decoded the parameter, and answers 400 itself
+  router.get('/*splat', async (req: Request<{ splat: string[] }>, res) => {
+    // Express has already percent-decoded each segment, and answers 400 itself
     // on a malformed escape. Decoding again here would be a double-decode:
     // `%252e%252e%252f` arrives as `%2e%2e%2f` and a second pass turns it into
     // `../`, which is the standard way a traversal check gets walked past.
-    const key = req.params['0'] ?? '';
+    const key = Array.isArray(req.params.splat) ? req.params.splat.join('/') : '';
 
     let stream;
 

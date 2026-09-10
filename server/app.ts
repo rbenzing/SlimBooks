@@ -123,7 +123,7 @@ export const createApp = async (runtime: Runtime) => {
 
   app.use('/', createRoutes(runtime));
 
-  app.get('*', (req, res, next) => {
+  app.get('/*splat', (req, res, next) => {
     if (req.path.startsWith('/api/')) return next();
     res.sendFile(join(runtime.paths.staticDir, 'index.html'));
   });

@@ -179,10 +179,10 @@ suite('MySQLDatabase', () => {
     expect(row?.stamp).toMatch(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/);
   });
 
-  it('refuses a SQLite configuration rather than half-connecting', () => {
+  it('refuses a SQLite configuration rather than half-connecting', async () => {
     const other = new MySQLDatabase();
 
-    expect(other.connect({ driver: 'sqlite', path: ':memory:' })).rejects.toThrow(/sqlite/);
+    await expect(other.connect({ driver: 'sqlite', path: ':memory:' })).rejects.toThrow(/sqlite/);
   });
 
   it('reports SQLite-only operations as unavailable rather than silently doing nothing', async () => {

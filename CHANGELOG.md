@@ -12,6 +12,8 @@ Upgrade instructions live in
 
 ## [Unreleased]
 
+## [2.5.0] — 2026-09-09
+
 ### Added
 
 - **Register and Reset Password now show a live checklist of the
@@ -375,6 +377,7 @@ Earlier history is in the git log.
 
 ---
 
+[2.5.0]: https://github.com/rbenzing/SlimBooks/releases/tag/v2.5.0
 [2.4.0]: https://github.com/rbenzing/SlimBooks/releases/tag/v2.4.0
 [2.3.0]: https://github.com/rbenzing/SlimBooks/releases/tag/v2.3.0
 [2.2.0]: https://github.com/rbenzing/SlimBooks/releases/tag/v2.2.0

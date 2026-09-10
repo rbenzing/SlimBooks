@@ -110,10 +110,10 @@ describe('claimExclusive', () => {
     expect(await claim('B', 'T19', 'T01', false)).toBe(false);
   });
 
-  it('rejects a spec whose values omit the owner column', () => {
+  it('rejects a spec whose values omit the owner column', async () => {
     // Without the owner written, step 3 would compare against a stale identity
     // and hand the claim to whoever asked last.
-    expect(
+    await expect(
       claimExclusive(db, {
         table: 'leases',
         keyColumn: 'job_name',

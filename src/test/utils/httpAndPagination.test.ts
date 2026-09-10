@@ -24,6 +24,16 @@ const { refreshAccessToken, isAuthEndpoint } = vi.hoisted(() => ({
 vi.mock('@/utils/api/auth.util', () => ({ getToken, clearAuthTokens }));
 vi.mock('@/utils/api/refresh.util', () => ({ refreshAccessToken, isAuthEndpoint }));
 
+const { getSetting, setSetting, isReady } = vi.hoisted(() => ({
+  getSetting: vi.fn(),
+  setSetting: vi.fn(),
+  isReady: vi.fn(() => true)
+}));
+
+vi.mock('@/services/sqlite.svc', () => ({
+  sqliteService: { getSetting, setSetting, isReady }
+}));
+
 import {
   authenticatedFetch,
   apiGet,
@@ -371,16 +381,6 @@ describe('generatePageNumbers', () => {
 });
 
 describe('pagination settings', () => {
-  const { getSetting, setSetting, isReady } = vi.hoisted(() => ({
-    getSetting: vi.fn(),
-    setSetting: vi.fn(),
-    isReady: vi.fn(() => true)
-  }));
-
-  vi.mock('@/services/sqlite.svc', () => ({
-    sqliteService: { getSetting, setSetting, isReady }
-  }));
-
   beforeEach(() => {
     isReady.mockReturnValue(true);
     getSetting.mockResolvedValue(null);

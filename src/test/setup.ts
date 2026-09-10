@@ -16,6 +16,15 @@ Object.defineProperty(window, 'matchMedia', {
   })),
 });
 
+// happy-dom implements no browser dialogs (confirm/alert/prompt block the
+// main thread, which makes no sense headless), so code under test that calls
+// window.confirm() finds it undefined unless something provides it.
+Object.defineProperty(window, 'confirm', {
+  writable: true,
+  configurable: true,
+  value: vi.fn().mockReturnValue(true),
+});
+
 // Mock localStorage
 const localStorageMock = {
   getItem: vi.fn(),
@@ -23,7 +32,11 @@ const localStorageMock = {
   removeItem: vi.fn(),
   clear: vi.fn(),
 };
-global.localStorage = localStorageMock as any;
+Object.defineProperty(global, 'localStorage', {
+  writable: true,
+  configurable: true,
+  value: localStorageMock,
+});
 
 // Mock fetch globally
 global.fetch = vi.fn();

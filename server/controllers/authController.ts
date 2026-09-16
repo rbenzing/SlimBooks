@@ -7,6 +7,7 @@ import jwt from 'jsonwebtoken';
 import { authConfig } from '../config/index.js';
 import { authService } from '../services/AuthService.js';
 import { tokenService } from '../services/TokenService.js';
+import { auditService, actorIp } from '../services/AuditService.js';
 import {
   NotFoundError,
   ValidationError,
@@ -43,13 +44,30 @@ export const login = asyncHandler(async (req: Request<object, LoginResponse, Log
 
   // Get user for authentication
   const user = await authService.getUserForAuthentication(email);
-  
+
   if (!user) {
+    // Recorded even though no account matched: a run of these against different
+    // addresses is what account enumeration looks like from the log side.
+    await auditService.record({
+      action: 'auth.login',
+      outcome: 'failure',
+      actorEmail: email,
+      ipAddress: actorIp(req),
+      details: { reason: 'no_such_account' }
+    });
     throw new AuthenticationError('Invalid email or password');
   }
 
   // Check if account is locked
   if (authService.isAccountLocked(user)) {
+    await auditService.record({
+      action: 'auth.login',
+      outcome: 'failure',
+      actorUserId: user.id,
+      actorEmail: user.email,
+      ipAddress: actorIp(req),
+      details: { reason: 'account_locked' }
+    });
     throw new AuthenticationError('Account is temporarily locked due to too many failed login attempts');
   }
 
@@ -62,11 +80,27 @@ export const login = asyncHandler(async (req: Request<object, LoginResponse, Log
   if (!isValidPassword) {
     // Update failed login attempts
     await authService.updateLoginAttempts(user.id, false);
+    await auditService.record({
+      action: 'auth.login',
+      outcome: 'failure',
+      actorUserId: user.id,
+      actorEmail: user.email,
+      ipAddress: actorIp(req),
+      details: { reason: 'bad_password' }
+    });
     throw new AuthenticationError('Invalid email or password');
   }
 
   // Reset failed login attempts and update last login
   await authService.updateLoginAttempts(user.id, true);
+
+  await auditService.record({
+    action: 'auth.login',
+    outcome: 'success',
+    actorUserId: user.id,
+    actorEmail: user.email,
+    ipAddress: actorIp(req)
+  });
 
   // Check if email verification is required
   const requireEmailVerification = await authService.isEmailVerificationRequired();
@@ -117,6 +151,16 @@ export const register = asyncHandler(async (req: Request<object, RegisterRespons
     password_hash: hashedPassword,
     role: 'user',
     email_verified: 0
+  });
+
+  await auditService.record({
+    action: 'auth.register',
+    outcome: 'success',
+    actorUserId: userId,
+    actorEmail: email,
+    targetType: 'user',
+    targetId: userId,
+    ipAddress: actorIp(req)
   });
 
   res.status(201).json({
@@ -193,6 +237,16 @@ export const resetPassword = asyncHandler(async (req: Request, res: Response): P
   // Update user password using service (this also resets failed login attempts)
   await authService.updateUserPassword(user.id, hashedPassword);
   await authService.updateLoginAttempts(user.id, true); // Reset failed attempts
+
+  await auditService.record({
+    action: 'auth.password_reset',
+    outcome: 'success',
+    actorUserId: user.id,
+    actorEmail: user.email,
+    targetType: 'user',
+    targetId: user.id,
+    ipAddress: actorIp(req)
+  });
 
   res.json({
     success: true,
@@ -387,6 +441,16 @@ export const changePassword = asyncHandler(async (req: Request, res: Response): 
 
   // Update password using service
   await authService.updateUserPassword(user.id, hashedPassword);
+
+  await auditService.record({
+    action: 'auth.password_change',
+    outcome: 'success',
+    actorUserId: user.id,
+    actorEmail: user.email,
+    targetType: 'user',
+    targetId: user.id,
+    ipAddress: actorIp(req)
+  });
 
   res.json({
     success: true,

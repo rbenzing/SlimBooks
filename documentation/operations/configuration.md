@@ -224,15 +224,43 @@ all present.
 The integration counts as configured when the secret and publishable keys are
 both present.
 
-## Backups and logging
+## Backups, audit trail and logging
 
 | Variable | Default | Read by | Notes |
 |---|---|---|---|
-| `BACKUP_ENABLED` | `false` | legacy | |
-| `BACKUP_SCHEDULE` | `0 2 * * *` | legacy | **Quote it.** `scripts/deploy.sh` sources `.env`, and unquoted the shell reads the spaces as a command. |
-| `BACKUP_RETENTION` | `30` | legacy | Days. |
-| `BACKUP_DIR` | `./data/backups` | legacy | |
+| `BACKUP_ENABLED` | `false` | legacy | Switches on the scheduled backup job. |
+| `BACKUP_SCHEDULE` | `0 2 * * *` | legacy | **Quote it.** `scripts/deploy.sh` sources `.env`, and unquoted the shell reads the spaces as a command. Only the daily form `M H * * *` is honoured — see below. |
+| `BACKUP_RETENTION` | `30` | legacy | Days. `0` keeps everything. |
+| `BACKUP_DIR` | `./data/backups` | legacy | Created if absent. Files are written `0600`. |
+| `AUDIT_RETENTION_DAYS` | `365` | legacy | Days to keep audit records. `0` keeps everything. |
 | `LOG_LEVEL` | `debug` in development, `info` otherwise | legacy | |
+
+**These four backup variables did nothing before 2.6.0.** They were documented
+here and in `.env.example`, and the functions that read them had no callers, so
+`BACKUP_ENABLED=true` produced silence. If you set them on an earlier version,
+assume you have no backups from that period.
+
+A scheduled backup writes the dialect-neutral JSON dump — the same artifact
+`npm run db:export` produces — restorable with `npm run db:import`. That is what
+makes it work under `DB_DRIVER=mysql`, where there is no SQLite file to copy.
+See [ADR-0021](../adr/0021-scheduled-backups-use-the-portable-dump.md) and the
+[backup runbook](backup-and-restore.md).
+
+Pruning runs only after a backup succeeds, so a failing run cannot delete the
+last good one. The dump contains every password hash and stored credential, so
+the directory deserves the same protection as the database itself.
+
+**On `BACKUP_SCHEDULE`:** the scheduler is interval-based
+([ADR-0006](../adr/0006-in-process-scheduler.md)), not cron. A daily expression
+(`0 2 * * *`) is honoured; anything more elaborate falls back to 02:00 rather
+than being silently reinterpreted. Because the tick is hourly by default, the
+backup runs on the first tick after the scheduled time, not exactly at it.
+
+**On the audit trail:** logins (including failures), password changes, user and
+role changes, settings writes, and database export/import are recorded to the
+`audit_log` table, readable by an administrator at `GET /api/audit`. Records
+carry the source IP, which is why retention has a default rather than being
+unbounded. See [ADR-0020](../adr/0020-audit-trail.md).
 
 ## Development helpers
 

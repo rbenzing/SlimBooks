@@ -23,6 +23,45 @@ Keep `.env` somewhere safe too. It is not data, but losing the three signing
 secrets invalidates every session, and losing SMTP or Stripe credentials means
 reissuing them.
 
+## Scheduled backups
+
+Set `BACKUP_ENABLED=true`. The scheduler then writes a dump to `BACKUP_DIR`
+(default `./data/backups`) once a day, keeps `BACKUP_RETENTION` days of them,
+and deletes older ones **only after a new one has been written successfully** —
+a failing run cannot eat the last good copy.
+
+| Variable | Default | What it does |
+|---|---|---|
+| `BACKUP_ENABLED` | `false` | Switches the job on |
+| `BACKUP_SCHEDULE` | `0 2 * * *` | Daily time. Only `M H * * *` is honoured; see below |
+| `BACKUP_RETENTION` | `30` | Days to keep. `0` keeps everything |
+| `BACKUP_DIR` | `./data/backups` | Created if absent |
+
+The artifact is the dialect-neutral JSON dump described under *Moving between
+backends* below — the same thing `npm run db:export` writes — so **scheduled
+backups work under `DB_DRIVER=mysql` as well as SQLite**, and restoring one is
+just `npm run db:import`. Files are written `0600`, because a dump contains
+every password hash, the Stripe secret key and the SMTP password.
+
+A scheduled backup captures the database only. Under `STORAGE_DRIVER=disk`,
+`UPLOAD_DIR` is still yours to back up; under `STORAGE_DRIVER=database` the
+logos are inside the dump already.
+
+> **These variables did nothing before 2.6.0.** They were documented, and the
+> code that read them had no callers. If you set `BACKUP_ENABLED=true` on an
+> earlier version, you have no backups from that period — check `BACKUP_DIR`
+> before assuming otherwise.
+
+**On the schedule.** The scheduler runs on an interval rather than cron
+([ADR-0006](../adr/0006-in-process-scheduler.md)), so a daily expression is
+honoured and anything more elaborate falls back to 02:00 rather than being
+silently reinterpreted. The backup runs on the first tick after the scheduled
+time — hourly ticks by default — not exactly at it.
+
+**Test a restore.** Nothing here verifies that a backup is restorable, and a
+backup nobody has restored is a hypothesis. Periodically import one into a
+throwaway database and log in against it.
+
 ## Backing up SQLite
 
 **Do not `cp` a running database.** SQLite in WAL mode keeps recent writes in a

@@ -6,6 +6,7 @@ import { join } from 'node:path';
 import multer from 'multer';
 import { closeDatabase, initializeDatabase } from '../database/index.js';
 import { databaseService } from '../core/DatabaseService.js';
+import { auditService, actorIp } from '../services/AuditService.js';
 import type { Runtime } from '../runtime/types.js';
 
 /**
@@ -95,6 +96,18 @@ export const exportDatabase = async (req: Request, res: Response): Promise<void>
     } catch (checkpointError) {
       console.warn('WAL checkpoint failed, continuing with export:', checkpointError);
     }
+
+    // Recorded before the stream rather than after: a download that fails
+    // halfway still means the file left the building, and this is the single
+    // most sensitive read in the application — it carries every hash and
+    // credential in the install.
+    await auditService.record({
+      action: 'database.export',
+      outcome: 'success',
+      actorUserId: req.user?.id ?? null,
+      actorEmail: req.user?.email ?? null,
+      ipAddress: actorIp(req)
+    });
 
     // Set headers for file download
     res.setHeader('Content-Type', 'application/octet-stream');
@@ -201,6 +214,19 @@ export const importDatabase = [
 
         // Clean up uploaded file
         unlinkSync(uploadedFilePath);
+
+        // Written after the swap and reconnect, deliberately. Recorded before,
+        // it would land in the database this request is about to overwrite and
+        // vanish with it; recorded here it lands in the database the install
+        // actually carries forward, which is the one anyone will later read.
+        await auditService.record({
+          action: 'database.import',
+          outcome: 'success',
+          actorUserId: req.user?.id ?? null,
+          actorEmail: req.user?.email ?? null,
+          ipAddress: actorIp(req),
+          details: { uploadedFilename: req.file.originalname }
+        });
 
         res.json({
           success: true,

@@ -4,10 +4,9 @@
 
 | Version | Supported |
 |---|---|
-| 2.2.x | Yes |
-| 2.1.x | Security fixes only |
-| 2.0.x | No |
-| < 2.0 | No |
+| 2.5.x | Yes |
+| 2.4.x | Security fixes only |
+| ≤ 2.3.x | No |
 
 Slimbooks is self-hosted, so "supported" means fixes are published — applying
 them is the operator's job.

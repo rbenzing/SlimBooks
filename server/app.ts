@@ -173,23 +173,72 @@ export const startServer = async (runtime: Runtime) => {
   // process.env appears here rather than inside the scheduler because
   // startServer sits above the runtime boundary; the scheduler itself only ever
   // receives resolved values.
-  const scheduler = createRuntimeScheduler(database, runtime.features.scheduler, process.env, {
-    name: 'recurring-invoices',
-    run: async () => {
-      const { recurringInvoiceProcessorService } = await import(
-        './services/RecurringInvoiceProcessorService.js'
-      );
+  const scheduler = createRuntimeScheduler(database, runtime.features.scheduler, process.env, [
+    {
+      name: 'recurring-invoices',
+      run: async () => {
+        const { recurringInvoiceProcessorService } = await import(
+          './services/RecurringInvoiceProcessorService.js'
+        );
 
-      const result = await recurringInvoiceProcessorService.processAllDueTemplates();
+        const result = await recurringInvoiceProcessorService.processAllDueTemplates();
 
-      if (result.created > 0 || result.errors.length > 0) {
+        if (result.created > 0 || result.errors.length > 0) {
+          console.log(
+            `Recurring invoices: ${result.created} created, ` +
+              `${result.skipped} already billed, ${result.errors.length} failed`
+          );
+        }
+      }
+    },
+    {
+      // Registered unconditionally; the job itself is a no-op when
+      // BACKUP_ENABLED is not set. Keeping the decision inside the job means the
+      // lease and the tick behave identically either way.
+      name: 'database-backup',
+      run: async () => {
+        const { getBackupConfig } = await import('./database/config/sqlite.config.js');
+        const config = getBackupConfig(runtime.paths.dataDir);
+
+        if (!config.enabled) return;
+
+        const { backupService, parseDailySchedule } = await import('./services/BackupService.js');
+        const { hour, minute } = parseDailySchedule(config.schedule);
+        const settings = {
+          directory: config.directory,
+          retentionDays: config.retention,
+          hour,
+          minute
+        };
+
+        if (!(await backupService.isDue(settings))) return;
+
+        const result = await backupService.run(database, settings);
+
         console.log(
-          `Recurring invoices: ${result.created} created, ` +
-            `${result.skipped} already billed, ${result.errors.length} failed`
+          `Backup: ${result.rows} row(s) across ${result.tables} table(s), ` +
+            `${Math.round(result.bytes / 1024)} KB → ${result.path}`
         );
       }
+    },
+    {
+      // Retention for the audit trail. An assessor wants records kept long
+      // enough to investigate; GDPR wants the IP addresses in them not kept
+      // forever. Both are the same knob.
+      name: 'audit-retention',
+      run: async () => {
+        const days = Number(process.env.AUDIT_RETENTION_DAYS ?? '365');
+        if (!Number.isFinite(days) || days <= 0) return;
+
+        const { auditService } = await import('./services/AuditService.js');
+        const removed = await auditService.prune(days);
+
+        if (removed > 0) {
+          console.log(`Audit retention: removed ${removed} record(s) older than ${days} days`);
+        }
+      }
     }
-  });
+  ]);
 
   scheduler?.start();
   healthLogger();

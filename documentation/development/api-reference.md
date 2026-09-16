@@ -83,13 +83,23 @@ anywhere, so it cannot know its host's capabilities until it asks.
 | Method | Path | Auth | Purpose |
 |---|---|---|---|
 | POST | `/api/auth/login` | — | Sign in. Returns the user and a token. |
-| POST | `/api/auth/register` | — | Create an account |
+| POST | `/api/auth/register` | — | Create an account. **Not mounted when `FEATURE_SIGNUP=off`.** |
 | POST | `/api/auth/reset-password` | — | Complete a password reset |
 | POST | `/api/auth/verify-email` | — | Complete email verification |
-| POST | `/api/auth/refresh-token` | — | Exchange a refresh token |
+| POST | `/api/auth/refresh-token` | — | Exchange an expired-but-valid token for a fresh one |
 | GET | `/api/auth/profile` | Auth | The signed-in user |
 | PUT | `/api/auth/profile` | Auth | Update own profile |
 | POST | `/api/auth/change-password` | Auth | Change own password |
+
+Every unauthenticated route above is covered by the login rate limiter, not
+just `/login`.
+
+> **`POST /api/auth/refresh-token` verifies the signature.** Before 2.6.0 it
+> called `jwt.decode()`, which parses a payload without checking anything, so a
+> token assembled by hand claiming `userId: 1` was answered with a genuinely
+> signed administrator session. It now verifies with `ignoreExpiration`, which
+> keeps the property the endpoint exists for — an expired token is still proof
+> the holder once authenticated — while rejecting a forged one.
 
 ## Users — `/api/users`
 
@@ -100,29 +110,30 @@ Administrative. Most routes require admin.
 | GET | `/api/users/admin-exists` | — | Whether an administrator has been configured yet |
 | GET | `/api/users` | Admin | List |
 | GET | `/api/users/:id` | Admin | One user |
-| GET | `/api/users/email/:email` | Admin\* | Look up by email |
+| GET | `/api/users/email/:email` | Admin | Look up by email |
 | POST | `/api/users` | Admin | Create |
 | PUT | `/api/users/:id` | Admin | Update name, email, username or role |
 | DELETE | `/api/users/:id` | Admin | Delete |
 | POST | `/api/users/:id/password` | Admin | Set another user's password |
 | POST | `/api/users/:id/unlock` | Admin | Clear an account lockout |
-| POST | `/api/users/update-login-attempts` | — | Record a failed/successful attempt (internal) |
-| POST | `/api/users/update-last-login` | — | Record last login (internal) |
-| PUT | `/api/users/:id/login-attempts` | — | Set login attempts by id (used during sign-in) |
-| PUT | `/api/users/:id/last-login` | — | Set last login by id (used during sign-in) |
 | PUT | `/api/users/:id/verify-email` | Admin | Mark email verified |
 
 `GET /api/users/admin-exists` is public so the SPA can decide whether to offer
-first-run setup.
+first-run setup. It answers with booleans only.
 
-> **\*`GET /api/users/email/:email` is unauthenticated for one address.** A
-> request for `admin@slimbooks.app` is answered without a token, for the same
-> first-run check, and the handler returns the row `SELECT *` produced —
-> `password_hash` included. Every other address requires auth and admin.
-
-> **The four login-bookkeeping routes carry no `requireAuth`.** They exist so
-> the login flow can record an attempt or a lockout before a session exists,
-> and are not gated behind admin the way the rest of this section is.
+> **Removed in 2.6.0, and not replaced.** `GET /api/users/email/:email` used to
+> answer without a token for `admin@slimbooks.app`, returning the `SELECT *` row
+> — `password_hash`, `two_factor_secret` and `backup_codes` included — to any
+> caller. It is admin-only now; the first-run question it served is answered by
+> `GET /api/setup/status`, which discloses nothing.
+>
+> Four login-bookkeeping routes (`POST /api/users/update-login-attempts`,
+> `POST /api/users/update-last-login`, `PUT /api/users/:id/login-attempts`,
+> `PUT /api/users/:id/last-login`) are also gone. They carried no
+> authentication, so anyone could clear any account's lockout and make the
+> brute-force protection decorative, or forge login history. They had no caller
+> in the server or the SPA — the login flow writes those columns through
+> `UserService` directly.
 
 > `DELETE /api/users/:id` and `PUT /api/users/:id` return **409** when the
 > change would leave the install with no administrator. The response carries
@@ -377,12 +388,43 @@ Subscribe the endpoint to `checkout.session.completed` and
 
 | Method | Path | Auth | Purpose |
 |---|---|---|---|
-| GET | `/api/db/export` | Auth | Download a backup |
-| POST | `/api/db/import` | Auth | Restore from a backup |
+| GET | `/api/db/export` | Admin | Download a backup |
+| POST | `/api/db/import` | Admin | Restore from a backup |
+
+Both require admin as of 2.6.0. They were `requireAuth` only, which meant any
+account could download every bcrypt hash and stored credential in the install,
+or replace the database with one in which they were the administrator.
+
+Both are recorded in the [audit trail](#audit-trail--apiaudit).
 
 For moving between backends, prefer the CLI tools — `npm run db:export` and
 `npm run db:import` — which produce a dialect-neutral dump. See
 [backup and restore](../operations/backup-and-restore.md).
+
+## Audit trail — `/api/audit`
+
+| Method | Path | Auth | Purpose |
+|---|---|---|---|
+| GET | `/api/audit` | Admin | Read security events, newest first |
+
+Query parameters: `action`, `actorUserId`, `limit` (default 50, capped at 200),
+`offset`.
+
+Read-only by design. There is no endpoint that writes or deletes a record —
+entries are written by the server as a side effect of the action they describe,
+and removal happens only through the retention prune governed by
+`AUDIT_RETENTION_DAYS`. An API that could delete an audit record would undo the
+point of keeping one.
+
+Recorded actions: `auth.login`, `auth.register`, `auth.password_change`,
+`auth.password_reset`, `user.create`, `user.update`, `user.role_change`,
+`user.delete`, `user.unlock`, `settings.update`, `database.export`,
+`database.import`, `setup.complete`.
+
+Each record carries the actor (by id *and* by the email as it read at the time,
+so it survives deletion of the account), the outcome, the target, the source IP,
+and an action-specific JSON `details` payload. Settings changes record the key
+that changed, never the value.
 
 ## Cron — `/api/cron`
 

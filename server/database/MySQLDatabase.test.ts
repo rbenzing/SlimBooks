@@ -188,7 +188,12 @@ suite('MySQLDatabase', () => {
   it('reports SQLite-only operations as unavailable rather than silently doing nothing', async () => {
     // A silent no-op would let the admin UI report a successful backup that
     // produced no file.
-    expect(() => db.backup('/tmp/x.db')).toThrow(/mysqldump|db:export/);
+    //
+    // `backup` is async (better-sqlite3's returns a promise, and the SQLite
+    // implementation has to await it to catch a failure), so this rejects
+    // rather than throws. The await matters: an unawaited rejects assertion
+    // passes whether or not the call refuses.
+    await expect(db.backup('/tmp/x.db')).rejects.toThrow(/mysqldump|db:export/);
     expect(() => db.vacuum()).toThrow(/InnoDB/);
     expect(() => db.pragma('journal_mode')).toThrow(/PRAGMA/);
   });

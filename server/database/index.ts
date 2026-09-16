@@ -205,9 +205,9 @@ export const checkDatabaseHealth = () => {
 /**
  * Create a database backup
  */
-export const backupDatabase = (backupPath: string): void => {
+export const backupDatabase = async (backupPath: string): Promise<void> => {
   try {
-    db.backup(backupPath);
+    await db.backup(backupPath);
     console.log(`✓ Database backup created: ${backupPath}`);
   } catch (error) {
     console.error('❌ Database backup failed:', error);

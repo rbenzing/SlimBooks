@@ -223,11 +223,11 @@ export const createRuntimeScheduler = (
   db: IDatabase,
   enabled: boolean,
   env: RawEnv,
-  job: SchedulerJob
+  jobs: SchedulerJob | SchedulerJob[]
 ): Scheduler | null => {
   if (!enabled) return null;
 
-  return createScheduler(db, [job], {
+  return createScheduler(db, Array.isArray(jobs) ? jobs : [jobs], {
     intervalMs: readInt(env, 'SCHEDULER_INTERVAL_MS', 3_600_000),
     leaseTtlMs: readInt(env, 'SCHEDULER_LEASE_TTL_MS', 3_600_000),
     // A delay before the first run keeps simultaneous restarts from stampeding.

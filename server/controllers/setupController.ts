@@ -10,6 +10,7 @@ import { userService } from '../services/UserService.js';
 import { asyncHandler, generateToken, ValidationError } from '../middleware/index.js';
 import { utcNow } from '../utils/utcTime.util.js';
 import { settingsService } from '../services/SettingsService.js';
+import { auditService, actorIp } from '../services/AuditService.js';
 import { validatePasswordAgainstPolicy } from '../shared/passwordPolicy.util.js';
 
 /** Thrown when a concurrent request already claimed the first-admin slot. */
@@ -175,6 +176,19 @@ export const completeSetup = asyncHandler(async (req: Request, res: Response): P
   }
 
   const token = generateToken(user);
+
+  // The first record in the trail, and the only one whose actor created
+  // themselves. Every later question about administrative authority traces back
+  // to this row.
+  await auditService.record({
+    action: 'setup.complete',
+    outcome: 'success',
+    actorUserId: user.id,
+    actorEmail: user.email,
+    targetType: 'user',
+    targetId: user.id,
+    ipAddress: actorIp(req)
+  });
 
   res.status(201).json({
     success: true,

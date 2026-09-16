@@ -375,6 +375,41 @@ const storedObjectsSchema: TableSchema = {
   ]
 };
 
+/**
+ * Security-relevant events, for incident reconstruction (SOC 2 CC7.2/CC7.3).
+ *
+ * Deliberately not a foreign key to `users`. An audit record has to outlive the
+ * account it describes — "who deleted this administrator" is exactly the
+ * question asked after the administrator is gone — so the actor is recorded by
+ * id *and* by the email as it read at the time. A CASCADE here would erase the
+ * evidence along with the user, and a RESTRICT would block the deletion the
+ * record exists to document.
+ *
+ * `details` is JSON text rather than columns because the interesting payload
+ * differs per action (which role changed, which setting key), and widening the
+ * table for each new action is how audit schemas rot.
+ */
+const auditLogSchema: TableSchema = {
+  name: 'audit_log',
+  columns: [
+    { name: 'id', type: 'INTEGER', constraints: ['PRIMARY KEY', 'AUTOINCREMENT'] },
+    // Epoch milliseconds, per ADR-0009. Never a formatted string.
+    { name: 'occurred_at', type: 'TIMESTAMP', constraints: ['NOT NULL'] },
+    { name: 'action', type: 'TEXT', constraints: ['NOT NULL'] },
+    // 'success' | 'failure'. A failed login is the single most useful record
+    // here, so the outcome is a first-class column rather than buried in JSON.
+    { name: 'outcome', type: 'TEXT', constraints: ['NOT NULL'] },
+    // Null for an actor who never authenticated — a failed login against an
+    // address with no account still has to leave a trace.
+    { name: 'actor_user_id', type: 'INTEGER' },
+    { name: 'actor_email', type: 'TEXT' },
+    { name: 'target_type', type: 'TEXT' },
+    { name: 'target_id', type: 'TEXT' },
+    { name: 'ip_address', type: 'TEXT' },
+    { name: 'details', type: 'TEXT' }
+  ]
+};
+
 // Export all schemas — order respects foreign-key dependency graph
 export const tableSchemas: TableSchema[] = [
   usersSchema,
@@ -391,7 +426,8 @@ export const tableSchemas: TableSchema[] = [
   countersSchema,
   schedulerLeasesSchema,
   stripeEventsSchema,
-  storedObjectsSchema
+  storedObjectsSchema,
+  auditLogSchema
 ];
 
 /**
@@ -463,7 +499,12 @@ export const indexes = [
   // Unique, and partial: manual invoices carry no template and must not collide.
   `CREATE UNIQUE INDEX IF NOT EXISTS idx_invoices_recurring_period
      ON invoices (recurring_template_id, recurring_period_date)
-     WHERE recurring_template_id IS NOT NULL`
+     WHERE recurring_template_id IS NOT NULL`,
+  // The three questions an audit log is actually asked: what happened recently,
+  // what has this account done, and who has been failing to log in.
+  'CREATE INDEX IF NOT EXISTS idx_audit_log_occurred_at ON audit_log (occurred_at)',
+  'CREATE INDEX IF NOT EXISTS idx_audit_log_actor_user_id ON audit_log (actor_user_id)',
+  'CREATE INDEX IF NOT EXISTS idx_audit_log_action ON audit_log (action)'
 ];
 
 /**

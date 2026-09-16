@@ -17,6 +17,7 @@ import { up as migration013 } from './013_add_stored_objects.js';
 import { up as migration014 } from './014_normalize_timestamps.js';
 import { up as migration015 } from './015_epoch_timestamps.js';
 import { up as migration016 } from './016_backfill_issue_date.js';
+import { up as migration017 } from './017_add_audit_log.js';
 
 export interface Migration {
   id: string;
@@ -118,6 +119,11 @@ const migrations: Migration[] = [
     name: 'backfill_issue_date',
     up: migration016,
     repairsData: true
+  },
+  {
+    id: '017',
+    name: 'add_audit_log',
+    up: migration017
   }
 ];
 

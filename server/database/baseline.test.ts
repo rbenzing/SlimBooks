@@ -184,9 +184,13 @@ describe('buildMysqlBaseline', () => {
     // gets recorded — this stand-in's invoices table is always empty, so on a
     // freshly baselined database it is a no-op, and that no-op is asserted
     // below rather than merely assumed.
+    // 017 creates audit_log. Like the rest of the schema archaeology it is
+    // recorded without running: buildMysqlBaseline already built that table
+    // from tables.schema.ts, so replaying the migration's CREATE would be
+    // redundant.
     expect(fake.inserts.map(insert => insert.params[0])).toEqual([
       '001', '002', '003', '004', '006', '007', '008', '009', '010', '011', '012', '013',
-      '014', '015', '016'
+      '014', '015', '016', '017'
     ]);
 
     // 016's up() ran (it queried invoices for offenders), but there was

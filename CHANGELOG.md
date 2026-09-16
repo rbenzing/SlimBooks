@@ -12,6 +12,76 @@ Upgrade instructions live in
 
 ## [Unreleased]
 
+### Security
+
+These were found by an audit of the whole codebase and each was verified against
+a running server before and after the fix. **An install exposed to an untrusted
+network should upgrade.**
+
+- **Anyone could mint an administrator session.** `POST /api/auth/refresh-token`
+  is unauthenticated by design — an expired token is the credential — but it
+  called `jwt.decode()`, which parses a payload without verifying the signature.
+  A token assembled by hand claiming `userId: 1` was answered with a genuinely
+  signed administrator token. It now verifies the signature.
+- **Any signed-in account could download or replace the entire database.**
+  `/api/db/export` and `/api/db/import` required only a session, not admin.
+  Export returns every password hash and stored credential; import replaces the
+  database, so a low-privilege user could upload one in which they were the
+  administrator. Both now require admin.
+- **Any signed-in account could read stored credentials in plaintext.**
+  `GET /api/settings` and `GET /api/settings/:key` returned the raw value, so
+  the Stripe secret key, webhook secret and SMTP password were readable by any
+  user, bypassing the redaction the project-settings endpoint does deliberately.
+  Credentials now read back as null. Writing them still requires admin, as before.
+- **Anyone could clear any account's lockout.** Four user endpoints
+  (`update-login-attempts`, `update-last-login` and their by-id forms) carried
+  no authentication, which made the brute-force protection decorative and let
+  login history be forged. They had no caller and are removed.
+- **Anyone could read the administrator's password hash.**
+  `GET /api/users/email/admin@slimbooks.app` was answered without a token and
+  returned the full row — `password_hash`, `two_factor_secret` and
+  `backup_codes` included. The route is now admin-only. **If your administrator
+  account uses that address and the server was reachable by anyone else, rotate
+  that password.**
+- **The published default signing secret could not be caught.** `validateConfig`
+  collected the offending variable and then filtered its own list by "is the
+  variable absent", so a secret explicitly set to the placeholder published in
+  this repository passed the check that existed to catch it. It also only ran
+  under `NODE_ENV=production`, while `.env.example` ships `development`. It now
+  compares the resolved value and refuses to start in every environment.
+- Account lockout is now actually enforced. `getUserById` did not select
+  `account_locked_until`, so every lockout check in the codebase read
+  `undefined` and did nothing.
+- The login rate limiter now covers registration, password reset, email
+  verification and token refresh, not only `/login`.
+
+### Added
+
+- **An audit trail.** Logins (including failures), password changes, user and
+  role changes, settings writes, database export/import and setup completion are
+  recorded to a new `audit_log` table and readable by an administrator at
+  `GET /api/audit`. Records carry the actor, outcome, target, source IP and a
+  per-action payload. Settings changes record the key that changed, never the
+  value. Retention is governed by the new `AUDIT_RETENTION_DAYS` (default 365).
+  See ADR-0020.
+- **Scheduled backups that actually run.** `BACKUP_ENABLED`, `BACKUP_SCHEDULE`,
+  `BACKUP_RETENTION` and `BACKUP_DIR` were documented and wired to nothing — the
+  functions reading them had no callers. The scheduler now writes a
+  dialect-neutral JSON dump, which is why this works under `DB_DRIVER=mysql`
+  too, restorable with `npm run db:import`. Files are written `0600`; pruning
+  runs only after a successful write. See ADR-0021.
+- Registration can be switched off. `FEATURE_SIGNUP` already existed with full
+  tri-state resolution and had no consumer, so an operator who set
+  `FEATURE_SIGNUP=off` still had an open registration form.
+
+### Fixed
+
+- **A failed backup reported success and then killed the process.**
+  `SQLiteDatabase.backup()` was declared `void` and never awaited the promise
+  better-sqlite3 returns, so it logged `✓ Database backed up` before the copy
+  happened and its `try/catch` could not see the rejection. `IDatabase.backup`
+  now returns a promise.
+
 ## [2.5.0] — 2026-09-09
 
 ### Added

@@ -6,6 +6,7 @@ import {
   type Response 
 } from 'express';
 import { settingsService, isSecretSettingKey } from '../services/SettingsService.js';
+import { auditService, actorIp } from '../services/AuditService.js';
 import {
   NotFoundError, 
   ValidationError,
@@ -79,6 +80,21 @@ export const saveSetting = asyncHandler(async (req: Request<object, object, Indi
   
   try {
     await settingsService.saveSetting(key, value, category);
+
+    // The key, never the value: settings carry the Stripe secret and the SMTP
+    // password, and an audit log that quietly accumulates credentials is a
+    // second copy of exactly what it exists to protect.
+    await auditService.record({
+      action: 'settings.update',
+      outcome: 'success',
+      actorUserId: req.user?.id ?? null,
+      actorEmail: req.user?.email ?? null,
+      targetType: 'setting',
+      targetId: key,
+      ipAddress: actorIp(req),
+      details: { category, isSecret: isSecretSettingKey(key) }
+    });
+
     res.json({ success: true, message: 'Setting saved successfully' });
   } catch (error) {
     const errorMessage = (error as Error).message;
@@ -113,6 +129,18 @@ export const saveMultipleSettings = asyncHandler(async (req: Request<object, obj
 
   try {
     await settingsService.saveMultipleSettings(settings);
+
+    await auditService.record({
+      action: 'settings.update',
+      outcome: 'success',
+      actorUserId: req.user?.id ?? null,
+      actorEmail: req.user?.email ?? null,
+      targetType: 'setting',
+      ipAddress: actorIp(req),
+      // Keys only, for the reason given on the single-setting path above.
+      details: { keys: Object.keys(settings) }
+    });
+
     res.json({ success: true, message: 'Settings saved successfully' });
   } catch (error) {
     const errorMessage = (error as Error).message;

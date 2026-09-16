@@ -242,7 +242,7 @@ export class MySQLDatabase implements IDatabase {
    * UI report a successful backup that produced no file, which is worse than
    * an error an operator can read.
    */
-  backup(_path: string): void {
+  async backup(_path: string): Promise<void> {
     throw new Error(
       'Backup is not available on the MySQL driver. Use mysqldump, or npm run db:export.'
     );

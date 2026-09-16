@@ -5,6 +5,7 @@ import { type Request, type Response } from 'express';
 import bcrypt from 'bcryptjs';
 import { userService } from '../services/UserService.js';
 import { authService } from '../services/AuthService.js';
+import { auditService, actorIp } from '../services/AuditService.js';
 import { authConfig } from '../config/index.js';
 import {
   NotFoundError,
@@ -117,8 +118,19 @@ export const createUser = asyncHandler(async (req: Request<object, object, Creat
   try {
     const userId = await userService.createUser(created);
 
+    await auditService.record({
+      action: 'user.create',
+      outcome: 'success',
+      actorUserId: req.user?.id ?? null,
+      actorEmail: req.user?.email ?? null,
+      targetType: 'user',
+      targetId: userId,
+      ipAddress: actorIp(req),
+      details: { email: created.email, role: created.role ?? 'user' }
+    });
+
     res.status(201).json({
-      success: true, 
+      success: true,
       data: { id: userId },
       message: 'User created successfully'
     });
@@ -207,6 +219,23 @@ export const updateUser = asyncHandler(async (req: Request<{id: string}, UpdateU
     return;
   }
 
+  // A role change is its own action. Buried inside a generic "user.update" it
+  // is invisible in a query, and privilege change is the first thing anyone
+  // looks for after an incident.
+  await auditService.record({
+    action: convertedUserData.role === undefined ? 'user.update' : 'user.role_change',
+    outcome: 'success',
+    actorUserId: req.user?.id ?? null,
+    actorEmail: req.user?.email ?? null,
+    targetType: 'user',
+    targetId: userId,
+    ipAddress: actorIp(req),
+    details: {
+      fields: Object.keys(convertedUserData),
+      ...(convertedUserData.role === undefined ? {} : { newRole: convertedUserData.role })
+    }
+  });
+
   res.json({
     success: true,
     message: 'User updated successfully'
@@ -244,6 +273,16 @@ export const deleteUser = asyncHandler(async (req: Request, res: Response): Prom
     });
     return;
   }
+
+  await auditService.record({
+    action: 'user.delete',
+    outcome: 'success',
+    actorUserId: req.user?.id ?? null,
+    actorEmail: req.user?.email ?? null,
+    targetType: 'user',
+    targetId: userId,
+    ipAddress: actorIp(req)
+  });
 
   res.json({ success: true, message: 'User deleted successfully' });
 });
@@ -331,6 +370,16 @@ export const unlockUserAccount = asyncHandler(async (
   if (!unlocked) {
     throw new NotFoundError('User');
   }
+
+  await auditService.record({
+    action: 'user.unlock',
+    outcome: 'success',
+    actorUserId: req.user?.id ?? null,
+    actorEmail: req.user?.email ?? null,
+    targetType: 'user',
+    targetId: userId,
+    ipAddress: actorIp(req)
+  });
 
   res.json({ success: true, message: 'Account unlocked' });
 });

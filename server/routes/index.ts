@@ -20,6 +20,7 @@ import cronRoutes from './cronRoutes.js';
 import templateRoutes from './templateRoutes.js';
 import recurringInvoiceTemplateRoutes from './recurringInvoiceTemplateRoutes.js';
 import databaseRoutes from './databaseRoutes.js';
+import auditRoutes from './auditRoutes.js';
 import stripeRoutes from './stripeRoutes.js';
 import emailRoutes from './emailRoutes.js';
 import { requireAuth, requireAdmin } from '../middleware/index.js';
@@ -60,6 +61,7 @@ export const createRoutes = (runtime: Runtime): Router => {
   router.use('/api/templates', templateRoutes);
   router.use('/api/recurring-templates', recurringInvoiceTemplateRoutes);
   router.use('/api/db', databaseRoutes);
+  router.use('/api/audit', auditRoutes);
   // The Stripe webhook receiver is not mounted here - it needs the raw request
   // body, so app.ts mounts it ahead of the body parsers.
   router.use('/api/stripe', stripeRoutes);

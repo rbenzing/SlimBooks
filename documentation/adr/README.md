@@ -53,6 +53,8 @@ Consequences  What follows — good, bad, and the rules everyone now has to foll
 | [0017](0017-last-admin-invariant.md) | The last-administrator invariant lives in the statement, not around it | Accepted |
 | [0018](0018-setup-wizard-replaces-seeded-admin.md) | The first administrator comes from an interactive wizard, not `ADMIN_PASSWORD` | Accepted |
 | [0019](0019-single-currency-per-install.md) | Slimbooks is single-currency per install | Accepted |
+| [0020](0020-audit-trail.md) | The audit trail is a database table with no foreign key | Accepted |
+| [0021](0021-scheduled-backups-use-the-portable-dump.md) | Scheduled backups produce the portable dump, not a file copy | Accepted |
 
 ## Adding one
 

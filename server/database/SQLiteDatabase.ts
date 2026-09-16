@@ -251,11 +251,16 @@ export class SQLiteDatabase implements IDatabase {
   /**
    * Create a database backup
    */
-  backup(path: string): void {
+  async backup(path: string): Promise<void> {
     this.ensureConnected();
-    
+
     try {
-      this.db!.backup(path);
+      // better-sqlite3's backup() returns a promise. This used to be declared
+      // `void` and never awaited, so the success line printed before the copy
+      // had happened and the try/catch could not see a rejection — a backup
+      // that failed on a full disk logged "✓ Database backed up" and then took
+      // the process down through the unhandled-rejection handler.
+      await this.db!.backup(path);
       console.log(`✓ Database backed up to: ${path}`);
     } catch (error) {
       throw new Error(`Database backup failed: ${(error as Error).message}`);

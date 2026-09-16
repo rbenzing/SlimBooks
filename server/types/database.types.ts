@@ -94,7 +94,7 @@ export interface IDatabase {
   tableExists(tableName: string): Promise<boolean>;
 
   // Utility operations — not query paths, so these stay synchronous
-  backup(path: string): void;
+  backup(path: string): Promise<void>;
   vacuum(): void;
   pragma(setting: string, value?: string | number): unknown;
 }

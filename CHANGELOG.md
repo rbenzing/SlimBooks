@@ -116,6 +116,19 @@ network should upgrade.**
   SQLite recovering. The browser is now closed by the one shutdown path.
 - Shutdown steps are guarded individually. Under a single `try`, a scheduler
   that failed to stop skipped the WAL checkpoint that came after it.
+- **Recurring invoices charged tax and shipping twice.** The template editor
+  saves a template's `amount` as the gross total — tax and shipping already
+  included, since that table has no separate total column — while the processor
+  that generates invoices from it computed
+  `amount + tax_amount + shipping_amount` again. A template built as 1,100
+  generated an invoice for 1,200, unattended, every cycle, from 2.2.0 onward.
+  The generated invoice now bills the template's total exactly, and its `amount`
+  is the subtotal, matching what `invoices.amount` means everywhere else.
+
+  **Invoices already generated are not altered.** If you bill by recurring
+  template, check invoices raised since 2.2.0 against what their template says:
+  `total_amount` should equal the template's `amount`, and anything larger was
+  overstated by its tax plus shipping.
 - **Editing a client silently discarded `tax_id` and `notes`.** Both are real
   columns, `createClient` writes them, and the update validation checks their
   length — but the UPDATE whitelist left them out, so the API accepted the

@@ -67,7 +67,8 @@ describe('createInvoiceFromTemplate', () => {
     const { valueOf } = invoiceInsert();
     expect(valueOf('client_id')).toBe(3);
     expect(valueOf('recurring_template_id')).toBe(5);
-    expect(valueOf('amount')).toBe(1000);
+    // The fixture template bills 1000 gross, of which 80 is tax and 20 shipping.
+    expect(valueOf('amount')).toBe(900);
     expect(valueOf('tax_amount')).toBe(80);
     expect(valueOf('shipping_amount')).toBe(20);
     expect(valueOf('description')).toBe('Retainer');
@@ -96,10 +97,53 @@ describe('createInvoiceFromTemplate', () => {
     expect(columns).not.toContain('design_template_id');
   });
 
-  it('totals amount plus tax plus shipping', async () => {
+  /**
+   * The template's `amount` is the gross total; the invoice's `amount` is the
+   * subtotal. Two fields, one name, opposite meanings.
+   *
+   * This test used to assert `total_amount` was 1100 for a template billing
+   * 1000 — it was asserting the defect. The template editor writes
+   * `amount: total`, so adding tax and shipping again charged both twice: a
+   * template the user built as 1,100 generated an invoice for 1,200, unattended,
+   * every cycle. A passing suite is exactly how it survived.
+   */
+  it('bills the template total and no more', async () => {
     await processor.processSingleTemplate(5);
 
-    expect(invoiceInsert().valueOf('total_amount')).toBe(1100);
+    expect(invoiceInsert().valueOf('total_amount')).toBe(1000);
+  });
+
+  it('never charges tax or shipping twice', async () => {
+    await processor.processSingleTemplate(5);
+
+    const { valueOf } = invoiceInsert();
+    const subtotal = valueOf('amount') as number;
+    const tax = valueOf('tax_amount') as number;
+    const shipping = valueOf('shipping_amount') as number;
+
+    expect(subtotal + tax + shipping).toBe(valueOf('total_amount'));
+  });
+
+  it('bills a template with no tax or shipping at its face value', async () => {
+    db.getOne.mockReturnValue(template({ tax_amount: 0, shipping_amount: 0 }));
+
+    await processor.processSingleTemplate(5);
+
+    const { valueOf } = invoiceInsert();
+    expect(valueOf('amount')).toBe(1000);
+    expect(valueOf('total_amount')).toBe(1000);
+  });
+
+  it('treats a null tax or shipping amount as zero rather than NaN', async () => {
+    // Both columns are DEFAULT 0, but a row written through the API directly
+    // can hold null — and `1000 - null` is NaN, which would reach the invoice.
+    db.getOne.mockReturnValue(template({ tax_amount: null, shipping_amount: null }));
+
+    await processor.processSingleTemplate(5);
+
+    const { valueOf } = invoiceInsert();
+    expect(valueOf('amount')).toBe(1000);
+    expect(valueOf('total_amount')).toBe(1000);
   });
 
   it('binds one parameter per placeholder', async () => {

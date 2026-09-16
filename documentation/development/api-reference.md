@@ -233,6 +233,28 @@ use `is_active` rather than a status field.
 > silently hits an unrelated row
 > ([ADR-0014](../adr/0014-dual-type-declarations.md)).
 
+### `amount` means two different things
+
+**On a recurring template, `amount` is the gross total** — tax and shipping
+already included. The table has no `total_amount` column to hold it separately,
+and `tax_amount` and `shipping_amount` sit alongside as a breakdown of what is
+inside that figure, not as additions to it.
+
+**On an invoice, `amount` is the subtotal**, with `total_amount` carrying the
+gross. The processor converts between the two when it generates an invoice:
+
+```
+invoice.amount       = template.amount - template.tax_amount - template.shipping_amount
+invoice.total_amount = template.amount
+```
+
+> **Before 2.6.0 the processor added tax and shipping a second time**, so a
+> template billing 1,100 generated an invoice for 1,200 — unattended, every
+> cycle, since 2.2.0. Invoices already generated were left as they are; see the
+> CHANGELOG for how to identify them.
+
+If you write templates through this API, send the gross in `amount`.
+
 ## Design templates — `/api/templates`
 
 All require authentication. These are `invoice_design_templates` — the visual

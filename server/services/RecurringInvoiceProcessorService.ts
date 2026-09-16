@@ -167,14 +167,29 @@ export class RecurringInvoiceProcessorService {
     const issueDate: string = utcCalendarDay(new Date());
     const dueDate = this.calculateDueDate(issueDate, template.payment_terms);
 
+    // `recurring_invoice_templates.amount` is the GROSS total — tax and shipping
+    // already included. That is what the template editor has always written to
+    // it (`amount: total`), and the table has no separate total column to hold
+    // it instead. `invoices.amount` means the opposite: the subtotal, with
+    // `total_amount` alongside it.
+    //
+    // This line used to read `template.amount + tax + shipping`, adding both a
+    // second time. A template the user built as 1,100 generated an invoice for
+    // 1,200, silently, every cycle, from 2.2.0 until now. The two spellings of
+    // "amount" are the whole bug, so the conversion between them belongs here,
+    // named, rather than being assumed at either end.
+    const taxAmount = template.tax_amount ?? 0;
+    const shippingAmount = template.shipping_amount ?? 0;
+    const subtotal = template.amount - taxAmount - shippingAmount;
+
     return {
       invoice_number: invoiceNumber,
       client_id: template.client_id,
       recurring_template_id: template.id,
       recurring_period_date: periodDate,
-      amount: template.amount,
-      tax_amount: template.tax_amount,
-      total_amount: template.amount + template.tax_amount + template.shipping_amount,
+      amount: subtotal,
+      tax_amount: taxAmount,
+      total_amount: template.amount,
       status: 'draft',
       due_date: dueDate,
       issue_date: issueDate,
@@ -182,7 +197,7 @@ export class RecurringInvoiceProcessorService {
       line_items: template.line_items ?? null,
       notes: template.notes ?? null,
       payment_terms: template.payment_terms,
-      shipping_amount: template.shipping_amount,
+      shipping_amount: shippingAmount,
       tax_rate_id: template.tax_rate_id ?? null,
       shipping_rate_id: template.shipping_rate_id ?? null
     };

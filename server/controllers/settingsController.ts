@@ -5,7 +5,7 @@ import {
   type Request, 
   type Response 
 } from 'express';
-import { settingsService } from '../services/SettingsService.js';
+import { settingsService, isSecretSettingKey } from '../services/SettingsService.js';
 import {
   NotFoundError, 
   ValidationError,
@@ -18,13 +18,34 @@ import {
 } from '../types/api.types.js';
 
 /**
+ * What a credential reads back as over HTTP.
+ *
+ * `null` rather than a marker string on purpose: the settings UI posts back
+ * whatever it was handed, and `updateProjectSettings` already skips a secret
+ * whose submitted value is null/undefined/empty. A marker string would round-trip
+ * and overwrite the real credential with the marker.
+ */
+const REDACTED = null;
+
+/**
  * Get all settings or filter by category
  */
 export const getAllSettings = asyncHandler(async (req: Request, res: Response): Promise<void> => {
   const { category } = req.query;
-  
+
   const settings = await settingsService.getAllSettings(category as string);
-  res.json({ success: true, settings });
+
+  // Writing a credential requires admin, but reading is open to any signed-in
+  // account, so these two generic endpoints were handing every user the Stripe
+  // secret key and the SMTP password — straight past the redaction
+  // `getProjectSettings` does so carefully. Whether a credential is set is not
+  // itself a secret; its value is.
+  const redacted = Object.fromEntries(
+    Object.entries(settings as Record<string, unknown>)
+      .map(([key, value]) => [key, isSecretSettingKey(key) ? REDACTED : value])
+  );
+
+  res.json({ success: true, settings: redacted });
 });
 
 /**
@@ -32,11 +53,16 @@ export const getAllSettings = asyncHandler(async (req: Request, res: Response): 
  */
 export const getSettingByKey = asyncHandler(async (req: Request, res: Response): Promise<void> => {
   const { key } = req.params;
-  
+
   if (!key) {
     throw new ValidationError('Setting key parameter is required');
   }
-  
+
+  if (isSecretSettingKey(key)) {
+    res.json({ success: true, value: REDACTED });
+    return;
+  }
+
   const value = await settingsService.getSettingByKey(key);
   res.json({ success: true, value });
 });

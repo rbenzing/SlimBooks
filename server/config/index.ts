@@ -279,11 +279,29 @@ export const databaseConfig: DatabaseConfig = {
 /**
  * Authentication configuration
  */
+/**
+ * The placeholders an unset secret falls back to.
+ *
+ * They exist only to be recognised: `validateConfig()` refuses to start on any
+ * of them, so a process that reaches request handling is never signing with one.
+ * Declared here rather than inline so the fallback and the check cannot drift —
+ * a placeholder the check no longer recognises is a silently forgeable install.
+ */
+const DEFAULT_JWT_SECRET = 'your-secret-key-change-in-production';
+const DEFAULT_JWT_REFRESH_SECRET = 'your-refresh-secret-change-in-production';
+const DEFAULT_SESSION_SECRET = 'your-session-secret-change-in-production';
+
+export const PUBLISHED_DEFAULT_SECRETS: ReadonlySet<string> = new Set([
+  DEFAULT_JWT_SECRET,
+  DEFAULT_JWT_REFRESH_SECRET,
+  DEFAULT_SESSION_SECRET
+]);
+
 export const authConfig: AuthConfig = {
   // JWT configuration
-  jwtSecret: process.env.JWT_SECRET || 'your-secret-key-change-in-production',
-  jwtRefreshSecret: process.env.JWT_REFRESH_SECRET || 'your-refresh-secret-change-in-production',
-  sessionSecret: process.env.SESSION_SECRET || 'your-session-secret-change-in-production',
+  jwtSecret: process.env.JWT_SECRET || DEFAULT_JWT_SECRET,
+  jwtRefreshSecret: process.env.JWT_REFRESH_SECRET || DEFAULT_JWT_REFRESH_SECRET,
+  sessionSecret: process.env.SESSION_SECRET || DEFAULT_SESSION_SECRET,
 
   // Token expiration (in milliseconds)
   accessTokenExpiry: parseInt(process.env.ACCESS_TOKEN_EXPIRY || '7200000'), // 2 hours
@@ -425,30 +443,50 @@ export const getAllConfig = (): AppConfigComplete => ({
  * @throws {Error} If required environment variables are missing
  */
 export const validateConfig = (): void => {
-  const requiredVars: string[] = [];
-  const warnings: string[] = [];
+  // Every signing secret, not just the access-token one: a published refresh or
+  // session secret is the same forgery as a published JWT secret.
+  //
+  // This refuses in EVERY environment, not only production. The previous
+  // version checked `isProduction`, and `.env.example` — the file it tells
+  // operators to copy — ships NODE_ENV=development, so the common install
+  // signed tokens with a secret published in this repository and said nothing.
+  //
+  // It also has to compare the resolved value rather than filter on "is the
+  // variable absent". The previous version collected the offending names and
+  // then dropped any whose variable was *set*, so setting a secret to the
+  // published default passed the check that existed to catch exactly that.
+  // JWT_SECRET signs every session and every public-invoice link, so it must be
+  // present and must not be the placeholder.
+  //
+  // The other two are checked only for the placeholder, not for presence.
+  // Nothing reads them today, so demanding them would turn a working install
+  // into a failed boot over a variable that signs nothing — but if a value is
+  // explicitly set to the published placeholder, that is worth refusing before
+  // someone wires it up.
+  const unsafeSecrets: string[] = [];
 
-  // Always required variables
-  if (!process.env.JWT_SECRET || process.env.JWT_SECRET === 'your-secret-key-change-in-production') {
-    if (serverConfig.isProduction) {
-      requiredVars.push('JWT_SECRET');
-    } else {
-      warnings.push('JWT_SECRET is using default value - change in production');
+  if (!process.env.JWT_SECRET || PUBLISHED_DEFAULT_SECRETS.has(authConfig.jwtSecret)) {
+    unsafeSecrets.push('JWT_SECRET');
+  }
+
+  for (const [name, raw] of [
+    ['JWT_REFRESH_SECRET', process.env.JWT_REFRESH_SECRET],
+    ['SESSION_SECRET', process.env.SESSION_SECRET]
+  ] as const) {
+    if (raw && PUBLISHED_DEFAULT_SECRETS.has(raw)) {
+      unsafeSecrets.push(name);
     }
   }
 
-  // Check for missing required variables
-  const missing = requiredVars.filter(varName => !process.env[varName]);
+  if (unsafeSecrets.length > 0) {
+    const names = unsafeSecrets.join(', ');
 
-  if (missing.length > 0) {
-    throw new Error(`Missing required environment variables: ${missing.join(', ')}`);
+    throw new Error(
+      `Refusing to start: ${names} ${unsafeSecrets.length === 1 ? 'is' : 'are'} unset or still set ` +
+      `to a placeholder published in this repository, so anyone could mint a valid session. ` +
+      `Generate one with: node -e "console.log(require('crypto').randomBytes(64).toString('base64'))"`
+    );
   }
-
-  // Configuration warnings are disabled for cleaner logs
-  // if (warnings.length > 0 && serverConfig.isDevelopment) {
-  //   console.warn('⚠️  Configuration warnings:');
-  //   warnings.forEach(warning => console.warn(`   - ${warning}`));
-  // }
 
   // Log configuration status in a concise format
   const services: string[] = [];

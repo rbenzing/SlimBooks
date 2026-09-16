@@ -256,9 +256,15 @@ export const refreshToken = asyncHandler(async (req: Request<object, RefreshToke
   }
 
   try {
-    // Verify the current token (even if expired, we can still decode it)
-    const decoded = jwt.decode(token) as DecodedToken | null;
-    
+    // Verify the signature. `ignoreExpiration` is what makes this a refresh
+    // rather than a second login — an expired token is still proof the holder
+    // once authenticated. Decoding without verifying is not: the payload is
+    // attacker-controlled, so `jwt.decode` here would mint a signed token for
+    // any userId a caller cared to claim.
+    const decoded = jwt.verify(token, authConfig.jwtSecret, {
+      ignoreExpiration: true
+    }) as DecodedToken | null;
+
     if (!decoded || !decoded.userId) {
       throw new AuthenticationError('Invalid token');
     }

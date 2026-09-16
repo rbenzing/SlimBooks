@@ -17,7 +17,8 @@ import { join } from 'node:path';
 import type { AddressInfo } from 'node:net';
 import { initializeDatabase, db } from '../database/index.js';
 import setupRoutes from '../routes/setupRoutes.js';
-import authRoutes from '../routes/authRoutes.js';
+import { createAuthRoutes } from '../routes/authRoutes.js';
+import type { Runtime } from '../runtime/types.js';
 import { errorHandler, notFoundHandler } from '../middleware/index.js';
 
 interface Fetched {
@@ -72,7 +73,10 @@ beforeEach(async () => {
   const app = express();
   app.use(express.json());
   app.use('/api/setup', setupRoutes);
-  app.use('/api/auth', authRoutes);
+  // Registration is feature-gated, so the router is a factory now. These tests
+  // exercise login rather than registration; signup on keeps the mount identical
+  // to a default install.
+  app.use('/api/auth', createAuthRoutes({ features: { signup: true } } as Runtime));
   // Without these, a thrown ValidationError falls through to Express's
   // default HTML error page — asyncHandler forwards it via next(error), and
   // nothing here would turn it back into the JSON 400 the controller intends.

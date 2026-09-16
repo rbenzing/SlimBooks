@@ -13,6 +13,19 @@ import { utcNow } from '../utils/utcTime.util.js';
  * Reads tolerate a bare string too, because settings written by other paths are
  * not always encoded.
  */
+/**
+ * Whether a settings key holds a credential.
+ *
+ * Used on the write path (a blank submission must not wipe a stored secret) and
+ * on the HTTP read path (`settingsController`), which must never hand one back.
+ * Server-side callers deliberately bypass this — `getStripeCredentials()` and
+ * the mailer need the real value — so the redaction belongs at the boundary,
+ * not inside the service's own readers.
+ */
+export const isSecretSettingKey = (key: string): boolean =>
+  key.endsWith('secret_key') || key.endsWith('client_secret')
+  || key.endsWith('webhook_secret') || key.endsWith('smtp_pass');
+
 const readSetting = (settingsMap: Record<string, string>, key: string): unknown => {
   const raw = settingsMap[key];
   if (raw === undefined || raw === null) return undefined;
@@ -403,10 +416,6 @@ export class SettingsService {
       throw new Error('Settings object is required');
     }
 
-    const isSecret = (key: string): boolean =>
-      key.endsWith('secret_key') || key.endsWith('client_secret')
-      || key.endsWith('webhook_secret') || key.endsWith('smtp_pass');
-
     // `configured` is derived on read from whether the credentials resolve;
     // storing a client-supplied copy would let the UI assert it.
     const isDerived = (key: string): boolean => key.endsWith('configured');
@@ -422,7 +431,7 @@ export class SettingsService {
         } else if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
           flattened.push(...flattenSettings(value as Record<string, unknown>, fullKey));
         } else {
-          if (isSecret(fullKey) && (value === undefined || value === null || value === '')) {
+          if (isSecretSettingKey(fullKey) && (value === undefined || value === null || value === '')) {
             continue;
           }
           flattened.push({

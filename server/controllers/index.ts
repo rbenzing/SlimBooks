@@ -9,10 +9,6 @@ export {
   createUser,
   updateUser,
   deleteUser,
-  updateUserLoginAttempts,
-  updateUserLastLogin,
-  updateLoginAttemptsByUserId,
-  updateLastLoginByUserId,
   verifyUserEmail,
   resetUserPassword,
   unlockUserAccount

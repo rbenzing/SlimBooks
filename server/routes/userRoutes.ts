@@ -1,7 +1,7 @@
 // User routes for Slimbooks API
 // Handles all user-related endpoints
 
-import { Router, type Request, type Response, type NextFunction } from 'express';
+import { Router, type Request, type Response } from 'express';
 import {
   getAllUsers,
   getUserById,
@@ -9,10 +9,6 @@ import {
   createUser,
   updateUser,
   deleteUser,
-  updateUserLoginAttempts,
-  updateUserLastLogin,
-  updateLoginAttemptsByUserId,
-  updateLastLoginByUserId,
   verifyUserEmail,
   resetUserPassword,
   unlockUserAccount
@@ -63,47 +59,20 @@ router.get('/:id',
   getUserById
 );
 
-// Get user by email (public for admin check, otherwise admin only)
-router.get('/email/:email', async (req: Request, res: Response, next: NextFunction): Promise<Response | void> => {
-  const { email } = req.params;
-
-  // Allow public access for admin user check during initialization
-  if (email === 'admin@slimbooks.app') {
-    try {
-      const { userService } = await import('../services/UserService.js');
-      const user = await userService.getUserByEmail(email);
-
-      if (!user) {
-        return res.status(404).json({
-          success: false,
-          error: 'User not found',
-          exists: false
-        });
-      }
-
-      return res.json({
-        success: true,
-        data: user,
-        exists: true
-      });
-    } catch (error) {
-      return res.status(500).json({
-        success: false,
-        error: (error as Error).message,
-        exists: false
-      });
-    }
-  } else {
-    // For all other emails, require authentication and admin privileges
-    requireAuth(req, res, (err?: unknown) => {
-      if (err) return next(err);
-      requireAdmin(req, res, (err?: unknown) => {
-        if (err) return next(err);
-        getUserByEmail(req, res, next);
-      });
-    });
-  }
-});
+// Get user by email (admin only)
+//
+// This used to serve `admin@slimbooks.app` to anyone, unauthenticated, "for
+// admin user check during initialization" — and `getUserByEmail` is a
+// `SELECT *`, so the response carried that account's bcrypt hash, 2FA secret
+// and backup codes to any caller who asked. The question it existed to answer
+// ("does this install still need an administrator?") is what
+// `GET /api/setup/status` answers now, without disclosing anything, and no
+// caller in the SPA ever used this route.
+router.get('/email/:email',
+  requireAuth,
+  requireAdmin,
+  getUserByEmail
+);
 
 // Create new user (admin only)
 router.post('/', 
@@ -152,25 +121,12 @@ router.post('/:id/unlock',
   unlockUserAccount
 );
 
-// Update user login attempts (internal use)
-router.post('/update-login-attempts', 
-  updateUserLoginAttempts
-);
-
-// Update user last login (internal use)
-router.post('/update-last-login', 
-  updateUserLastLogin
-);
-
-// Update user login attempts by ID (public for login process)
-router.put('/:id/login-attempts',
-  updateLoginAttemptsByUserId
-);
-
-// Update user last login by ID (public for login process)
-router.put('/:id/last-login',
-  updateLastLoginByUserId
-);
+// The four lockout/last-login endpoints that used to sit here are gone. They
+// were labelled "internal use" and "public for login process" but carried no
+// authentication and had no caller anywhere in the server or the SPA — the
+// login flow writes these columns through UserService directly. Exposed, they
+// let anyone clear any account's lockout (`{attempts: 0}`), which made the
+// brute-force protection decorative, and forge last-login history.
 
 // Verify user email (admin only)
 router.put('/:id/verify-email', 

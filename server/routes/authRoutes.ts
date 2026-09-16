@@ -18,62 +18,80 @@ import {
   validateRequest,
   validationSets
 } from '../middleware/index.js';
+import type { Runtime } from '../runtime/types.js';
 
-const router: Router = Router();
+/**
+ * Build the authentication router.
+ *
+ * A factory because registration is feature-gated, and the gate lives on the
+ * runtime. `FEATURE_SIGNUP` and its tri-state resolution already existed;
+ * nothing read the answer, so an operator who set `FEATURE_SIGNUP=off` still
+ * had an open registration form. Under ADR-0003, `off` means the route is not
+ * mounted at all rather than mounted and refusing.
+ */
+export const createAuthRoutes = (runtime: Runtime): Router => {
+  const router: Router = Router();
 
-// Apply login rate limiting to authentication endpoints
-const loginRateLimit = createLoginRateLimit();
+  // Apply login rate limiting to authentication endpoints
+  const loginRateLimit = createLoginRateLimit();
 
-// User login
-router.post('/login', 
-  loginRateLimit,
-  validationSets.login,
-  validateRequest,
-  login
-);
+  // User login
+  router.post('/login',
+    loginRateLimit,
+    validationSets.login,
+    validateRequest,
+    login
+  );
 
-// User registration
-router.post('/register', 
-  validationSets.register,
-  validateRequest,
-  register
-);
+  // User registration
+  if (runtime.features.signup) {
+    router.post('/register',
+      loginRateLimit,
+      validationSets.register,
+      validateRequest,
+      register
+    );
+  }
 
-// Reset password with token
-router.post('/reset-password', 
-  validationSets.resetPassword,
-  validateRequest,
-  resetPassword
-);
+  // Reset password with token
+  router.post('/reset-password',
+    loginRateLimit,
+    validationSets.resetPassword,
+    validateRequest,
+    resetPassword
+  );
 
-// Verify email with token
-router.post('/verify-email', 
-  verifyEmail
-);
+  // Verify email with token
+  router.post('/verify-email',
+    loginRateLimit,
+    verifyEmail
+  );
 
-// Refresh JWT token
-router.post('/refresh-token', 
-  refreshToken
-);
+  // Refresh JWT token
+  router.post('/refresh-token',
+    loginRateLimit,
+    refreshToken
+  );
 
-// Get current user profile (requires authentication)
-router.get('/profile', 
-  requireAuth,
-  getProfile
-);
+  // Get current user profile (requires authentication)
+  router.get('/profile',
+    requireAuth,
+    getProfile
+  );
 
-// Update user profile (requires authentication)
-router.put('/profile', 
-  requireAuth,
-  updateProfile
-);
+  // Update user profile (requires authentication)
+  router.put('/profile',
+    requireAuth,
+    updateProfile
+  );
 
-// Change password (requires authentication)
-router.post('/change-password',
-  requireAuth,
-  validationSets.changePassword,
-  validateRequest,
-  changePassword
-);
+  // Change password (requires authentication)
+  router.post('/change-password',
+    requireAuth,
+    validationSets.changePassword,
+    validateRequest,
+    changePassword
+  );
 
-export default router;
+  return router;
+};

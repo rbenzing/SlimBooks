@@ -4,7 +4,7 @@
 import { Router } from 'express';
 import setupRoutes from './setupRoutes.js';
 import userRoutes from './userRoutes.js';
-import authRoutes from './authRoutes.js';
+import { createAuthRoutes } from './authRoutes.js';
 import clientRoutes from './clientRoutes.js';
 import invoiceRoutes from './invoiceRoutes.js';
 import expenseRoutes from './expenseRoutes.js';
@@ -37,7 +37,7 @@ export const createRoutes = (runtime: Runtime): Router => {
   const router: Router = Router();
 
   // API routes with /api prefix
-  router.use('/api/auth', authRoutes);
+  router.use('/api/auth', createAuthRoutes(runtime));
   router.use('/api/users', userRoutes);
   router.use('/api/clients', clientRoutes);
   router.use('/api/invoices', invoiceRoutes);

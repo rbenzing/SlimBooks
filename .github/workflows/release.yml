@@ -101,7 +101,7 @@ jobs:
       # verify slimbooks-X.Y.Z.tar.gz --repo <owner>/SlimBooks` checks it, which
       # is what lets somebody who did not build it establish where it came from.
       - name: Attest the build provenance
-        uses: actions/attest-build-provenance@v1
+        uses: actions/attest-build-provenance@v4
         with:
           subject-path: slimbooks-*.tar.gz
 

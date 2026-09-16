@@ -12,6 +12,8 @@ Upgrade instructions live in
 
 ## [Unreleased]
 
+## [3.0.0] — 2026-09-16
+
 ### Breaking
 
 - **The three signing secrets must be set, or the process refuses to start.**
@@ -548,6 +550,7 @@ Earlier history is in the git log.
 
 ---
 
+[3.0.0]: https://github.com/rbenzing/SlimBooks/releases/tag/v3.0.0
 [2.5.0]: https://github.com/rbenzing/SlimBooks/releases/tag/v2.5.0
 [2.4.0]: https://github.com/rbenzing/SlimBooks/releases/tag/v2.4.0
 [2.3.0]: https://github.com/rbenzing/SlimBooks/releases/tag/v2.3.0

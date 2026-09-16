@@ -241,7 +241,7 @@ load balancer or an orchestrator's readiness probe at `/api/health` or
 `/api/health/ready`, and its liveness probe at `/api/health/live` — a process
 that cannot reach its database should be taken out of rotation, not restarted.
 
-> **Before 2.6.0 these returned 200 even with the database down**, saying
+> **Before 3.0.0 these returned 200 even with the database down**, saying
 > `"database": "disconnected"` in a body nothing was reading. If you built a
 > monitor that parses the body to work around that, it keeps working; if you
 > gave an instance a passing grade on the status code alone, it was lying to

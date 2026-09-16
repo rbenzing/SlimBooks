@@ -21,6 +21,11 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  # An advisory is published against code that has not changed. Without a
+  # schedule, a dependency only gets re-checked when somebody happens to push,
+  # which on a quiet week is never.
+  schedule:
+    - cron: '0 6 * * 1'
 
 # Superseded runs on the same branch are pointless once a newer commit exists.
 concurrency:
@@ -138,3 +143,33 @@ jobs:
 
       - name: Server suite against ${{ matrix.engine.name }}
         run: npx vitest run server/
+
+  audit:
+    name: Dependency advisories
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      # No install: `npm audit` resolves against the lockfile, and skipping
+      # node_modules keeps this job fast enough to run on every push.
+      #
+      # Fails on high and critical only. Moderate advisories are reported and
+      # left to a human — a gate that cries wolf gets switched off, and this one
+      # exists because 21 advisories once accumulated unnoticed.
+      - name: Audit production dependencies
+        run: npm audit --omit=dev --audit-level=high
+
+      # Development dependencies cannot be reached by a deployed install, so
+      # this reports without failing. It is here so the number is visible in the
+      # log rather than discovered during the next upgrade.
+      - name: Report all advisories, including development
+        if: always()
+        run: npm audit || true

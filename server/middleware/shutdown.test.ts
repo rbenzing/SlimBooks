@@ -1,7 +1,7 @@
 /**
  * Shutdown sequencing.
  *
- * Two defects live in 2.6.0 development, both about the same thing — a single
+ * Two defects live in 3.0.0 development, both about the same thing — a single
  * shutdown path that other modules were allowed to pre-empt or short-circuit:
  *
  *  - PdfService registered its own SIGINT/SIGTERM handlers that closed the

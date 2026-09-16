@@ -235,7 +235,7 @@ both present.
 | `AUDIT_RETENTION_DAYS` | `365` | legacy | Days to keep audit records. `0` keeps everything. |
 | `LOG_LEVEL` | `debug` in development, `info` otherwise | legacy | |
 
-**These four backup variables did nothing before 2.6.0.** They were documented
+**These four backup variables did nothing before 3.0.0.** They were documented
 here and in `.env.example`, and the functions that read them had no callers, so
 `BACKUP_ENABLED=true` produced silence. If you set them on an earlier version,
 assume you have no backups from that period.

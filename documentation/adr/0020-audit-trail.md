@@ -17,7 +17,7 @@ creation, deletion and role changes, settings changes, and database export and
 import produced nothing beyond an access-log line carrying no subject and no
 outcome. The only persisted security state was `users.failed_login_attempts` and
 `users.last_login`, which are overwritten counters rather than history — and
-until 2.6.0 both were writable by anyone, through four unauthenticated routes.
+until 3.0.0 both were writable by anyone, through four unauthenticated routes.
 
 SOC 2 CC7.2 and CC7.3 expect a detective control and evidence for incident
 evaluation. More concretely: after an incident, someone has to answer *who

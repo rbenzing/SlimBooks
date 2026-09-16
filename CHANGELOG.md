@@ -12,6 +12,22 @@ Upgrade instructions live in
 
 ## [Unreleased]
 
+### Breaking
+
+- **The three signing secrets must be set, or the process refuses to start.**
+  `JWT_SECRET`, `JWT_REFRESH_SECRET` and `SESSION_SECRET` may no longer be blank
+  or left at the placeholder values published in this repository, and the check
+  now runs in **every** environment rather than only under
+  `NODE_ENV=production`. An install that has been running on a blank
+  `JWT_SECRET` will not start after this upgrade until one is generated:
+  `./scripts/generate-secrets.sh`.
+
+  This is the only reason the release is a major; everything else in it is a fix
+  or an addition. Rotating `JWT_SECRET` invalidates existing sessions, so
+  everyone signs in once more — which is the point, since a session signed with
+  a published secret could have been minted by anyone. See
+  [upgrading](documentation/operations/upgrading.md#to-300).
+
 ### Security
 
 These were found by an audit of the whole codebase and each was verified against
@@ -154,6 +170,18 @@ network should upgrade.**
   checkout of this repository. It was linting that copy as part of this one and
   reporting over a thousand problems from files nobody was editing, which buried
   the real count. `npm run lint` is now accurate without a manual ignore flag.
+- **The release workflow runs the two-engine database job.** It gated on
+  `npm test` alone, and the MySQL suites skip themselves when no server is
+  configured — so a release could be published on a green run that never touched
+  MySQL or MariaDB. Publishing now waits on both engines, with the same
+  skip-detection CI uses.
+- The release artifact carries a **build provenance attestation**, verifiable
+  with `gh attestation verify slimbooks-X.Y.Z.tar.gz --repo <owner>/SlimBooks`.
+- **Dependabot** watches npm dependencies and the workflows' own actions,
+  weekly and grouped. CI gained a job that fails on a high or critical advisory
+  in production dependencies, and reports the rest, on every push and weekly on
+  a schedule — because an advisory is published against code that has not
+  changed, and 21 of them accumulated unnoticed before this release.
 
 ## [2.5.0] — 2026-09-09
 

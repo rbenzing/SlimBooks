@@ -65,7 +65,7 @@ Public. Used by container and load-balancer probes.
 | GET | `/api/health/live` | — | Liveness |
 
 **`/api/health` and `/api/health/detailed` answer 503 when the database is
-unreachable**, and 200 otherwise. Before 2.6.0 both answered 200 regardless,
+unreachable**, and 200 otherwise. Before 3.0.0 both answered 200 regardless,
 reporting `"database": "disconnected"` in the body — so every probe that reads
 the status code rather than parsing the body (the Dockerfile healthcheck,
 `scripts/deploy.sh`, and any load balancer) treated an instance that could not
@@ -104,7 +104,7 @@ anywhere, so it cannot know its host's capabilities until it asks.
 Every unauthenticated route above is covered by the login rate limiter, not
 just `/login`.
 
-> **`POST /api/auth/refresh-token` verifies the signature.** Before 2.6.0 it
+> **`POST /api/auth/refresh-token` verifies the signature.** Before 3.0.0 it
 > called `jwt.decode()`, which parses a payload without checking anything, so a
 > token assembled by hand claiming `userId: 1` was answered with a genuinely
 > signed administrator session. It now verifies with `ignoreExpiration`, which
@@ -131,7 +131,7 @@ Administrative. Most routes require admin.
 `GET /api/users/admin-exists` is public so the SPA can decide whether to offer
 first-run setup. It answers with booleans only.
 
-> **Removed in 2.6.0, and not replaced.** `GET /api/users/email/:email` used to
+> **Removed in 3.0.0, and not replaced.** `GET /api/users/email/:email` used to
 > answer without a token for `admin@slimbooks.app`, returning the `SELECT *` row
 > — `password_hash`, `two_factor_secret` and `backup_codes` included — to any
 > caller. It is admin-only now; the first-run question it served is answered by
@@ -169,7 +169,7 @@ The postal-code field is `zipCode`. Legacy spellings are accepted only as CSV
 import headers.
 
 `PUT /api/clients/:id` writes `tax_id`, `notes` and the rest of the client
-record. **Before 2.6.0 it accepted `tax_id` and `notes`, validated them, replied
+record. **Before 3.0.0 it accepted `tax_id` and `notes`, validated them, replied
 success and discarded them** — so a tax ID could be set when a client was
 created and never changed afterwards. If you worked around that by recreating
 clients, the field now updates in place.
@@ -248,7 +248,7 @@ invoice.amount       = template.amount - template.tax_amount - template.shipping
 invoice.total_amount = template.amount
 ```
 
-> **Before 2.6.0 the processor added tax and shipping a second time**, so a
+> **Before 3.0.0 the processor added tax and shipping a second time**, so a
 > template billing 1,100 generated an invoice for 1,200 — unattended, every
 > cycle, since 2.2.0. Invoices already generated were left as they are; see the
 > CHANGELOG for how to identify them.
@@ -391,7 +391,7 @@ the scheme, host and port of `CLIENT_URL`. Anything else is a 400 before the
 renderer is started.
 
 This endpoint drives a real headless browser at the URL in the request body, and
-that browser runs inside your network perimeter. Until 2.6.0 the only check was
+that browser runs inside your network perimeter. Until 3.0.0 the only check was
 that the value looked like a URL, which made it a server-side request forgery
 primitive available to every signed-in account: `http://169.254.169.254/…`
 returned the host's cloud instance metadata — IAM credentials included —
@@ -461,7 +461,7 @@ Subscribe the endpoint to `checkout.session.completed` and
 | GET | `/api/db/export` | Admin | Download a backup |
 | POST | `/api/db/import` | Admin | Restore from a backup |
 
-Both require admin as of 2.6.0. They were `requireAuth` only, which meant any
+Both require admin as of 3.0.0. They were `requireAuth` only, which meant any
 account could download every bcrypt hash and stored credential in the install,
 or replace the database with one in which they were the administrator.
 

@@ -42,7 +42,7 @@ owner already holds it.
 - More generally: scheduled inserts need a database-level uniqueness guarantee,
   not an application guard. An application guard does not survive the kill.
 - **Running in-process means a scheduler failure is a server failure, so the
-  tick must never be able to throw.** It could, until 2.6.0: the lease calls sat
+  tick must never be able to throw.** It could, until 3.0.0: the lease calls sat
   outside the job's `try`, and `setInterval` discards the promise it is handed,
   so a transient database error during lease acquisition became an unhandled
   rejection and Node exited the process. A crontab that fails leaves the

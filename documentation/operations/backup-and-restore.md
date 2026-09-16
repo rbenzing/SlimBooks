@@ -47,7 +47,7 @@ A scheduled backup captures the database only. Under `STORAGE_DRIVER=disk`,
 `UPLOAD_DIR` is still yours to back up; under `STORAGE_DRIVER=database` the
 logos are inside the dump already.
 
-> **These variables did nothing before 2.6.0.** They were documented, and the
+> **These variables did nothing before 3.0.0.** They were documented, and the
 > code that read them had no callers. If you set `BACKUP_ENABLED=true` on an
 > earlier version, you have no backups from that period — check `BACKUP_DIR`
 > before assuming otherwise.

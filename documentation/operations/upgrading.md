@@ -28,6 +28,77 @@ features are what you expect.
 
 ## Version-specific notes
 
+### To 3.0.0
+
+**Set your three signing secrets before you restart, or the process will not
+start.**
+
+This is the whole reason 3.0.0 is a major. Every other change in it is a fix or
+an addition.
+
+```bash
+./scripts/generate-secrets.sh     # fills the three values in .env
+```
+
+`JWT_SECRET`, `JWT_REFRESH_SECRET` and `SESSION_SECRET` must not be blank and
+must not be the placeholder values published in this repository. The boot now
+refuses either, **in every environment** — a 2.5.0 install that has been running
+happily on a blank `JWT_SECRET` will exit with a message naming the variable.
+
+The check existed before and did not work. It collected the offending variable
+and then filtered its own list by "is this variable absent", so a secret
+explicitly set to the published placeholder passed the test that existed to
+catch it — and it only ran under `NODE_ENV=production`, while `.env.example`
+ships `development`. If your install starts on 3.0.0 without you changing
+anything, it was already configured correctly.
+
+**Rotating `JWT_SECRET` signs everyone out.** Existing sessions were signed with
+the old value and stop verifying. That is one login, once, and it is the point:
+if the secret was the published default, anyone could mint a session for your
+install, and any token issued under it should be treated as compromised.
+
+**Check your recurring invoices.** Invoices generated from a recurring template
+between 2.2.0 and 3.0.0 were overcharged by their own tax plus shipping — the
+generator added both a second time to a template amount that already included
+them. Nothing is altered automatically. An affected invoice has a `total_amount`
+greater than its template's `amount`:
+
+```sql
+SELECT i.id, i.invoice_number, i.total_amount, t.amount AS template_amount,
+       i.total_amount - t.amount AS overcharged
+FROM invoices i
+JOIN recurring_invoice_templates t ON t.id = i.recurring_template_id
+WHERE i.total_amount > t.amount;
+```
+
+That comparison assumes the template has not been edited since the invoice was
+raised; if it has, compare against `amount + tax_amount + shipping_amount` on
+the invoice itself, which should equal its `total_amount`.
+
+What to do about an invoice already sent or paid is a decision about your
+relationship with that client, not a database operation, which is why nothing
+here does it for you.
+
+**If your administrator account is `admin@slimbooks.app`, rotate its password**
+— `GET /api/users/email/admin@slimbooks.app` answered without a token before
+3.0.0 and returned that account's bcrypt hash to anyone who asked.
+
+Two endpoints changed shape, which matters only to callers outside the bundled
+UI:
+
+- **`POST /api/pdf/page` accepts only URLs on this installation's own origin.**
+- **`POST /api/email/send` delivers only to an address the install holds** — a
+  client that is not soft-deleted, or a user.
+
+Five unauthenticated user routes are gone; see the
+[API reference](../development/api-reference.md#users--apiusers).
+
+`/api/health` and `/api/health/detailed` now answer **503** when the database is
+unreachable instead of 200. If you monitor them by status code, this is the
+first release where that check means anything.
+
+A migration runs on first boot to add the `audit_log` table. No action needed.
+
 ### To 2.3.0
 
 **No operator action.** No migration runs, no environment variable changed and

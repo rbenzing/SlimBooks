@@ -102,11 +102,23 @@ things before publishing anything:
   different version than its name.
 - **Runs the full gate** — `npm ci`, lint, typecheck, tests, build. A tag is
   not a promise that anyone ran the tests.
+- **Runs the server suite against real MySQL and MariaDB**, the same job CI
+  uses, including its check that the MySQL suite did not skip itself. Until
+  3.0.0 the release gated on `npm test` alone, which is green on a machine with
+  no MySQL configured — so a release could be published having never exercised
+  the backend the deployment guide recommends for any ephemeral host.
 
-Publishing is a separate job depending on that one, so a failure anywhere
+Publishing is a separate job depending on both of those, so a failure anywhere
 earlier leaves no release behind. It attaches
 `slimbooks-X.Y.Z.tar.gz` — `dist`, `package.json`, `package-lock.json` and
 `.env.example`, ready to drop onto a host alongside `npm ci --omit=dev`.
+
+The tarball carries a **build provenance attestation**, so somebody who did not
+build it can establish that it came from this repository and this tag:
+
+```bash
+gh attestation verify slimbooks-3.0.0.tar.gz --repo <owner>/SlimBooks
+```
 
 ## What has gone wrong before
 

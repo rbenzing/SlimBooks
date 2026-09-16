@@ -25,6 +25,11 @@ on:
 permissions:
   # Needed to create the release. Nothing here needs any other scope.
   contents: write
+  # Provenance attestation for the published tarball: id-token to sign, and
+  # attestations to record it. Without them an operator downloading the release
+  # has only our word that it was built from this tag by this workflow.
+  id-token: write
+  attestations: write
 
 jobs:
   verify:
@@ -91,6 +96,15 @@ jobs:
             package-lock.json \
             .env.example
 
+      # Signs a statement that this exact tarball was produced by this workflow,
+      # from this commit, and records it against the repository. `gh attestation
+      # verify slimbooks-X.Y.Z.tar.gz --repo <owner>/SlimBooks` checks it, which
+      # is what lets somebody who did not build it establish where it came from.
+      - name: Attest the build provenance
+        uses: actions/attest-build-provenance@v1
+        with:
+          subject-path: slimbooks-*.tar.gz
+
       - name: Keep the package for the publish job
         uses: actions/upload-artifact@v4
         with:
@@ -98,10 +112,80 @@ jobs:
           path: slimbooks-*.tar.gz
           retention-days: 7
 
+
+  # The same two-engine job CI runs. Without it a release is published on the
+  # strength of `npm test` alone — and the MySQL suites skip themselves when no
+  # server is configured, so that run is green having never touched the backend
+  # half the deployment guide recommends for any ephemeral host.
+  database:
+    name: Server suite on ${{ matrix.engine.name }}
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        engine:
+          - name: MySQL 8.0
+            image: mysql:8.0
+          - name: MariaDB 10.11
+            image: mariadb:10.11
+
+    services:
+      database:
+        image: ${{ matrix.engine.image }}
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: slimbooks_test
+          MARIADB_ROOT_PASSWORD: root
+          MARIADB_DATABASE: slimbooks_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -proot"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=12
+
+    env:
+      TEST_MYSQL_URL: mysql://root:root@127.0.0.1:3306/slimbooks_test
+
+    steps:
+      - name: Check out the tag
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # A suite that skips itself passes. This asserts the MySQL half actually
+      # ran, so the job cannot go green having tested nothing.
+      - name: Confirm the MySQL suite is not skipped
+        run: |
+          npx vitest run server/database/twoDriver.test.ts server/database/MySQLDatabase.test.ts \
+            --reporter=json --outputFile=/tmp/result.json
+          node -e '
+            const report = require("/tmp/result.json");
+            const skipped = report.numPendingTests ?? 0;
+            const total = report.numTotalTests ?? 0;
+            if (total === 0 || skipped > 0) {
+              console.error(`MySQL suite did not run: ${total} total, ${skipped} skipped`);
+              process.exit(1);
+            }
+            console.log(`MySQL suite ran ${total} test(s) against ${process.env.TEST_MYSQL_URL}`);
+          '
+
+      - name: Server suite against ${{ matrix.engine.name }}
+        run: npx vitest run server/
+
   publish:
     name: Publish the release
     runs-on: ubuntu-latest
-    needs: verify
+    needs: [verify, database]
 
     steps:
       - name: Check out the tag

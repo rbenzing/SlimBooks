@@ -5,7 +5,12 @@ import reactRefresh from "eslint-plugin-react-refresh";
 import tseslint from "typescript-eslint";
 
 export default tseslint.config(
-  { ignores: ["dist", "server/dist", "coverage"] },
+  // `.claude` holds git worktrees — a whole second checkout of this repository,
+  // including its own node_modules and dist. ESLint walked into it and linted
+  // that copy as if it were part of this one, reporting over a thousand
+  // problems from files nobody was editing and burying the real count. Nothing
+  // under it belongs to this tree.
+  { ignores: ["dist", "server/dist", "coverage", ".claude"] },
   {
     extends: [js.configs.recommended, ...tseslint.configs.recommended],
     files: ["**/*.{ts,tsx}"],

@@ -7,6 +7,7 @@ import { useFormNavigation } from '@/hooks/useFormNavigation';
 import { useNavigate } from 'react-router-dom';
 import { themeClasses } from '@/utils/themeUtils.util';
 import { validateInvoiceForSave, validateInvoiceForSend } from '@/utils/data';
+import { calculateInvoiceTotal } from '@/utils/business/invoice.util';
 import { invoiceService } from '@/services/invoices.svc';
 import { pdfService } from '@/services/pdf.svc';
 import { useRuntimeConfig } from '@/hooks/useRuntimeConfig.hook';
@@ -192,10 +193,12 @@ export const CreateInvoicePage: React.FC<CreateInvoicePageProps> = ({ editingInv
     }));
   };
 
-  const subtotal = lineItems.reduce((sum, item) => sum + item.total, 0);
-  const taxAmount = selectedTaxRate ? subtotal * (selectedTaxRate.rate / 100) : 0;
+  const { subtotal, taxAmount, total } = calculateInvoiceTotal(
+    lineItems,
+    selectedTaxRate ? selectedTaxRate.rate : 0,
+    selectedShippingRate ? selectedShippingRate.amount : 0
+  );
   const shippingAmount = selectedShippingRate ? selectedShippingRate.amount : 0;
-  const total = subtotal + taxAmount + shippingAmount;
 
   // Validation for save button
   const isValidForSave = () => {

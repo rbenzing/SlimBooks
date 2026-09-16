@@ -195,3 +195,45 @@ describe('calculateInvoiceTotal', () => {
     expect(calculateInvoiceTotal(items, 0).taxAmount).toBe(0);
   });
 });
+
+/**
+ * The line-item `total` field.
+ *
+ * The four inline copies this helper replaced all summed `item.total`, which the
+ * editors derive as quantity × unit_price and a saved invoice carries directly.
+ * Honouring it keeps those call sites behaving exactly as they did, including
+ * for a stored invoice whose line total does not re-derive cleanly.
+ */
+describe('calculateInvoiceTotal with line totals', () => {
+  it('uses a line total when the item carries one', () => {
+    const { subtotal } = calculateInvoiceTotal([
+      { quantity: 2, unit_price: 100, total: 200 },
+      { quantity: 1, unit_price: 50, total: 50 }
+    ]);
+
+    expect(subtotal).toBe(250);
+  });
+
+  it('prefers the stored line total over re-deriving it', () => {
+    // A saved invoice is the record of what was billed. Recomputing it here
+    // would silently restate an issued invoice.
+    const { subtotal } = calculateInvoiceTotal([{ quantity: 3, unit_price: 10, total: 25 }]);
+
+    expect(subtotal).toBe(25);
+  });
+
+  it('falls back to quantity x unit_price when there is no line total', () => {
+    const { subtotal } = calculateInvoiceTotal([{ quantity: 3, unit_price: 10 }]);
+
+    expect(subtotal).toBe(30);
+  });
+
+  it('treats a zero line total as a real zero, not a missing value', () => {
+    const { subtotal } = calculateInvoiceTotal([
+      { quantity: 1, unit_price: 99, total: 0 },
+      { quantity: 1, unit_price: 10, total: 10 }
+    ]);
+
+    expect(subtotal).toBe(10);
+  });
+});

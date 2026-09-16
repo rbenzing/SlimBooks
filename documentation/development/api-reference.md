@@ -168,6 +168,19 @@ All require authentication.
 The postal-code field is `zipCode`. Legacy spellings are accepted only as CSV
 import headers.
 
+`PUT /api/clients/:id` writes `tax_id`, `notes` and the rest of the client
+record. **Before 2.6.0 it accepted `tax_id` and `notes`, validated them, replied
+success and discarded them** — so a tax ID could be set when a client was
+created and never changed afterwards. If you worked around that by recreating
+clients, the field now updates in place.
+
+**There is no archive endpoint.** The `clients.is_active` column exists and is
+indexed, validation accepts it on create and update, and a `toggleClientStatus`
+controller is written — but no route mounts it and no screen calls it, so
+archiving is not reachable over HTTP. The service method behind it used to
+return success without touching the database; it now writes the column, so
+wiring a route to it is all that archiving would need.
+
 ## Invoices — `/api/invoices`
 
 | Method | Path | Auth | Purpose |

@@ -6,6 +6,7 @@ import { ClientSelector } from './ClientSelector';
 import { CompanyHeader } from './CompanyHeader';
 import { useFormNavigation } from '@/hooks/useFormNavigation';
 import { themeClasses } from '@/utils/themeUtils.util';
+import { calculateInvoiceTotal } from '@/utils/business/invoice.util';
 import type { Client, InvoiceTemplate, TaxRate, ShippingRate } from '@/types';
 
 interface LineItem {
@@ -236,10 +237,12 @@ export const CreateRecurringInvoicePage: React.FC<CreateRecurringInvoicePageProp
     }));
   };
 
-  const subtotal = lineItems.reduce((sum, item) => sum + item.total, 0);
-  const taxAmount = selectedTaxRate ? subtotal * (selectedTaxRate.rate / 100) : 0;
+  const { subtotal, taxAmount, total } = calculateInvoiceTotal(
+    lineItems,
+    selectedTaxRate ? selectedTaxRate.rate : 0,
+    selectedShippingRate ? selectedShippingRate.amount : 0
+  );
   const shippingAmount = selectedShippingRate ? selectedShippingRate.amount : 0;
-  const total = subtotal + taxAmount + shippingAmount;
 
   // Validation for save button
   const isValidForSave = () => {

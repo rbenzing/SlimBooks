@@ -110,8 +110,22 @@ export const getNextInvoiceNumber = (
   return generateInvoiceNumberPattern(prefix, currentYear, 1);
 };
 
+/**
+ * The invoice money maths, in one place.
+ *
+ * This existed, was tested, and had no caller: the create page, the recurring
+ * create page and the edit page (twice) each carried their own copy of the same
+ * four lines. Four copies of a money calculation drift silently, and two of them
+ * already spelled the tax step differently — `subtotal * (rate / 100)` against
+ * `(subtotal * rate) / 100`, which are not bit-identical in floating point.
+ *
+ * `total` on a line item is honoured when present, because that is what the
+ * editors bind to and what a saved invoice carries; it falls back to
+ * quantity × unit_price, which is how the editors derive it in the first place.
+ * Tax applies to the subtotal only — shipping is added after, never taxed.
+ */
 export const calculateInvoiceTotal = (
-  lineItems: Array<{ quantity: number; unit_price: number }>,
+  lineItems: Array<{ quantity: number; unit_price: number; total?: number }>,
   taxRate: number = 0,
   shippingAmount: number = 0
 ): {
@@ -119,7 +133,10 @@ export const calculateInvoiceTotal = (
   taxAmount: number;
   total: number;
 } => {
-  const subtotal = lineItems.reduce((sum, item) => sum + (item.quantity * item.unit_price), 0);
+  const subtotal = lineItems.reduce(
+    (sum, item) => sum + (item.total ?? item.quantity * item.unit_price),
+    0
+  );
   const taxAmount = subtotal * (taxRate / 100);
   const total = subtotal + taxAmount + shippingAmount;
 

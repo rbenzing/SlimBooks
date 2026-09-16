@@ -42,7 +42,8 @@ export interface Client extends BaseEntity {
   name: string;
   first_name?: string;
   last_name?: string;
-  email: string;
+  /** Optional: the column is nullable and createClient accepts a client without one. */
+  email?: string;
   phone?: string;
   company?: string;
   address?: string;
@@ -50,7 +51,11 @@ export interface Client extends BaseEntity {
   state?: string;
   zipCode?: string;
   country?: string;
+  tax_id?: string;
+  notes?: string;
   stripe_customer_id?: string;
+  /** 0/1 — SQLite has no boolean type and the column is INTEGER on both backends. */
+  is_active?: number;
 }
 
 export interface Invoice extends BaseEntity {

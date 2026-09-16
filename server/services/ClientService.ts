@@ -133,6 +133,8 @@ export class ClientService {
     zipCode: string;
     country: string;
     company: string;
+    tax_id: string;
+    notes: string;
   }>): Promise<number> {
     if (!id || typeof id !== 'number') {
       throw new Error('Valid client ID is required');
@@ -166,10 +168,15 @@ export class ClientService {
       }
     }
 
-    // Filter allowed fields
+    // Filter allowed fields.
+    //
+    // `tax_id` and `notes` belong here because createClient writes them and the
+    // updateClient validation chain checks their length — leaving them out meant
+    // the API accepted a tax ID, answered success, and changed nothing. A field
+    // the contract advertises must appear in this list or in neither place.
     const allowedFields = [
       'name', 'first_name', 'last_name', 'email', 'phone', 'company', 'address', 'city', 'state',
-      'zipCode', 'country', 'stripe_customer_id'
+      'zipCode', 'country', 'tax_id', 'notes', 'stripe_customer_id'
     ];
     
     const updateData: Record<string, unknown> = {};
@@ -265,12 +272,34 @@ export class ClientService {
   }
 
   /**
-   * Archive/Unarchive client
+   * Archive/Unarchive client.
+   *
+   * This used to return 1 without touching the database, explaining itself with
+   * "since we removed is_active column". The column was never removed: it is in
+   * tables.schema.ts, carries its own index, is written by the seed data, is
+   * validated on both create and update, and appears in the frontend's Client
+   * type. Archiving a client reported success and did nothing.
+   *
+   * Stored as 0/1 rather than a boolean because SQLite has no boolean type and
+   * the column is INTEGER on both backends.
    */
-  async toggleClientStatus(_id: number, _isActive: boolean): Promise<number> {
-    // This function is kept for API compatibility but doesn't do anything
-    // since we removed is_active column. Returns success.
-    return 1;
+  async toggleClientStatus(id: number, isActive: boolean): Promise<number> {
+    if (!id || typeof id !== 'number') {
+      throw new Error('Valid client ID is required');
+    }
+
+    const existingClient = await this.getClientById(id);
+    if (!existingClient) {
+      throw new Error('Client not found');
+    }
+
+    // updateRecord stamps updated_at itself, which matters here because MySQL
+    // cannot carry a trigger that updates its own table.
+    const success = await databaseService.updateRecord('clients', id, {
+      is_active: isActive ? 1 : 0
+    });
+
+    return success ? 1 : 0;
   }
 
   /**

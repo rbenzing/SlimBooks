@@ -266,3 +266,87 @@ describe('lookups', () => {
     expect(params.slice(-2)).toEqual([20, 40]);
   });
 });
+
+/**
+ * Fields the API accepts and the service used to discard.
+ *
+ * `tax_id` and `notes` are real columns, `createClient` writes them, and the
+ * validation chain for updateClient checks their length — so the API contract
+ * advertises them. The UPDATE whitelist did not list them, so a caller setting
+ * a tax ID on an existing client got a success response and no change. That is
+ * the worst shape this bug takes: not a rejection, an agreement not kept.
+ *
+ * `is_active` was worse still. toggleClientStatus returned 1 without touching
+ * the database, explaining itself with "since we removed is_active column" —
+ * a column that is in tables.schema.ts, has its own index, is seeded, is
+ * validated on both create and update, and is in the frontend's Client type.
+ */
+describe('updateClient writes every field the API accepts', () => {
+  beforeEach(() => {
+    db.getOne.mockResolvedValue({ id: 1, name: 'Acme', email: 'billing@acme.test' });
+    db.updateRecord.mockResolvedValue(true);
+  });
+
+  it('persists tax_id', async () => {
+    await clientService.updateClient(1, { tax_id: 'GB123456789' });
+
+    expect(db.updateRecord).toHaveBeenCalledWith(
+      'clients', 1, expect.objectContaining({ tax_id: 'GB123456789' })
+    );
+  });
+
+  it('persists notes', async () => {
+    await clientService.updateClient(1, { notes: 'Net 30, invoices to accounts payable' });
+
+    expect(db.updateRecord).toHaveBeenCalledWith(
+      'clients', 1, expect.objectContaining({ notes: 'Net 30, invoices to accounts payable' })
+    );
+  });
+
+  it('does not treat a tax_id-only update as an empty one', async () => {
+    // The whitelist dropped it, leaving updateData empty, so the call failed
+    // with "No valid fields to update" rather than silently — but only when
+    // tax_id was the *only* field. Sent alongside a name, it vanished quietly.
+    await expect(clientService.updateClient(1, { tax_id: 'GB123456789' })).resolves.toBe(1);
+  });
+
+  it('keeps an unknown field out of the update', async () => {
+    await clientService.updateClient(1, { name: 'Acme', injected: 'x' } as never);
+
+    const [, , updateData] = db.updateRecord.mock.calls[0] as [string, number, Record<string, unknown>];
+    expect(updateData).not.toHaveProperty('injected');
+  });
+});
+
+describe('toggleClientStatus', () => {
+  beforeEach(() => {
+    db.getOne.mockResolvedValue({ id: 1, name: 'Acme' });
+    db.updateRecord.mockResolvedValue(true);
+  });
+
+  it('archives a client by writing is_active', async () => {
+    await clientService.toggleClientStatus(1, false);
+
+    expect(db.updateRecord).toHaveBeenCalledWith(
+      'clients', 1, expect.objectContaining({ is_active: 0 })
+    );
+  });
+
+  it('unarchives a client', async () => {
+    await clientService.toggleClientStatus(1, true);
+
+    expect(db.updateRecord).toHaveBeenCalledWith(
+      'clients', 1, expect.objectContaining({ is_active: 1 })
+    );
+  });
+
+  it('rejects a client that does not exist, rather than reporting success', async () => {
+    db.getOne.mockResolvedValue(undefined);
+
+    await expect(clientService.toggleClientStatus(1, false)).rejects.toThrow(/not found/i);
+  });
+
+  it('rejects an invalid id', async () => {
+    await expect(clientService.toggleClientStatus(0, false)).rejects.toThrow(/id/i);
+  });
+});

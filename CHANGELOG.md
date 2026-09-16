@@ -116,6 +116,31 @@ network should upgrade.**
   SQLite recovering. The browser is now closed by the one shutdown path.
 - Shutdown steps are guarded individually. Under a single `try`, a scheduler
   that failed to stop skipped the WAL checkpoint that came after it.
+- **Editing a client silently discarded `tax_id` and `notes`.** Both are real
+  columns, `createClient` writes them, and the update validation checks their
+  length — but the UPDATE whitelist left them out, so the API accepted the
+  change, answered success and altered nothing.
+- `toggleClientStatus` returned success without touching the database,
+  explaining itself with "since we removed is_active column" — a column that is
+  in the schema, carries its own index, is seeded, is validated on create and
+  update, and is in the frontend's type. It now writes `is_active`. No route
+  mounts this controller and no screen calls it, so nothing was visibly broken;
+  what is fixed is that the method no longer reports work it did not do.
+- The server's `Client` type now matches the table: `tax_id`, `notes` and
+  `is_active` were missing, and `email` was required where the column is
+  nullable. Both type declarations must agree (ADR-0014); nothing generates one
+  from the other, so a half-updated one compiles and fails at runtime.
+
+### Changed
+
+- The invoice total calculation lives in one place again. `calculateInvoiceTotal`
+  existed and was tested but had no caller, while the create, recurring-create
+  and edit pages carried four copies of the same arithmetic — two of which had
+  already drifted apart in how they spelled the tax step. Behaviour is unchanged.
+- ESLint no longer walks `.claude`, which holds git worktrees — a second
+  checkout of this repository. It was linting that copy as part of this one and
+  reporting over a thousand problems from files nobody was editing, which buried
+  the real count. `npm run lint` is now accurate without a manual ignore flag.
 
 ## [2.5.0] — 2026-09-09
 

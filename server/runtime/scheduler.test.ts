@@ -7,10 +7,10 @@
  * a SIGKILLed process does not hold its claim forever.
  */
 
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import Database from 'better-sqlite3';
 import type { IDatabase } from '../types/database.types.js';
-import { acquireLease, releaseLease } from './scheduler.js';
+import { acquireLease, releaseLease, createScheduler } from './scheduler.js';
 import { sqliteDialect } from '../database/dialects/sqlite.dialect.js';
 
 /** Minimal IDatabase surface backed by an in-memory SQLite database. */
@@ -94,5 +94,73 @@ describe('releaseLease', () => {
     await releaseLease(db, 'recurring', 'owner-b');
 
     expect(await acquireLease(db, 'recurring', 'owner-c', 3_600_000, T_LATER)).toBe(false);
+  });
+});
+
+/**
+ * The tick loop.
+ *
+ * A scheduled job failing is ordinary. The scheduler taking the server down
+ * with it is not — and that is what happened: the lease calls sat outside the
+ * try, nothing awaited the promise setInterval discarded, and a database blip
+ * during acquireLease became an unhandled rejection that terminated the
+ * process. stop() awaits that same promise, so a rejecting stop() is the
+ * observable form of the crash.
+ */
+describe('createScheduler tick loop', () => {
+  const OPTIONS = { intervalMs: 60_000, leaseTtlMs: 3_600_000, initialDelayMs: 1_000 };
+
+  /** A database that fails every call, standing in for a connection blip. */
+  const brokenDb = (): IDatabase => ({
+    dialect: sqliteDialect,
+    executeQuery: () => Promise.reject(new Error('connection lost')),
+    getOne: () => Promise.reject(new Error('connection lost')),
+    getMany: () => Promise.reject(new Error('connection lost'))
+  } as unknown as IDatabase);
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+  });
+
+  /** Start, fire the initial tick, and wait for the run it kicked off. */
+  const runOneTick = async (scheduler: ReturnType<typeof createScheduler>): Promise<void> => {
+    scheduler.start();
+    await vi.advanceTimersByTimeAsync(OPTIONS.initialDelayMs);
+    await scheduler.stop();
+  };
+
+  it('survives a database failure while acquiring a lease', async () => {
+    const scheduler = createScheduler(brokenDb(), [{ name: 'recurring', run: async () => {} }], OPTIONS);
+
+    await expect(runOneTick(scheduler)).resolves.toBeUndefined();
+  });
+
+  it('runs later jobs after an earlier one throws', async () => {
+    const ran: string[] = [];
+    const scheduler = createScheduler(db, [
+      { name: 'first', run: async () => { ran.push('first'); throw new Error('job blew up'); } },
+      { name: 'second', run: async () => { ran.push('second'); } }
+    ], OPTIONS);
+
+    await runOneTick(scheduler);
+
+    expect(ran).toEqual(['first', 'second']);
+  });
+
+  it('releases the lease of a job that threw', async () => {
+    const scheduler = createScheduler(db, [
+      { name: 'recurring', run: async () => { throw new Error('job blew up'); } }
+    ], OPTIONS);
+
+    await runOneTick(scheduler);
+
+    // A lease still held here would lock the job out until its TTL lapsed.
+    expect(await acquireLease(db, 'recurring', 'someone-else', 3_600_000, T_LATER)).toBe(true);
   });
 });

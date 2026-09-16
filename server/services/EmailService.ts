@@ -9,6 +9,7 @@
 
 import nodemailer, { type Transporter } from 'nodemailer';
 import { settingsService } from './SettingsService.js';
+import { databaseService } from '../core/DatabaseService.js';
 
 /**
  * How the connection is secured.
@@ -232,6 +233,35 @@ export class EmailService {
     } catch (error) {
       return { success: false, message: this.describeError(error) };
     }
+  }
+
+  /**
+   * Whether this address is one the installation already knows.
+   *
+   * `POST /api/email/send` takes the recipient, the subject and the HTML body
+   * from the request, which made it an open relay for anybody with a login:
+   * arbitrary markup, to any address in the world, sent from the install's own
+   * domain and SMTP reputation. That is a phishing kit, not a feature.
+   *
+   * The feature it actually serves is "email an invoice or a reminder to a
+   * client", and every genuine call addresses a client row or a user of this
+   * install. Restricting delivery to those addresses leaves that untouched and
+   * removes the relay.
+   *
+   * Soft-deleted clients are excluded deliberately — a removed client is not a
+   * current contact.
+   */
+  async isKnownRecipient(address: string): Promise<boolean> {
+    const normalised = address.trim().toLowerCase();
+
+    const match = await databaseService.getOne<{ found: number }>(
+      `SELECT 1 AS found FROM clients WHERE LOWER(email) = ? AND deleted_at IS NULL
+       UNION ALL
+       SELECT 1 AS found FROM users WHERE LOWER(email) = ? AND deleted_at IS NULL`,
+      [normalised, normalised]
+    );
+
+    return match !== null;
   }
 
   /**

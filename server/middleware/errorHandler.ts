@@ -331,7 +331,14 @@ export const registerShutdown = (
   server: Server,
   /** Null when the active driver is not SQLite; there is no WAL to fold back. */
   db: Database | null,
-  scheduler: { stop: () => Promise<void> } | null
+  scheduler: { stop: () => Promise<void> } | null,
+  /**
+   * Anything else holding a resource that must be released before exit —
+   * currently the headless browser, which used to close itself from its own
+   * signal handler and call process.exit() the moment it finished, pre-empting
+   * this one.
+   */
+  closers: ReadonlyArray<{ what: string; close: () => Promise<void> }> = []
 ): void => {
   let shuttingDown = false;
 
@@ -348,19 +355,32 @@ export const registerShutdown = (
     forced.unref();
 
     server.close(async () => {
-      try {
-        await scheduler?.stop();
-
-        // Fold the WAL back into the database so the next boot has nothing to
-        // recover. Best effort: a killed process skips this and SQLite recovers
-        // on its own. Under MySQL there is no handle and nothing to fold — the
-        // pool is closed by the process ending.
-        if (db !== null) {
-          db.pragma('wal_checkpoint(TRUNCATE)');
-          db.close();
+      const steps: ReadonlyArray<{ what: string; close: () => Promise<void> }> = [
+        { what: 'scheduler', close: async () => { await scheduler?.stop(); } },
+        ...closers,
+        {
+          // Fold the WAL back into the database so the next boot has nothing to
+          // recover. Best effort: a killed process skips this and SQLite
+          // recovers on its own. Under MySQL there is no handle and nothing to
+          // fold — the pool is closed by the process ending.
+          what: 'database',
+          close: async () => {
+            if (db !== null) {
+              db.pragma('wal_checkpoint(TRUNCATE)');
+              db.close();
+            }
+          }
         }
-      } catch (error) {
-        console.error('Error during shutdown:', error);
+      ];
+
+      // Each step is guarded on its own. Under one shared try, a scheduler that
+      // failed to stop skipped the WAL checkpoint that follows it.
+      for (const { what, close } of steps) {
+        try {
+          await close();
+        } catch (error) {
+          console.error(`Error during shutdown (${what}):`, error);
+        }
       }
 
       clearTimeout(forced);

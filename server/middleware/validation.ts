@@ -3,7 +3,7 @@
 
 import { type Request, type Response, type NextFunction } from 'express';
 import { body, param, query, validationResult, type ValidationChain } from 'express-validator';
-import { validationConfig, serverConfig } from '../config/index.js';
+import { validationConfig } from '../config/index.js';
 
 interface SQLSanitizeResult {
   query: string;
@@ -566,32 +566,6 @@ export const validationSets = {
   processSingleTemplate: [
     validationRules.id
   ] as ValidationChain[]
-};
-
-/**
- * File upload validation middleware
- * @param maxSize - Maximum file size in bytes
- */
-export const validateFileUpload = (maxSize = serverConfig.maxFileSize) => {
-  return (req: Request, res: Response, next: NextFunction): void => {
-    if (req.file && req.file.size > maxSize) {
-      res.status(400).json({
-        success: false,
-        error: `File size exceeds maximum allowed size of ${Math.round(maxSize / 1024 / 1024)}MB`
-      });
-      return;
-    }
-    
-    if (req.file && !validationConfig.allowedMimeTypes.includes(req.file.mimetype)) {
-      res.status(400).json({
-        success: false,
-        error: 'Invalid file type. Only database files are allowed.'
-      });
-      return;
-    }
-    
-    next();
-  };
 };
 
 /**

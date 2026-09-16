@@ -107,6 +107,11 @@ A backup that has never been restored is a hypothesis. See
 - **Server-side input validation**, with all queries parameterised
 - **Storage keys validated before any path arithmetic**, so a user-influenced
   value cannot escape the storage root
+- **PDF rendering restricted to this installation's own origin.** The renderer
+  is a real browser running inside your network, so a caller-supplied URL would
+  otherwise reach anything the host can — cloud instance metadata included
+- **Outbound mail restricted to addresses this installation already holds**, so
+  a signed-in account cannot use your domain and SMTP reputation as a relay
 - **Stripe webhooks verified by signature** before anything is written
 - **No telemetry.** Nothing phones home.
 

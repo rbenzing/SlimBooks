@@ -29,8 +29,15 @@ export const testEmailConnection = asyncHandler(async (req: Request, res: Respon
  * Send an email — invoices and reminders go through here.
  *
  * Any signed-in user may send, because sending an invoice is ordinary work,
- * but the sender address is not theirs to choose: it comes from the configured
- * settings, so this cannot be used to send as someone else.
+ * but neither end of the message is fully theirs to choose. The sender address
+ * comes from the configured settings, so this cannot be used to send as someone
+ * else; and the recipient must be an address this installation already knows,
+ * so it cannot be used to send to anyone else either.
+ *
+ * Without that second check the endpoint was an open mail relay: arbitrary HTML
+ * to any address on the internet, carrying the install's own domain and SMTP
+ * reputation, available to every account including one created through open
+ * signup.
  */
 export const sendEmail = asyncHandler(async (req: Request, res: Response): Promise<void> => {
   const { to, subject, html, text } = req.body as {
@@ -45,6 +52,14 @@ export const sendEmail = asyncHandler(async (req: Request, res: Response): Promi
   }
   if (!html || typeof html !== 'string') {
     throw new ValidationError('Message content is required');
+  }
+
+  // Checked before the configuration state, so an unknown recipient reads the
+  // same whether or not SMTP happens to be set up. Deliberately the same message
+  // for "no such contact" as for "soft-deleted contact": this endpoint should
+  // not become a way to test which addresses the install holds.
+  if (!(await emailService.isKnownRecipient(to))) {
+    throw new ValidationError('Recipient must be a client or a user of this installation');
   }
 
   const status = await emailService.getStatus();

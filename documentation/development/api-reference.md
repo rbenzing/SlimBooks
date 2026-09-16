@@ -64,6 +64,16 @@ Public. Used by container and load-balancer probes.
 | GET | `/api/health/ready` | — | Readiness |
 | GET | `/api/health/live` | — | Liveness |
 
+**`/api/health` and `/api/health/detailed` answer 503 when the database is
+unreachable**, and 200 otherwise. Before 2.6.0 both answered 200 regardless,
+reporting `"database": "disconnected"` in the body — so every probe that reads
+the status code rather than parsing the body (the Dockerfile healthcheck,
+`scripts/deploy.sh`, and any load balancer) treated an instance that could not
+serve a single request as healthy.
+
+`/api/health/live` stays 200 while the process is alive, since a process that
+cannot reach its database should be taken out of rotation, not restarted.
+
 > **`providers.pdf` is always `null`, including when PDF rendering works.** It
 > reports `runtime.pdf`, and nothing calls `createPdfProvider()` — `PdfService`
 > loads Puppeteer through its own dynamic import instead. Read `features.pdf`
@@ -335,11 +345,24 @@ All require authentication. Present only when `FEATURE_PDF` resolves true.
 |---|---|---|
 | GET | `/api/pdf/invoice/:id` | Render an invoice |
 | GET | `/api/pdf/invoice/:id/download` | Render as a download |
-| POST | `/api/pdf/page` | Render arbitrary page content |
+| POST | `/api/pdf/page` | Render a page of this installation |
 | GET | `/api/pdf/status` | Provider state |
 | POST | `/api/pdf/initialize` | Start the provider |
 | GET | `/api/pdf/format` | Page format settings |
 | PUT | `/api/pdf/format` | Update page format settings |
+
+**`POST /api/pdf/page` accepts only URLs on this installation's own origin** —
+the scheme, host and port of `CLIENT_URL`. Anything else is a 400 before the
+renderer is started.
+
+This endpoint drives a real headless browser at the URL in the request body, and
+that browser runs inside your network perimeter. Until 2.6.0 the only check was
+that the value looked like a URL, which made it a server-side request forgery
+primitive available to every signed-in account: `http://169.254.169.254/…`
+returned the host's cloud instance metadata — IAM credentials included —
+rendered as a PDF, and any internal address the host could reach was reachable
+the same way. The application itself only ever sends its own report pages, so
+the restriction costs the feature nothing.
 
 ## Email — `/api/email`
 
@@ -354,6 +377,18 @@ All require authentication; the test and send routes require admin.
 
 `test-connection` really connects, so a wrong password fails there rather than
 silently when an invoice goes out.
+
+**`POST /api/email/send` delivers only to an address this installation already
+holds** — a client row that is not soft-deleted, or a user of the install.
+Anything else is a 400, checked before the SMTP configuration so the refusal
+reads the same whether or not email is set up.
+
+The sender was never the caller's to choose; the recipient was. That made the
+endpoint an open mail relay for any account — arbitrary HTML, to any address in
+the world, carrying this installation's domain, SMTP credentials and sending
+reputation, and reachable by anyone who could register when `FEATURE_SIGNUP` is
+on. Sending an invoice or a reminder always addresses a client, so the
+restriction leaves the feature intact.
 
 ## Stripe — `/api/stripe`
 

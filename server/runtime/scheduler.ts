@@ -94,22 +94,34 @@ export const createScheduler = (
 
       const now = utcNow();
 
-      if (!(await acquireLease(db, job.name, owner, options.leaseTtlMs, now))) {
-        continue;
-      }
-
+      // The lease calls are inside the try, not just job.run(). Acquiring and
+      // releasing a lease are database writes, and a database that blips during
+      // either one used to reject runDueJobs() — which nothing awaited, so it
+      // surfaced as an unhandled rejection and Node terminated the process. A
+      // scheduled job failing must never take down the server hosting it.
       try {
-        await job.run();
+        if (!(await acquireLease(db, job.name, owner, options.leaseTtlMs, now))) {
+          continue;
+        }
+
+        try {
+          await job.run();
+        } finally {
+          await releaseLease(db, job.name, owner);
+        }
       } catch (error) {
         console.error(`Scheduled job "${job.name}" failed:`, error);
-      } finally {
-        await releaseLease(db, job.name, owner);
       }
     }
   };
 
   const tick = (): void => {
-    running = runDueJobs();
+    // runDueJobs already swallows per-job failures; this catch covers anything
+    // thrown outside that loop. setInterval discards the promise it is handed,
+    // so without it an unforeseen throw here is an unhandled rejection.
+    running = runDueJobs().catch((error: unknown) => {
+      console.error('Scheduler tick failed:', error);
+    });
   };
 
   return {

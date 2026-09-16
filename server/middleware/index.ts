@@ -18,7 +18,6 @@ export {
   validateRequest,
   validationRules,
   validationSets,
-  validateFileUpload,
   sanitizeSQL
 } from './validation.js';
 

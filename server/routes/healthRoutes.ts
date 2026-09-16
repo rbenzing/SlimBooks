@@ -16,8 +16,12 @@ router.get('/', async (req: Request, res: Response) => {
     const { databaseHealthService } = await import('../services/DatabaseHealthService.js');
     const isHealthy = await databaseHealthService.checkDatabaseHealth();
 
-    res.json({
-      status: 'ok',
+    // 503 when the database is unreachable. Load balancers, container
+    // orchestrators and uptime monitors read the status code, not the body, so
+    // answering 200 with `database: "disconnected"` kept traffic arriving at an
+    // instance that could not serve a single request.
+    res.status(isHealthy ? 200 : 503).json({
+      status: isHealthy ? 'ok' : 'error',
       database: isHealthy ? 'connected' : 'disconnected',
       version: appConfig.version,
       timestamp: new Date().toISOString(),
@@ -54,7 +58,9 @@ router.get('/detailed', async (req: Request, res: Response) => {
     const memUsage = process.memoryUsage();
     const uptime = process.uptime();
     
-    res.json({
+    // Same reasoning as the basic check: the status code is the part monitoring
+    // reads.
+    res.status(healthData.status === 'ok' ? 200 : 503).json({
       status: healthData.status,
       timestamp: new Date().toISOString(),
       environment: serverConfig.nodeEnv,

@@ -15,7 +15,7 @@ import settingsRoutes from './settingsRoutes.js';
 import projectSettingsRoutes from './projectSettingsRoutes.js';
 import counterRoutes from './counterRoutes.js';
 import reportRoutes from './reportRoutes.js';
-import pdfRoutes from './pdfRoutes.js';
+import { createPdfRoutes } from './pdfRoutes.js';
 import cronRoutes from './cronRoutes.js';
 import templateRoutes from './templateRoutes.js';
 import recurringInvoiceTemplateRoutes from './recurringInvoiceTemplateRoutes.js';
@@ -48,7 +48,7 @@ export const createRoutes = (runtime: Runtime): Router => {
   router.use('/api/project-settings', projectSettingsRoutes);
   router.use('/api/counters', counterRoutes);
   router.use('/api/reports', reportRoutes);
-  router.use('/api/pdf', pdfRoutes);
+  router.use('/api/pdf', createPdfRoutes(runtime));
 
   // The cron endpoint exists only for hosts where an external scheduler owns
   // recurring work. When the in-process scheduler is running it would be a

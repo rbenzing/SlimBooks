@@ -4,7 +4,6 @@
 import express from 'express';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
-import multer from 'multer';
 import { join } from 'node:path';
 import { createServer as createHttpServer } from 'node:http';
 import { createServer as createHttpsServer } from 'node:https';
@@ -26,7 +25,6 @@ import {
   notFoundHandler,
   performanceMonitor,
   healthLogger,
-  validateFileUpload,
   registerShutdown
 } from './middleware/index.js';
 
@@ -89,31 +87,11 @@ export const createApp = async (runtime: Runtime) => {
   app.use(express.urlencoded({ limit: '10mb', extended: true }));
   app.use(cookieParser());
 
-  const upload = multer({
-    dest: runtime.paths.uploadsDir,
-    limits: { fileSize: serverConfig.maxFileSize, files: 1, fieldSize: 1024 * 1024 },
-    fileFilter: (_req, file, cb) => {
-      const allowedMimes = [
-        'application/octet-stream',
-        'application/x-sqlite3',
-        'application/vnd.sqlite3'
-      ];
-
-      cb(null, allowedMimes.includes(file.mimetype) || file.originalname.endsWith('.db'));
-    }
-  });
-
-  app.post('/api/upload', upload.single('file'), validateFileUpload(), (req, res) => {
-    res.json({
-      success: true,
-      message: 'File uploaded successfully',
-      file: {
-        filename: req.file?.filename,
-        originalname: req.file?.originalname,
-        size: req.file?.size
-      }
-    });
-  });
+  // There was a `POST /api/upload` here, with no authentication of any kind,
+  // writing whatever it was handed into uploadsDir. Nothing called it: logo
+  // uploads go through /api/settings, and database import has its own staged
+  // multer in databaseController. It was an anonymous write into the data
+  // directory that served no feature, so it is gone rather than guarded.
 
   // Uploads are written and served through the same provider, so the two can no
   // longer drift apart — and a database-backed provider works here, which
@@ -243,7 +221,20 @@ export const startServer = async (runtime: Runtime) => {
   scheduler?.start();
   healthLogger();
 
-  registerShutdown(server, rawSqliteHandle(), scheduler);
+  registerShutdown(server, rawSqliteHandle(), scheduler, [
+    {
+      // Imported lazily: puppeteer is an optional dependency, and on a host
+      // without it this module must never be reached. close() is a no-op when
+      // no browser was ever launched.
+      what: 'pdf browser',
+      close: async () => {
+        if (runtime.pdf === null) return;
+
+        const { pdfService } = await import('./services/PdfService.js');
+        await pdfService.close();
+      }
+    }
+  ]);
 
   return server;
 };

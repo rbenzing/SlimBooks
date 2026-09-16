@@ -49,6 +49,23 @@ network should upgrade.**
   this repository passed the check that existed to catch it. It also only ran
   under `NODE_ENV=production`, while `.env.example` ships `development`. It now
   compares the resolved value and refuses to start in every environment.
+- **Any signed-in account could read the host's cloud credentials.**
+  `POST /api/pdf/page` pointed a real headless browser at a URL from the request
+  body and returned what it rendered. The browser runs inside the network
+  perimeter, so `http://169.254.169.254/…` came back as a PDF of the instance's
+  own metadata, IAM credentials included, and any internal address the host
+  could reach was reachable the same way. The endpoint now accepts only URLs on
+  this installation's own origin, which is all the application ever sends.
+- **Any signed-in account could send mail to anyone, as you.**
+  `POST /api/email/send` took the recipient, subject and HTML body from the
+  request, making it an open relay carrying your domain, SMTP credentials and
+  sending reputation — reachable by anyone who could register, with
+  `FEATURE_SIGNUP` on. It now delivers only to an address the installation
+  already holds: a client that is not soft-deleted, or a user.
+- **An unauthenticated file upload.** `POST /api/upload` accepted a file from
+  anyone at all and wrote it into the data directory. It had no callers — logo
+  uploads go through `/api/settings` and database import stages its own upload —
+  so it is removed rather than guarded.
 - Account lockout is now actually enforced. `getUserById` did not select
   `account_locked_until`, so every lockout check in the codebase read
   `undefined` and did nothing.
@@ -81,6 +98,24 @@ network should upgrade.**
   better-sqlite3 returns, so it logged `✓ Database backed up` before the copy
   happened and its `try/catch` could not see the rejection. `IDatabase.backup`
   now returns a promise.
+- **A database blip inside the scheduler took the whole server down.** Lease
+  acquisition and release sat outside the job's `try`, and nothing awaited the
+  promise `setInterval` discarded, so a transient database error there became an
+  unhandled rejection — which Node turns into process exit. The lease calls are
+  now inside the guard and the tick has a catch of its own.
+- **`/api/health` reported 200 with the database down**, saying
+  `"database": "disconnected"` in a body that container healthchecks, deploy
+  scripts and load balancers do not read. It and `/api/health/detailed` now
+  answer 503, so an instance that cannot serve a request stops being sent any.
+  `/api/health/live` still answers 200 while the process is alive.
+- **Graceful shutdown was being pre-empted.** `PdfService` registered its own
+  SIGINT/SIGTERM handlers that closed the browser and then called
+  `process.exit(0)`. Closing a browser finishes long before draining HTTP
+  connections, so that handler won the race and the real shutdown never reached
+  its WAL checkpoint — in-flight requests were dropped and every restart left
+  SQLite recovering. The browser is now closed by the one shutdown path.
+- Shutdown steps are guarded individually. Under a single `try`, a scheduler
+  that failed to stop skipped the WAL checkpoint that came after it.
 
 ## [2.5.0] — 2026-09-09
 

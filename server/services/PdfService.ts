@@ -520,15 +520,12 @@ export class PdfService {
 // Export singleton instance
 export const pdfService = new PdfService();
 
-// Graceful shutdown handling
-process.on('SIGINT', async () => {
-  console.log('Shutting down PDF Generator Service...');
-  await pdfService.close();
-  process.exit(0);
-});
-
-process.on('SIGTERM', async () => {
-  console.log('Shutting down PDF Generator Service...');
-  await pdfService.close();
-  process.exit(0);
-});
+// No signal handlers here on purpose.
+//
+// This module used to register its own SIGINT/SIGTERM handlers that closed
+// the browser and then called process.exit(0). Both they and the real
+// shutdown in middleware/errorHandler.ts ran on the same signal, and closing
+// a browser finishes long before draining HTTP connections does — so this
+// handler reliably won the race and exited the process before in-flight
+// requests were served or the SQLite WAL was checkpointed. The browser is now
+// closed by that single shutdown path instead; see registerShutdown.

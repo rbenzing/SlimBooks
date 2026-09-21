@@ -52,8 +52,8 @@ SQLite by default; MySQL or MariaDB when the host needs it.
 
 | Component | Technology |
 |---|---|
-| Frontend | React 18 + TypeScript + Vite |
-| UI | shadcn/ui + Tailwind CSS + Lucide |
+| Frontend | React 19 + TypeScript + Vite |
+| UI | Tailwind CSS + Lucide, no component library |
 | Backend | Node.js 24 + Express |
 | Database | SQLite (default) or MySQL / MariaDB |
 | Charts | Recharts |

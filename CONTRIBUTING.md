@@ -124,7 +124,8 @@ chore: update dependencies
 ### Styling
 
 - Colour and surface come from `themeClasses` in `src/utils/themeUtils.util.ts`, never ad-hoc light/dark pairs — see the [theme system](./documentation/development/theme-system.md)
-- Check `src/components/ui/` before building a component; it is already themed. It holds only what is in use — `npx shadcn@latest add <name>` brings back any other shadcn/ui component
+- Check `src/components/ui/` before building a component; it is already themed. It holds only what is in use, and the components are ours — **don't run `npx shadcn@latest add`**, which would reinstall the Radix packages 3.1.0 removed
+- Every dialog uses `src/components/ui/modal.cpt.tsx`, built on the native `<dialog>` element — don't hand-roll a `fixed inset-0` overlay, which gets you no focus trap, no Escape and no focus return
 - All date display goes through `src/utils/formatting/date.util.ts`
 - Honour the settings objects — currency, number and date formatting, language
 - Ensure responsive design
@@ -134,7 +135,7 @@ chore: update dependencies
 ```
 src/
 ├── components/
-│   ├── ui/              # shadcn/ui design system
+│   ├── ui/              # Own themed design system (incl. modal.cpt.tsx)
 │   └── <feature>/       # clients, invoices, expenses, payments, reports, settings
 ├── pages/               # Unauthenticated pages (login, register, reset)
 ├── contexts/            # React contexts

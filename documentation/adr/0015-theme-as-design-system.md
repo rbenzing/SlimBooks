@@ -21,11 +21,19 @@ light/dark pairs.
 Helper functions cover the parametric cases: `getIconColorClasses(color)`,
 `getButtonClasses(variant)`, `getStatusColor(status)`.
 
-Before building a new component, check `src/components/ui/` — it is shadcn/ui,
-already themed. It carries only the components actually in use: 2.3.0 deleted
-the forty that nothing imported, on the grounds that an unused component is a
-themed surface nobody checks and a dependency nobody audits.
-`npx shadcn@latest add <name>` restores any of them.
+Before building a new component, check `src/components/ui/` — it is already
+themed. It carries only the components actually in use: 2.3.0 deleted the forty
+that nothing imported, on the grounds that an unused component is a themed
+surface nobody checks and a dependency nobody audits.
+
+**Amended in 3.1.0.** That directory was shadcn/ui, and this ADR used to say
+`npx shadcn@latest add <name>` restores any component. It no longer does, and
+running it now would undo work: 3.1.0 removed the four `@radix-ui` packages and
+`class-variance-authority` that shadcn/ui is built on, replacing the last two
+components that needed them with `src/components/ui/modal.cpt.tsx` — one dialog
+built on the browser's native `<dialog>`. Everything in that directory is now
+ours. Add a component by writing it against the tokens, not by pulling a library
+back in.
 
 ## Consequences
 

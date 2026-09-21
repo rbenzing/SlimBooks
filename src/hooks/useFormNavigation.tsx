@@ -1,16 +1,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
+import Modal from '@/components/ui/modal.cpt';
 
 interface UseFormNavigationProps {
   isDirty: boolean;
@@ -87,27 +78,38 @@ export const useFormNavigation = ({ isDirty, isEnabled, entityType, onCancel }: 
   };
 
   const NavigationGuard = () => (
-    <AlertDialog open={showDialog} onOpenChange={setShowDialog}>
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>Unsaved Changes</AlertDialogTitle>
-          <AlertDialogDescription>
-            Are you sure you want to cancel {entityType === 'client' ? 'adding/editing this client' :
-              entityType === 'invoice' ? 'adding/editing this invoice' :
-              entityType === 'template' ? 'adding/editing this template' : 'adding/editing this expense'}?
-            Any unsaved changes will be lost.
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel onClick={handleCancelNavigation}>
+    <Modal
+      open={showDialog}
+      onClose={handleCancelNavigation}
+      title="Unsaved Changes"
+      description={`Are you sure you want to cancel ${
+        entityType === 'client' ? 'adding/editing this client' :
+        entityType === 'invoice' ? 'adding/editing this invoice' :
+        entityType === 'template' ? 'adding/editing this template' :
+        'adding/editing this expense'
+      }? Any unsaved changes will be lost.`}
+      size="md"
+      footer={
+        <>
+          <button
+            type="button"
+            onClick={handleCancelNavigation}
+            className="rounded-md border border-input bg-background px-4 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground"
+          >
             No, Continue Editing
-          </AlertDialogCancel>
-          <AlertDialogAction onClick={handleConfirmNavigation}>
+          </button>
+          <button
+            type="button"
+            onClick={handleConfirmNavigation}
+            className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+          >
             Yes, Discard Changes
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
+          </button>
+        </>
+      }
+    >
+      {null}
+    </Modal>
   );
 
   return {

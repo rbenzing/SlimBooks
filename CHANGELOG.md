@@ -12,6 +12,47 @@ Upgrade instructions live in
 
 ## [Unreleased]
 
+Nothing here needs an operator to do anything: no environment variable changed,
+no migration was added, and no manual upgrade step applies.
+
+### Changed
+
+- **React upgraded to 19.** Every React-coupled dependency already declared
+  support for it, so nothing else had to move. `@types/express` also moved from
+  4 to 5, matching the Express 5.2.1 runtime the server has actually been
+  running since 3.0.0 — the v4 types were the thing that was wrong.
+- **Every dialog in the application is now a real one.** All thirteen modals
+  were rebuilt on the browser's native `<dialog>` element, which means each one
+  now traps focus, closes on Escape, renders in the top layer above the rest of
+  the page, makes the content behind it inert, and returns focus to whatever
+  opened it. Eleven of the thirteen previously had none of that — they were
+  plain overlays a keyboard user could tab straight out of, with no way to
+  dismiss them from the keyboard at all. The connection-lost dialog is the one
+  deliberate exception to Escape: it stays put, because a dropped connection is
+  not a state a user can dismiss their way out of.
+- **Route parameters are read through a single narrowing helper.** Express 5
+  supports wildcard segments, so a parameter can legitimately be an array; the
+  code now handles that in one place rather than assuming a string at fifty
+  call sites.
+
+### Fixed
+
+- **A clean checkout could not install.** `react-dom` and `@types/react-dom`
+  had been raised to 19 while `react` stayed at 18, which is an unsatisfiable
+  peer dependency — `npm ci` failed outright, breaking CI, the release workflow
+  and both Docker builds. Completing the upgrade repairs it.
+- The recurring-template editor's tests clicked Save before the editor was
+  ready to save, so a lost click looked like a passing suite under load.
+
+### Removed
+
+- **Five frontend dependencies**, about 1.1 MB: the four `@radix-ui` packages
+  and `class-variance-authority`. Their only remaining job was two dialogs and
+  a handful of wrappers, all of which the native `<dialog>` work replaced.
+  `@radix-ui/react-slot` existed solely for an `asChild` prop nothing used.
+- `forwardRef` throughout. React 19 passes `ref` as an ordinary prop, so the
+  wrapper is redundant; removing it clears deprecated API ahead of React 20.
+
 ## [3.0.0] — 2026-09-16
 
 ### Breaking

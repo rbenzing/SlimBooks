@@ -169,8 +169,10 @@ export const InvoiceViewModal: React.FC<InvoiceViewModalProps> = ({ invoice, isO
     }
   };
 
-  const showMarkAsPaid = Boolean(invoice && onMarkAsPaid && invoice.status !== 'paid');
-  const showDownloadPdf = Boolean(invoice && pdfEnabled);
+  // Withheld while company settings are loading: the invoice body itself
+  // hasn't rendered yet, so these actions would be reachable with nothing to act on.
+  const showMarkAsPaid = Boolean(!companySettingsLoading && invoice && onMarkAsPaid && invoice.status !== 'paid');
+  const showDownloadPdf = Boolean(!companySettingsLoading && invoice && pdfEnabled);
 
   return (
     <Modal

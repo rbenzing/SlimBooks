@@ -314,7 +314,7 @@ export const PaymentImportExport: React.FC<ImportExportProps> = ({
       : (importOutcome ? 'Import Results' : 'Import Payments');
 
   return (
-    <Modal open onClose={onClose} title={title} size="md">
+    <Modal open onClose={onClose} title={title} size={mode === 'import' ? '4xl' : 'md'}>
       {mode === 'select' && (
         <div className="space-y-4">
           <button

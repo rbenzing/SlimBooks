@@ -209,7 +209,7 @@ export const ClientImportExport: React.FC<ImportExportProps> = ({ onClose, onImp
       : (importOutcome ? 'Import Results' : 'Import Clients');
 
   return (
-    <Modal open onClose={onClose} title={title} size="md">
+    <Modal open onClose={onClose} title={title} size={mode === 'import' ? '4xl' : 'md'}>
       {mode === 'select' && (
         <div className="space-y-4">
           <button

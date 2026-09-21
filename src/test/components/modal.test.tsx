@@ -83,6 +83,11 @@ describe('Modal', () => {
     expect(container.querySelector('dialog')!.className).toContain('max-w-5xl');
   });
 
+  it('applies the 4xl size', () => {
+    const { container } = open({ size: '4xl' });
+    expect(container.querySelector('dialog')!.className).toContain('max-w-4xl');
+  });
+
   it('defaults to a medium size', () => {
     const { container } = open();
     expect(container.querySelector('dialog')!.className).toContain('max-w-md');

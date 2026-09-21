@@ -9,7 +9,7 @@ single port ([ADR-0004](../adr/0004-one-build-tree-one-process.md)).
 ```
 Browser
   │
-  │  SPA (React 18 + Vite), React Query owns API state
+  │  SPA (React 19 + Vite), React Query owns API state
   ▼
 Express  ── middleware ── routes ── controllers ── services ── DatabaseService
   │                                                                  │
@@ -60,7 +60,7 @@ mounts through `server/routes/index.ts`.
 |---|---|
 | Pages (unauthenticated) | `src/pages/` |
 | Feature components | `src/components/<feature>/` |
-| Design system | `src/components/ui/` (shadcn/ui) |
+| Design system | `src/components/ui/` (own themed components) |
 | API clients | `src/services/` |
 | Hooks | `src/hooks/` |
 | Contexts | `src/contexts/` |

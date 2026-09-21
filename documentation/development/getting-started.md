@@ -89,8 +89,13 @@ camelCase, with a suffix naming the kind:
 ### Frontend
 
 - Check `src/components/ui/` before building a component. It holds only the
-  components in use; 2.3.0 removed the forty shadcn/ui files nothing imported,
-  so reach for `npx shadcn@latest add <name>` rather than hand-rolling one.
+  components in use, and they are ours — **do not run `npx shadcn@latest add`.**
+  3.1.0 removed the last shadcn/ui components along with Radix, and that command
+  would reinstall it.
+- **Every dialog uses `src/components/ui/modal.cpt.tsx`.** It is built on the
+  native `<dialog>` element, so it gets focus trapping, Escape, the top layer
+  and focus return from the browser. Do not hand-roll a `fixed inset-0` overlay:
+  eleven of them existed before 3.1.0 and not one of them handled a keyboard.
 - Colour and surface come from `themeClasses`
   ([theme system](theme-system.md)).
 - All date display goes through `src/utils/formatting/date.util.ts`.

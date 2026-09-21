@@ -92,4 +92,60 @@ describe('Modal', () => {
     const { container } = open();
     expect(container.querySelector('dialog')!.className).toContain('max-w-md');
   });
+
+  // The native <dialog> only restores focus to the opener while that node
+  // survives the close. Seven call sites pass a bare `open` and are unmounted
+  // by their parent on close, so the browser has nothing left to restore to
+  // and focus falls to <body>. These three cases verify Modal restores focus
+  // itself instead of relying on the native behaviour.
+  describe('focus restoration', () => {
+    it('returns focus to the opener when the modal closes while still mounted', () => {
+      const opener = document.createElement('button');
+      document.body.appendChild(opener);
+      opener.focus();
+      expect(document.activeElement).toBe(opener);
+
+      const { container } = open();
+      const dialog = container.querySelector('dialog') as HTMLDialogElement;
+      // Simulate focus having moved into the dialog while it was open.
+      dialog.focus();
+      expect(document.activeElement).toBe(dialog);
+
+      fireEvent(dialog, new Event('close'));
+
+      expect(document.activeElement).toBe(opener);
+      opener.remove();
+    });
+
+    it('returns focus to the opener when the modal is unmounted while open', () => {
+      const opener = document.createElement('button');
+      document.body.appendChild(opener);
+      opener.focus();
+
+      const { container, unmount } = open();
+      const dialog = container.querySelector('dialog') as HTMLDialogElement;
+      dialog.focus();
+      expect(document.activeElement).toBe(dialog);
+
+      // The conditional-mount call sites unmount Modal directly instead of
+      // flipping `open`, so the dialog's own `close` event never fires — this
+      // is the case that reproduced the reported bug.
+      unmount();
+
+      expect(document.activeElement).toBe(opener);
+      opener.remove();
+    });
+
+    it('does not throw when there was no meaningful opener', () => {
+      // happy-dom defaults document.activeElement to body when nothing has
+      // been focused.
+      expect(document.activeElement).toBe(document.body);
+
+      expect(() => {
+        const { container, unmount } = open();
+        fireEvent(container.querySelector('dialog')!, new Event('close'));
+        unmount();
+      }).not.toThrow();
+    });
+  });
 });

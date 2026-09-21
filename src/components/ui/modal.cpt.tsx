@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useCallback, useEffect, useRef } from 'react';
 import { X } from 'lucide-react';
 import { cn } from '@/utils/themeUtils.util';
 
@@ -52,6 +52,29 @@ const Modal: React.FC<ModalProps> = ({
 }) => {
   const ref = useRef<HTMLDialogElement>(null);
 
+  // The element that was focused right before we called showModal(), so we
+  // can put focus back on it ourselves. The native <dialog> only restores
+  // focus to this element while it survives the close; call sites that
+  // unmount the dialog on close (instead of toggling `open`) lose that native
+  // behaviour entirely because the node it would restore to is already gone
+  // by the time the browser tries.
+  const openerRef = useRef<HTMLElement | null>(null);
+
+  // Stable across renders (no reactive values in the body) so it can sit in
+  // effect dependency arrays — including the unmount-only effect below —
+  // without causing them to re-run.
+  const restoreFocus = useCallback(() => {
+    const opener = openerRef.current;
+    openerRef.current = null; // clear so a later open can't restore a stale node
+
+    // The opener may have been unmounted by the parent (the very case this
+    // exists for) or otherwise become unfocusable; either way there is
+    // nothing safe to do but leave focus where the browser put it.
+    if (opener && opener.isConnected && typeof opener.focus === 'function') {
+      opener.focus();
+    }
+  }, []);
+
   useEffect(() => {
     const dialog = ref.current;
     if (!dialog) return;
@@ -60,6 +83,12 @@ const Modal: React.FC<ModalProps> = ({
     // already-closed dialog fires a spurious close event that would call
     // onClose during unmount.
     if (open && !dialog.open) {
+      const active = document.activeElement;
+      // document.body means nothing meaningful was focused before opening
+      // (e.g. a programmatic open) — leave the ref empty so close doesn't
+      // try to "restore" focus onto the body.
+      openerRef.current =
+        active instanceof HTMLElement && active !== document.body ? active : null;
       dialog.showModal();
     } else if (!open && dialog.open) {
       dialog.close();
@@ -76,7 +105,10 @@ const Modal: React.FC<ModalProps> = ({
     const handleCancel = (event: Event) => {
       if (!dismissible) event.preventDefault();
     };
-    const handleClose = () => onClose();
+    const handleClose = () => {
+      restoreFocus();
+      onClose();
+    };
 
     dialog.addEventListener('cancel', handleCancel);
     dialog.addEventListener('close', handleClose);
@@ -85,7 +117,17 @@ const Modal: React.FC<ModalProps> = ({
       dialog.removeEventListener('cancel', handleCancel);
       dialog.removeEventListener('close', handleClose);
     };
-  }, [dismissible, onClose]);
+  }, [dismissible, onClose, restoreFocus]);
+
+  useEffect(() => {
+    // A parent that unmounts Modal outright instead of flipping `open` (the
+    // pattern this whole fix exists for) never fires the dialog's `close`
+    // event, so the listener above misses it too — unmount is the last
+    // chance to put focus back on the opener.
+    return () => {
+      restoreFocus();
+    };
+  }, [restoreFocus]);
 
   return (
     <dialog

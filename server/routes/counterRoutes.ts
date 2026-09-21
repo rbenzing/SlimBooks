@@ -4,6 +4,7 @@
 import { Router, type Request, type Response } from 'express';
 import { requireAuth } from '../middleware/index.js';
 import { counterService } from '../services/CounterService.js';
+import { routeParam } from '../utils/routeParams.util.js';
 
 const router: Router = Router();
 
@@ -13,7 +14,7 @@ router.use(requireAuth);
 // Get next ID for a counter
 router.get('/:counterName/next', async (req: Request, res: Response): Promise<void> => {
   try {
-    const { counterName } = req.params;
+    const counterName = routeParam(req, 'counterName');
     
     if (!counterName) {
       res.status(400).json({
@@ -41,7 +42,7 @@ router.get('/:counterName/next', async (req: Request, res: Response): Promise<vo
 // Get current counter value
 router.get('/:counterName', async (req: Request, res: Response): Promise<void> => {
   try {
-    const { counterName } = req.params;
+    const counterName = routeParam(req, 'counterName');
     
     const counter = await counterService.getCurrentCounterValue(counterName!);
     
@@ -69,7 +70,7 @@ router.get('/:counterName', async (req: Request, res: Response): Promise<void> =
 // Reset counter (admin only)
 router.put('/:counterName/reset', async (req: Request, res: Response): Promise<void> => {
   try {
-    const { counterName } = req.params;
+    const counterName = routeParam(req, 'counterName');
     const { value = 0 } = req.body;
     
     // Check if user is admin

@@ -23,6 +23,7 @@ import {
 import { type MutationOutcome } from '../types/index.js';
 import { settingsService } from '../services/SettingsService.js';
 import { validatePasswordAgainstPolicy } from '../shared/passwordPolicy.util.js';
+import { routeParam } from '../utils/routeParams.util.js';
 
 /**
  * How many accounts the management screen may see.
@@ -48,7 +49,7 @@ export const getAllUsers = asyncHandler(async (req: Request, res: Response): Pro
  * Get user by ID
  */
 export const getUserById = asyncHandler(async (req: Request, res: Response): Promise<void> => {
-  const { id } = req.params;
+  const id = routeParam(req, 'id');
   
   if (!id) {
     throw new ValidationError('User ID is required');
@@ -73,7 +74,7 @@ export const getUserById = asyncHandler(async (req: Request, res: Response): Pro
  * Get user by email
  */
 export const getUserByEmail = asyncHandler(async (req: Request, res: Response): Promise<void> => {
-  const { email } = req.params;
+  const email = routeParam(req, 'email');
   
   if (!email) {
     throw new ValidationError('Valid email is required');
@@ -246,7 +247,7 @@ export const updateUser = asyncHandler(async (req: Request<{id: string}, UpdateU
  * Delete user
  */
 export const deleteUser = asyncHandler(async (req: Request, res: Response): Promise<void> => {
-  const { id } = req.params;
+  const id = routeParam(req, 'id');
 
   if (!id) {
     throw new ValidationError('User ID is required');
@@ -291,7 +292,7 @@ export const deleteUser = asyncHandler(async (req: Request, res: Response): Prom
  * Verify user email
  */
 export const verifyUserEmail = asyncHandler(async (req: Request, res: Response): Promise<void> => {
-  const { id } = req.params;
+  const id = routeParam(req, 'id');
   
   if (!id) {
     throw new ValidationError('User ID is required');
@@ -321,7 +322,7 @@ export const resetUserPassword = asyncHandler(async (
   req: Request<{ id: string }, ResetUserPasswordResponse, Partial<ResetUserPasswordRequest>>,
   res: Response<ResetUserPasswordResponse>
 ): Promise<void> => {
-  const userId = parseInt(req.params.id ?? '', 10);
+  const userId = parseInt(routeParam(req, 'id') ?? '', 10);
 
   if (isNaN(userId)) {
     throw new ValidationError('Invalid user ID');
@@ -359,7 +360,7 @@ export const unlockUserAccount = asyncHandler(async (
   req: Request<{ id: string }>,
   res: Response<UnlockUserResponse>
 ): Promise<void> => {
-  const userId = parseInt(req.params.id ?? '', 10);
+  const userId = parseInt(routeParam(req, 'id') ?? '', 10);
 
   if (isNaN(userId)) {
     throw new ValidationError('Invalid user ID');

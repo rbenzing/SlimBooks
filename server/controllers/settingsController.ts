@@ -17,6 +17,7 @@ import {
   type ProjectSettingsRequest, 
   type SettingsSaveRequest 
 } from '../types/api.types.js';
+import { routeParam } from '../utils/routeParams.util.js';
 
 /**
  * What a credential reads back as over HTTP.
@@ -53,7 +54,7 @@ export const getAllSettings = asyncHandler(async (req: Request, res: Response): 
  * Get individual setting by key
  */
 export const getSettingByKey = asyncHandler(async (req: Request, res: Response): Promise<void> => {
-  const { key } = req.params;
+  const key = routeParam(req, 'key');
 
   if (!key) {
     throw new ValidationError('Setting key parameter is required');
@@ -249,7 +250,7 @@ export const updateProjectSettings = asyncHandler(async (req: Request<object, ob
  * Get security setting value
  */
 export const getSecuritySetting = asyncHandler(async (req: Request, res: Response): Promise<void> => {
-  const { setting_name } = req.params;
+  const setting_name = routeParam(req, 'setting_name');
   
   if (!setting_name) {
     throw new ValidationError('Setting name parameter is required');
@@ -271,7 +272,7 @@ export const getSecuritySetting = asyncHandler(async (req: Request, res: Respons
  * Delete setting by key
  */
 export const deleteSetting = asyncHandler(async (req: Request, res: Response): Promise<void> => {
-  const { key } = req.params;
+  const key = routeParam(req, 'key');
   
   if (!key) {
     throw new ValidationError('Setting key parameter is required');
@@ -297,7 +298,7 @@ export const deleteSetting = asyncHandler(async (req: Request, res: Response): P
  * Delete settings by category
  */
 export const deleteSettingsByCategory = asyncHandler(async (req: Request, res: Response): Promise<void> => {
-  const { category } = req.params;
+  const category = routeParam(req, 'category');
   
   if (!category) {
     throw new ValidationError('Category parameter is required');
@@ -331,7 +332,7 @@ export const getCategories = asyncHandler(async (req: Request, res: Response): P
  * Check if setting exists
  */
 export const checkSettingExists = asyncHandler(async (req: Request, res: Response): Promise<void> => {
-  const { key } = req.params;
+  const key = routeParam(req, 'key');
   
   if (!key) {
     throw new ValidationError('Setting key parameter is required');

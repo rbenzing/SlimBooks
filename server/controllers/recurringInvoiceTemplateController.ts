@@ -9,6 +9,7 @@ import {
   ValidationError,
   asyncHandler
 } from '../middleware/index.js';
+import { routeParam } from '../utils/routeParams.util.js';
 
 /**
  * Recurring Invoice Template data request interface
@@ -58,7 +59,7 @@ export const getTemplatesDueForProcessing = asyncHandler(async (req: Request, re
  * Get recurring invoice template by ID
  */
 export const getRecurringTemplateById = asyncHandler(async (req: Request, res: Response): Promise<void> => {
-  const { id } = req.params;
+  const id = routeParam(req, 'id');
 
   if (!id || isNaN(parseInt(id))) {
     throw new ValidationError('Invalid recurring template ID');
@@ -78,7 +79,7 @@ export const getRecurringTemplateById = asyncHandler(async (req: Request, res: R
  * Get recurring templates by client ID
  */
 export const getRecurringTemplatesByClientId = asyncHandler(async (req: Request, res: Response): Promise<void> => {
-  const { clientId } = req.params;
+  const clientId = routeParam(req, 'clientId');
 
   if (!clientId || isNaN(parseInt(clientId))) {
     throw new ValidationError('Invalid client ID');
@@ -146,7 +147,7 @@ export const createRecurringTemplate = asyncHandler(async (req: Request<object, 
  * Update recurring invoice template
  */
 export const updateRecurringTemplate = asyncHandler(async (req: Request<{ id: string }, object, { templateData: Partial<RecurringInvoiceTemplateRequest> }>, res: Response): Promise<void> => {
-  const { id } = req.params;
+  const id = routeParam(req, 'id');
   const { templateData } = req.body;
 
   if (!id || isNaN(parseInt(id))) {
@@ -186,7 +187,7 @@ export const updateRecurringTemplate = asyncHandler(async (req: Request<{ id: st
  * Delete recurring invoice template
  */
 export const deleteRecurringTemplate = asyncHandler(async (req: Request, res: Response): Promise<void> => {
-  const { id } = req.params;
+  const id = routeParam(req, 'id');
 
   if (!id || isNaN(parseInt(id))) {
     throw new ValidationError('Invalid recurring template ID');
@@ -220,7 +221,7 @@ export const deleteRecurringTemplate = asyncHandler(async (req: Request, res: Re
  * Toggle recurring template active/inactive
  */
 export const toggleRecurringTemplate = asyncHandler(async (req: Request<{ id: string }, object, { isActive: boolean }>, res: Response): Promise<void> => {
-  const { id } = req.params;
+  const id = routeParam(req, 'id');
   const { isActive } = req.body;
 
   if (!id || isNaN(parseInt(id))) {
@@ -279,7 +280,7 @@ export const processRecurringTemplates = asyncHandler(async (req: Request, res: 
  * Process a single recurring template
  */
 export const processSingleTemplate = asyncHandler(async (req: Request, res: Response): Promise<void> => {
-  const { id } = req.params;
+  const id = routeParam(req, 'id');
 
   if (!id || isNaN(parseInt(id))) {
     throw new ValidationError('Invalid recurring template ID');

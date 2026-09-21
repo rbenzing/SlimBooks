@@ -9,12 +9,13 @@ import {
   ValidationError,
   asyncHandler
 } from '../middleware/index.js';
+import { routeParam } from '../utils/routeParams.util.js';
 
 /**
  * Generate and download invoice PDF for authenticated users
  */
 export const downloadInvoicePDF = asyncHandler(async (req: Request, res: Response): Promise<void> => {
-  const idParam = req.params.id;
+  const idParam = routeParam(req, 'id');
   if (!idParam) {
     throw new ValidationError('Invoice ID is required');
   }
@@ -66,7 +67,7 @@ export const downloadInvoicePDF = asyncHandler(async (req: Request, res: Respons
  * Generate and download invoice PDF for public access with token
  */
 export const downloadPublicInvoicePDF = asyncHandler(async (req: Request, res: Response): Promise<void> => {
-  const idParam = req.params.id;
+  const idParam = routeParam(req, 'id');
   if (!idParam) {
     throw new ValidationError('Invoice ID is required');
   }

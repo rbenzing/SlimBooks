@@ -8,6 +8,7 @@ import {
   ValidationError,
   asyncHandler
 } from '../middleware/index.js';
+import { routeParam } from '../utils/routeParams.util.js';
 
 /**
  * Template data request interface
@@ -31,7 +32,7 @@ export const getAllTemplates = asyncHandler(async (req: Request, res: Response):
  * Get template by ID
  */
 export const getTemplateById = asyncHandler(async (req: Request, res: Response): Promise<void> => {
-  const { id } = req.params;
+  const id = routeParam(req, 'id');
 
   if (!id || isNaN(parseInt(id))) {
     throw new ValidationError('Invalid template ID');
@@ -80,7 +81,7 @@ export const createTemplate = asyncHandler(async (req: Request<object, object, {
  * Update template
  */
 export const updateTemplate = asyncHandler(async (req: Request<{ id: string }, object, { templateData: Partial<TemplateRequest> }>, res: Response): Promise<void> => {
-  const { id } = req.params;
+  const id = routeParam(req, 'id');
   const { templateData } = req.body;
 
   if (!id || isNaN(parseInt(id))) {
@@ -117,7 +118,7 @@ export const updateTemplate = asyncHandler(async (req: Request<{ id: string }, o
  * Delete template
  */
 export const deleteTemplate = asyncHandler(async (req: Request, res: Response): Promise<void> => {
-  const { id } = req.params;
+  const id = routeParam(req, 'id');
 
   if (!id || isNaN(parseInt(id))) {
     throw new ValidationError('Invalid template ID');

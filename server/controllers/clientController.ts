@@ -8,6 +8,7 @@ import {
   ValidationError,
   asyncHandler
 } from '../middleware/index.js';
+import { routeParam } from '../utils/routeParams.util.js';
 
 /**
  * Client data request interface
@@ -39,7 +40,7 @@ export const getAllClients = asyncHandler(async (req: Request, res: Response): P
  * Get client by ID
  */
 export const getClientById = asyncHandler(async (req: Request, res: Response): Promise<void> => {
-  const { id } = req.params;
+  const id = routeParam(req, 'id');
 
   if (typeof id !== 'string') {
     throw new ValidationError('Invalid client ID');
@@ -134,7 +135,7 @@ export const updateClient = asyncHandler(async (req: Request<{ id: string }, obj
  * Delete client
  */
 export const deleteClient = asyncHandler(async (req: Request, res: Response): Promise<void> => {
-  const { id } = req.params;
+  const id = routeParam(req, 'id');
 
   if (typeof id !== 'string') {
     throw new ValidationError('Invalid client ID');
@@ -273,7 +274,7 @@ export const getClientsWithRecentActivity = asyncHandler(async (req: Request, re
  * Get clients by country
  */
 export const getClientsByCountry = asyncHandler(async (req: Request, res: Response): Promise<void> => {
-  const { country } = req.params;
+  const country = routeParam(req, 'country');
   const { limit = '100', offset = '0' } = req.query;
 
   if (!country) {
@@ -299,7 +300,7 @@ export const getClientsByCountry = asyncHandler(async (req: Request, res: Respon
  * Check if email exists
  */
 export const checkEmailExists = asyncHandler(async (req: Request, res: Response): Promise<void> => {
-  const { email } = req.params;
+  const email = routeParam(req, 'email');
   const { excludeId } = req.query;
 
   if (!email) {

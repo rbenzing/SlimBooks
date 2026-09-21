@@ -70,7 +70,16 @@ beforeEach(() => {
   authenticatedFetch.mockImplementation(async (url: string) => {
     if (url.startsWith('/api/recurring-templates/active')) return ok({ success: true, data: [recurringTemplate] });
     if (url.startsWith('/api/recurring-templates')) return ok({ success: true, data: recurringTemplate });
-    if (url.startsWith('/api/clients/')) return ok({ success: true, data: client });
+    // Deliberately slow. The editor loads the template first and the client
+    // second, and the save button stays disabled until the client lands. With
+    // an instant mock both resolve in the same flush, so a test that clicks
+    // too early still passes here and fails only under a loaded full run.
+    // The delay makes that ordering explicit, so the race is caught in
+    // isolation rather than at random in CI.
+    if (url.startsWith('/api/clients/')) {
+      await new Promise(resolve => setTimeout(resolve, 50));
+      return ok({ success: true, data: client });
+    }
     if (url === '/api/clients') return ok({ success: true, data: [client] });
     if (url.startsWith('/api/templates')) return ok({ success: true, data: null });
     return ok({ success: true, data: null });
@@ -120,6 +129,25 @@ describe('CreateRecurringInvoicePage', () => {
       </MemoryRouter>
     );
 
+  /**
+   * Clicks Save once the editor is genuinely ready to save.
+   *
+   * The client arrives in a *second* request, issued after the template loads,
+   * and `isValidForSave` gates the button on it. `findByDisplayValue` resolves
+   * as soon as the name renders — which happens before that client request is
+   * awaited — so clicking at that moment hits a disabled button, React
+   * swallows the event, and the PUT is never issued. The wait that follows
+   * then polls for a request that a lost click can no longer produce, so a
+   * longer timeout does not help; the click has to happen after the button is
+   * enabled. Under a loaded full-suite run this raced and failed these three
+   * tests at random.
+   */
+  const clickSave = async () => {
+    const save = await screen.findByRole('button', { name: /update template|save template/i });
+    await waitFor(() => expect(save).toBeEnabled());
+    fireEvent.click(save);
+  };
+
   it('loads the template from the recurring-template endpoint', async () => {
     renderEditor();
 
@@ -139,7 +167,7 @@ describe('CreateRecurringInvoicePage', () => {
     renderEditor();
     await screen.findByDisplayValue('Monthly retainer');
 
-    fireEvent.click(screen.getByRole('button', { name: /update template|save template/i }));
+    await clickSave();
 
     await waitFor(() => expect(callFor('PUT', /recurring-templates\/3/)).toBeTruthy());
     expect(callFor('PUT', /^\/api\/templates\//)).toBeUndefined();
@@ -149,7 +177,7 @@ describe('CreateRecurringInvoicePage', () => {
     renderEditor();
     await screen.findByDisplayValue('Monthly retainer');
 
-    fireEvent.click(screen.getByRole('button', { name: /update template|save template/i }));
+    await clickSave();
 
     await waitFor(() => expect(callFor('PUT', /recurring-templates\/3/)).toBeTruthy());
 
@@ -166,7 +194,7 @@ describe('CreateRecurringInvoicePage', () => {
     renderEditor();
     await screen.findByDisplayValue('Monthly retainer');
 
-    fireEvent.click(screen.getByRole('button', { name: /update template|save template/i }));
+    await clickSave();
 
     await waitFor(() => expect(callFor('PUT', /recurring-templates\/3/)).toBeTruthy());
 

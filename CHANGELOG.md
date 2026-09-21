@@ -12,6 +12,8 @@ Upgrade instructions live in
 
 ## [Unreleased]
 
+## [3.1.0] — 2026-09-21
+
 Nothing here needs an operator to do anything: no environment variable changed,
 no migration was added, and no manual upgrade step applies.
 
@@ -591,6 +593,7 @@ Earlier history is in the git log.
 
 ---
 
+[3.1.0]: https://github.com/rbenzing/SlimBooks/releases/tag/v3.1.0
 [3.0.0]: https://github.com/rbenzing/SlimBooks/releases/tag/v3.0.0
 [2.5.0]: https://github.com/rbenzing/SlimBooks/releases/tag/v2.5.0
 [2.4.0]: https://github.com/rbenzing/SlimBooks/releases/tag/v2.4.0

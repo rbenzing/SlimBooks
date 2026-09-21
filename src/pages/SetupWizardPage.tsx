@@ -11,7 +11,7 @@ import { EmailSettings } from '@/components/settings/EmailSettings';
 import { StripeSettingsTab } from '@/components/settings/StripeSettingsTab';
 import { Toaster } from '@/components/ui/sonner';
 import type { SettingsTabRef } from '@/types';
-import type { ForwardRefExoticComponent, RefAttributes } from 'react';
+import type { Ref, ReactElement } from 'react';
 
 interface WizardStepProps {
   onAdvance: () => void;
@@ -136,7 +136,7 @@ const CompanyInfoStep = ({ onAdvance }: WizardStepProps) => {
 interface IntegrationStepProps extends WizardStepProps {
   title: string;
   description: string;
-  Component: ForwardRefExoticComponent<RefAttributes<SettingsTabRef>>;
+  Component: (props: { ref?: Ref<SettingsTabRef> }) => ReactElement;
 }
 
 /** Steps 3-5: optional integrations, each reusing its real Settings tab. */

@@ -19,25 +19,16 @@ vi.mock('react-router-dom', async (importOriginal) => {
   return { ...actual, useNavigate: () => navigateMock };
 });
 
-vi.mock('@/components/settings/CompanySettings', async () => {
-  const React = await import('react');
-  return {
-    CompanySettings: React.forwardRef(() => <div>Company settings form</div>)
-  };
-});
+vi.mock('@/components/settings/CompanySettings', () => ({
+  CompanySettings: () => <div>Company settings form</div>
+}));
 
-vi.mock('@/components/settings/EmailSettings', async () => {
-  const React = await import('react');
-  return {
-    EmailSettings: React.forwardRef(() => <div>Email settings form</div>)
-  };
-});
-vi.mock('@/components/settings/StripeSettingsTab', async () => {
-  const React = await import('react');
-  return {
-    StripeSettingsTab: React.forwardRef(() => <div>Stripe settings form</div>)
-  };
-});
+vi.mock('@/components/settings/EmailSettings', () => ({
+  EmailSettings: () => <div>Email settings form</div>
+}));
+vi.mock('@/components/settings/StripeSettingsTab', () => ({
+  StripeSettingsTab: () => <div>Stripe settings form</div>
+}));
 afterEach(() => {
   vi.clearAllMocks();
 });

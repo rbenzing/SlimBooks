@@ -1,5 +1,5 @@
 
-import { forwardRef, useImperativeHandle } from 'react';
+import React, { useImperativeHandle } from 'react';
 import { Building } from 'lucide-react';
 import { BrandingImageSection } from './BrandingImageSection';
 import { CompanyDetailsSection } from './CompanyDetailsSection';
@@ -9,7 +9,11 @@ import { useCompanySettings } from '@/hooks/useSettings.hook';
 import { themeClasses } from '@/utils/themeUtils.util';
 import type { SettingsTabRef } from '@/types';
 
-export const CompanySettings = forwardRef<SettingsTabRef>((props, ref) => {
+interface CompanySettingsProps {
+  ref?: React.Ref<SettingsTabRef>;
+}
+
+export const CompanySettings = ({ ref }: CompanySettingsProps) => {
   const {
     settings,
     setSettings,
@@ -95,6 +99,4 @@ export const CompanySettings = forwardRef<SettingsTabRef>((props, ref) => {
       </div>
     </div>
   );
-});
-
-CompanySettings.displayName = 'CompanySettings';
+};

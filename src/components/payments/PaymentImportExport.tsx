@@ -1,5 +1,6 @@
 import React, { useState, useCallback } from 'react';
-import { Upload, Download, FileText, CheckCircle, AlertCircle, X } from 'lucide-react';
+import { Upload, Download, FileText, CheckCircle, AlertCircle } from 'lucide-react';
+import Modal from '@/components/ui/modal.cpt';
 import { exportToCSV, parseCSV, validatePaymentData, getDateRangeForPeriod } from '@/utils/data';
 import {
   type PaymentValidationResult,
@@ -306,108 +307,72 @@ export const PaymentImportExport: React.FC<ImportExportProps> = ({
     setIsProcessing(false);
   };
 
-  if (mode === 'select') {
-    return (
-      <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
-        <div className={`${themeClasses.card} w-full max-w-md`}>
-          <div className="flex justify-between items-center mb-4">
-            <h2 className={themeClasses.cardTitle}>Import/Export Payments</h2>
-            <button
-              onClick={onClose}
-              className="text-muted-foreground hover:text-foreground transition-colors"
-            >
-              <X className={themeClasses.iconSmall} />
-            </button>
-          </div>
-
-          <div className="space-y-4">
-            <button
-              onClick={() => setMode('export')}
-              className="w-full flex items-center justify-center p-4 border-2 border-dashed border-border rounded-lg hover:border-primary hover:bg-accent transition-colors"
-            >
-              <Download className={`${themeClasses.iconMedium} ${getIconColorClasses('blue')} mr-3`} />
-              <div className="text-left">
-                <div className="font-medium text-foreground">Export Payments</div>
-                <div className="text-sm text-muted-foreground">Download all payments as CSV</div>
-              </div>
-            </button>
-
-            <button
-              onClick={() => document.getElementById('payment-csv-upload')?.click()}
-              className="w-full flex items-center justify-center p-4 border-2 border-dashed border-border rounded-lg hover:border-primary hover:bg-accent transition-colors"
-            >
-              <Upload className={`${themeClasses.iconMedium} ${getIconColorClasses('blue')} mr-3`} />
-              <div className="text-left">
-                <div className="font-medium text-foreground">Import Payments</div>
-                <div className="text-sm text-muted-foreground">Upload CSV file to import</div>
-              </div>
-            </button>
-
-            <input
-              id="payment-csv-upload"
-              type="file"
-              accept=".csv"
-              onChange={handleFileUpload}
-              className="hidden"
-            />
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (mode === 'export') {
-    return (
-      <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
-        <div className={`${themeClasses.card} w-full max-w-md`}>
-          <div className="flex justify-between items-center mb-4">
-            <h2 className={themeClasses.cardTitle}>Export Payments</h2>
-            <button
-              onClick={onClose}
-              className="text-muted-foreground hover:text-foreground transition-colors"
-            >
-              <X className={themeClasses.iconSmall} />
-            </button>
-          </div>
-
-          <div className="text-center py-6">
-            <FileText className={`h-12 w-12 ${getIconColorClasses('blue')} mx-auto mb-4`} />
-            <p className="text-muted-foreground mb-6">Export all payments to a CSV file for backup or analysis.</p>
-
-            <div className="space-y-3">
-              <button
-                onClick={handleExport}
-                className={getButtonClasses('primary')}
-              >
-                Download CSV
-              </button>
-              <button
-                onClick={() => setMode('select')}
-                className={getButtonClasses('secondary')}
-              >
-                Back
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  const title = mode === 'select'
+    ? 'Import/Export Payments'
+    : mode === 'export'
+      ? 'Export Payments'
+      : (importOutcome ? 'Import Results' : 'Import Payments');
 
   return (
-    <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
-      <div className={`${themeClasses.card} w-full max-w-4xl max-h-[90vh] overflow-y-auto`}>
-        <div className="flex justify-between items-center mb-6">
-          <h2 className={themeClasses.cardTitle}>{importOutcome ? 'Import Results' : 'Import Payments'}</h2>
+    <Modal open onClose={onClose} title={title} size={mode === 'import' ? '4xl' : 'md'}>
+      {mode === 'select' && (
+        <div className="space-y-4">
           <button
-            onClick={onClose}
-            className="text-muted-foreground hover:text-foreground transition-colors"
+            onClick={() => setMode('export')}
+            className="w-full flex items-center justify-center p-4 border-2 border-dashed border-border rounded-lg hover:border-primary hover:bg-accent transition-colors"
           >
-            <X className={themeClasses.iconSmall} />
+            <Download className={`${themeClasses.iconMedium} ${getIconColorClasses('blue')} mr-3`} />
+            <div className="text-left">
+              <div className="font-medium text-foreground">Export Payments</div>
+              <div className="text-sm text-muted-foreground">Download all payments as CSV</div>
+            </div>
           </button>
-        </div>
 
-        {importOutcome ? (
+          <button
+            onClick={() => document.getElementById('payment-csv-upload')?.click()}
+            className="w-full flex items-center justify-center p-4 border-2 border-dashed border-border rounded-lg hover:border-primary hover:bg-accent transition-colors"
+          >
+            <Upload className={`${themeClasses.iconMedium} ${getIconColorClasses('blue')} mr-3`} />
+            <div className="text-left">
+              <div className="font-medium text-foreground">Import Payments</div>
+              <div className="text-sm text-muted-foreground">Upload CSV file to import</div>
+            </div>
+          </button>
+
+          <input
+            id="payment-csv-upload"
+            type="file"
+            accept=".csv"
+            onChange={handleFileUpload}
+            className="hidden"
+          />
+        </div>
+      )}
+
+      {mode === 'export' && (
+        <div className="text-center py-6">
+          <FileText className={`h-12 w-12 ${getIconColorClasses('blue')} mx-auto mb-4`} />
+          <p className="text-muted-foreground mb-6">Export all payments to a CSV file for backup or analysis.</p>
+
+          <div className="space-y-3">
+            <button
+              onClick={handleExport}
+              className={getButtonClasses('primary')}
+            >
+              Download CSV
+            </button>
+            <button
+              onClick={() => setMode('select')}
+              className={getButtonClasses('secondary')}
+            >
+              Back
+            </button>
+          </div>
+        </div>
+      )}
+
+      {mode === 'import' && (
+        importOutcome ? (
           <ImportResult
             outcome={importOutcome}
             hiddenCount={hiddenCount}
@@ -519,8 +484,8 @@ export const PaymentImportExport: React.FC<ImportExportProps> = ({
             </div>
           </div>
         </div>
-        )}
-      </div>
-    </div>
+        )
+      )}
+    </Modal>
   );
 };

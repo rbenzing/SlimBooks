@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ArrowLeft, Search, X } from 'lucide-react';
+import Modal from '@/components/ui/modal.cpt';
 import { useFormNavigation } from '@/hooks/useFormNavigation';
 import { themeClasses, getButtonClasses } from '@/utils/themeUtils.util';
 import { authenticatedFetch } from '@/utils/api';
@@ -273,74 +274,65 @@ export const PaymentForm: React.FC<PaymentFormProps> = ({
               </div>
 
               {/* Invoice Search Modal */}
-              {showInvoiceSearch && (
-                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-                  <div className="bg-card rounded-lg shadow-lg max-w-2xl w-full max-h-[80vh] overflow-hidden">
-                    <div className="flex items-center justify-between p-4 border-b border-border">
-                      <h3 className="text-lg font-semibold text-foreground">Select Invoice</h3>
-                      <button
-                        onClick={() => setShowInvoiceSearch(false)}
-                        className="text-muted-foreground hover:text-foreground"
-                      >
-                        <X className="h-5 w-5" />
-                      </button>
-                    </div>
-                    
-                    <div className="p-4 border-b border-border">
-                      <div className="relative">
-                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <input
-                          type="text"
-                          placeholder="Search invoices..."
-                          className={`${themeClasses.input} pl-10`}
-                          value={invoiceSearchTerm}
-                          onChange={(e) => setInvoiceSearchTerm(e.target.value)}
-                        />
-                      </div>
-                    </div>
-
-                    <div className="max-h-96 overflow-y-auto">
-                      {loadingInvoices ? (
-                        <div className="p-8 text-center text-muted-foreground">Loading...</div>
-                      ) : filteredInvoices.length === 0 ? (
-                        <div className="p-8 text-center text-muted-foreground">
-                          {invoiceSearchTerm ? 'No invoices match your search' : 'No invoices found'}
-                        </div>
-                      ) : (
-                        filteredInvoices.map((invoice) => (
-                          <button
-                            key={invoice.id}
-                            type="button"
-                            onClick={() => selectInvoice(invoice)}
-                            className="w-full p-4 text-left hover:bg-muted/50 border-b border-border last:border-b-0"
-                          >
-                            <div className="flex justify-between items-start">
-                              <div>
-                                <div className="font-medium text-foreground">
-                                  {invoice.invoice_number}
-                                </div>
-                                {invoice.client_name && (
-                                  <div className="text-sm text-muted-foreground">
-                                    {invoice.client_name}
-                                  </div>
-                                )}
-                              </div>
-                              <div className="text-right">
-                                <div className="font-medium text-foreground">
-                                  ${invoice.total_amount.toFixed(2)}
-                                </div>
-                                <div className="text-sm text-muted-foreground capitalize">
-                                  {invoice.status}
-                                </div>
-                              </div>
-                            </div>
-                          </button>
-                        ))
-                      )}
-                    </div>
+              <Modal
+                open={showInvoiceSearch}
+                onClose={() => setShowInvoiceSearch(false)}
+                title="Select Invoice"
+                size="2xl"
+              >
+                <div className="p-4 border-b border-border">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <input
+                      type="text"
+                      placeholder="Search invoices..."
+                      className={`${themeClasses.input} pl-10`}
+                      value={invoiceSearchTerm}
+                      onChange={(e) => setInvoiceSearchTerm(e.target.value)}
+                    />
                   </div>
                 </div>
-              )}
+
+                <div className="max-h-96 overflow-y-auto">
+                  {loadingInvoices ? (
+                    <div className="p-8 text-center text-muted-foreground">Loading...</div>
+                  ) : filteredInvoices.length === 0 ? (
+                    <div className="p-8 text-center text-muted-foreground">
+                      {invoiceSearchTerm ? 'No invoices match your search' : 'No invoices found'}
+                    </div>
+                  ) : (
+                    filteredInvoices.map((invoice) => (
+                      <button
+                        key={invoice.id}
+                        type="button"
+                        onClick={() => selectInvoice(invoice)}
+                        className="w-full p-4 text-left hover:bg-muted/50 border-b border-border last:border-b-0"
+                      >
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <div className="font-medium text-foreground">
+                              {invoice.invoice_number}
+                            </div>
+                            {invoice.client_name && (
+                              <div className="text-sm text-muted-foreground">
+                                {invoice.client_name}
+                              </div>
+                            )}
+                          </div>
+                          <div className="text-right">
+                            <div className="font-medium text-foreground">
+                              ${invoice.total_amount.toFixed(2)}
+                            </div>
+                            <div className="text-sm text-muted-foreground capitalize">
+                              {invoice.status}
+                            </div>
+                          </div>
+                        </div>
+                      </button>
+                    ))
+                  )}
+                </div>
+              </Modal>
 
               <div>
                 <label className={themeClasses.label}>

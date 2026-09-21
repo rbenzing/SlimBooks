@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useCallback, forwardRef, useImperativeHandle } from 'react';
+import React, { useState, useEffect, useCallback, useImperativeHandle } from 'react';
 import { toast } from 'sonner';
 import { Calendar, Clock, FileText, DollarSign, List } from 'lucide-react';
 import { themeClasses } from '@/utils/themeUtils.util';
@@ -36,7 +36,11 @@ import { getToken } from '@/utils/api';
 import type { DateTimeSettings, InvoiceNumberSettings, PaginationSettings, CurrencySettings } from '@/types';
 import type { SettingsTabRef } from '@/types';
 
-export const GeneralSettingsTab = forwardRef<SettingsTabRef>((props, ref) => {
+interface GeneralSettingsTabProps {
+  ref?: React.Ref<SettingsTabRef>;
+}
+
+export const GeneralSettingsTab = ({ ref }: GeneralSettingsTabProps) => {
   const [dateTimeSettings, setDateTimeSettings] = useState<DateTimeSettings>({ dateFormat: 'MM/DD/YYYY', timeFormat: '12-hour' });
   const [invoiceSettings, setInvoiceSettings] = useState<InvoiceNumberSettings>({ prefix: 'INV' });
   const [currencySettings, setCurrencySettings] = useState<CurrencySettings>({
@@ -506,6 +510,4 @@ export const GeneralSettingsTab = forwardRef<SettingsTabRef>((props, ref) => {
       </div>
     </div>
   );
-});
-
-GeneralSettingsTab.displayName = 'GeneralSettingsTab';
+};

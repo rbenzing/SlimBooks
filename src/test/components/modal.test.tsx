@@ -44,6 +44,24 @@ describe('Modal', () => {
     expect(screen.getByText('body')).toBeInTheDocument();
   });
 
+  // The description is meaningless to assistive technology unless the
+  // dialog itself points at it: aria-describedby must resolve to the
+  // element carrying the description text, and must be absent entirely
+  // when there is no description to point at.
+  it('associates the description with the dialog via aria-describedby', () => {
+    const { container } = open({ description: 'Set a new password.' });
+    const dialog = container.querySelector('dialog') as HTMLDialogElement;
+    const describedBy = dialog.getAttribute('aria-describedby');
+
+    expect(describedBy).toBeTruthy();
+    expect(document.getElementById(describedBy!)?.textContent).toBe('Set a new password.');
+  });
+
+  it('omits aria-describedby when there is no description', () => {
+    const { container } = open();
+    expect(container.querySelector('dialog')!.hasAttribute('aria-describedby')).toBe(false);
+  });
+
   it('renders a footer when given one', () => {
     open({ footer: <button>Save</button> });
     expect(screen.getByRole('button', { name: 'Save' })).toBeInTheDocument();

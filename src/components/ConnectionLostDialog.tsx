@@ -67,10 +67,7 @@ export const ConnectionLostDialog: React.FC<ConnectionLostDialogProps> = ({
       <div className="flex flex-col items-center space-y-4 text-center">
         {getStatusIcon()}
 
-        <p
-          id="connection-dialog-description"
-          className="text-sm text-muted-foreground"
-        >
+        <p className="text-sm text-muted-foreground">
           {message}
         </p>
       </div>

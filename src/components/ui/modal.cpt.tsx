@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef } from 'react';
+import React, { useCallback, useEffect, useId, useRef } from 'react';
 import { X } from 'lucide-react';
 import { cn } from '@/utils/themeUtils.util';
 
@@ -28,6 +28,19 @@ const SIZES: Record<ModalSize, string> = {
 };
 
 interface ModalProps {
+  /**
+   * Two valid idioms, both correct today:
+   *  - Bare `open` (the parent always renders `<Modal open .../>` and
+   *    unmounts Modal itself on close) — relies entirely on the parent to
+   *    tear the component down; Modal never sees `open` go false.
+   *  - `open={state}` (the parent keeps Modal mounted and flips a boolean).
+   * Bare `open` is a trap: if a future parent's `onClose` stops unmounting
+   * (e.g. it's changed to just clear some other state), the dialog still
+   * closes natively via Escape/cancel, but `open` never becomes false, so
+   * the open-effect has nothing to react to and the dialog can't reopen —
+   * a permanently invisible modal with no error. Only use bare `open` when
+   * the parent unmounts Modal on every close path.
+   */
   open: boolean;
   onClose: () => void;
   /** Required: a dialog with no accessible name announces as nothing. */
@@ -51,6 +64,7 @@ const Modal: React.FC<ModalProps> = ({
   children
 }) => {
   const ref = useRef<HTMLDialogElement>(null);
+  const descriptionId = useId();
 
   // The element that was focused right before we called showModal(), so we
   // can put focus back on it ourselves. The native <dialog> only restores
@@ -133,8 +147,9 @@ const Modal: React.FC<ModalProps> = ({
     <dialog
       ref={ref}
       aria-label={title}
+      aria-describedby={description ? descriptionId : undefined}
       className={cn(
-        'w-full rounded-lg border border-border bg-card p-6 text-foreground shadow-xl',
+        'w-[calc(100%-2rem)] rounded-lg border border-border bg-card p-6 text-foreground shadow-xl',
         'max-h-[90vh] overflow-y-auto backdrop:bg-black/50',
         SIZES[size]
       )}
@@ -143,7 +158,7 @@ const Modal: React.FC<ModalProps> = ({
         <div className="space-y-1.5">
           <h2 className="text-xl font-bold text-foreground">{title}</h2>
           {description ? (
-            <p className="text-sm text-muted-foreground">{description}</p>
+            <p id={descriptionId} className="text-sm text-muted-foreground">{description}</p>
           ) : null}
         </div>
 

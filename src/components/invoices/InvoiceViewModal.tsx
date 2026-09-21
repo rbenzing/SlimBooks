@@ -74,8 +74,6 @@ export const InvoiceViewModal: React.FC<InvoiceViewModalProps> = ({ invoice, isO
 
   const getTemplateStyles = () => {
     const baseStyles = {
-      container: 'bg-card border',
-      modalHeader: 'bg-card border-b border-border',
       invoiceHeader: '',
       companySection: '',
       title: 'text-foreground',
@@ -93,8 +91,6 @@ export const InvoiceViewModal: React.FC<InvoiceViewModalProps> = ({ invoice, isO
       case 'classic-white':
         return {
           ...baseStyles,
-          container: 'bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600',
-          modalHeader: 'bg-gray-50 dark:bg-gray-700 border-b border-gray-300 dark:border-gray-600',
           invoiceHeader: 'bg-gray-100 dark:bg-gray-700 border-b-2 border-gray-400 dark:border-gray-500 rounded-t-lg',
           companySection: 'bg-white dark:bg-gray-800',
           title: 'text-gray-900 dark:text-gray-100',
@@ -110,8 +106,6 @@ export const InvoiceViewModal: React.FC<InvoiceViewModalProps> = ({ invoice, isO
       case 'professional-gray':
         return {
           ...baseStyles,
-          container: 'bg-white dark:bg-gray-800 border border-slate-400 dark:border-slate-600',
-          modalHeader: 'bg-slate-100 dark:bg-slate-700 border-b border-slate-400 dark:border-slate-600',
           invoiceHeader: 'bg-gradient-to-r from-slate-700 to-slate-800 dark:from-slate-600 dark:to-slate-700 text-white border-b-2 border-slate-600 dark:border-slate-500 rounded-t-lg',
           companySection: 'bg-white dark:bg-gray-800',
           title: 'text-white',
@@ -127,8 +121,6 @@ export const InvoiceViewModal: React.FC<InvoiceViewModalProps> = ({ invoice, isO
       default: // modern-blue
         return {
           ...baseStyles,
-          container: 'bg-white dark:bg-gray-800 border border-blue-300 dark:border-blue-600',
-          modalHeader: 'bg-blue-50 dark:bg-blue-900/20 border-b border-blue-300 dark:border-blue-600',
           invoiceHeader: 'bg-gradient-to-r from-blue-600 to-blue-700 dark:from-blue-700 dark:to-blue-800 text-white border-b-2 border-blue-500 dark:border-blue-600 rounded-t-lg',
           companySection: 'bg-white dark:bg-gray-800',
           title: 'text-white',

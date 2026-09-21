@@ -106,7 +106,7 @@ jobs:
           subject-path: slimbooks-*.tar.gz
 
       - name: Keep the package for the publish job
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: release-build
           path: slimbooks-*.tar.gz

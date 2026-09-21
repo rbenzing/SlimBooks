@@ -11,6 +11,7 @@ import {
   NotFoundError,
   asyncHandler
 } from '../middleware/index.js';
+import { routeParam } from '../utils/routeParams.util.js';
 
 /**
  * Turn a service failure into the right status code.
@@ -54,7 +55,7 @@ export const testStripeConnection = asyncHandler(async (req: Request, res: Respo
  * Create (or return) the payment link for an invoice.
  */
 export const createInvoicePaymentLink = asyncHandler(async (req: Request, res: Response): Promise<void> => {
-  const invoiceId = parseInt(req.params.id ?? '', 10);
+  const invoiceId = parseInt(routeParam(req, 'id') ?? '', 10);
 
   if (!Number.isInteger(invoiceId) || invoiceId <= 0) {
     throw new ValidationError('Valid invoice ID is required');
@@ -72,7 +73,7 @@ export const createInvoicePaymentLink = asyncHandler(async (req: Request, res: R
  * Deactivate a payment link.
  */
 export const deactivatePaymentLink = asyncHandler(async (req: Request, res: Response): Promise<void> => {
-  const { linkId } = req.params;
+  const linkId = routeParam(req, 'linkId');
 
   if (!linkId) {
     throw new ValidationError('Payment link ID is required');

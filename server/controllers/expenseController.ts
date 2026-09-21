@@ -22,6 +22,7 @@ export interface ExpenseFilters {
   client_id?: number;
 }
 import { type ExpenseRequest } from '../types/api.types.js';
+import { routeParam } from '../utils/routeParams.util.js';
 
 /**
  * Get all expenses
@@ -60,7 +61,7 @@ export const getAllExpenses = asyncHandler(async (req: Request, res: Response): 
  * Get expense by ID
  */
 export const getExpenseById = asyncHandler(async (req: Request, res: Response): Promise<void> => {
-  const { id } = req.params;
+  const id = routeParam(req, 'id');
 
   if (typeof id !== 'string') {
     throw new ValidationError('Invalid expense ID');
@@ -186,7 +187,7 @@ export const updateExpense = asyncHandler(async (req: Request<{ id: string }, ob
  * Delete expense
  */
 export const deleteExpense = asyncHandler(async (req: Request, res: Response): Promise<void> => {
-  const { id } = req.params;
+  const id = routeParam(req, 'id');
   
   if (typeof id !== 'string') {
     throw new ValidationError('Invalid expense ID');
@@ -246,7 +247,7 @@ export const getExpenseCategories = asyncHandler(async (req: Request, res: Respo
  * Get expenses by category
  */
 export const getExpensesByCategory = asyncHandler(async (req: Request, res: Response): Promise<void> => {
-  const { category } = req.params;
+  const category = routeParam(req, 'category');
   const { limit = '100', offset = '0' } = req.query;
 
   if (!category) {

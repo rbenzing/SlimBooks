@@ -12,6 +12,7 @@ import {
 } from '../middleware/index.js';
 import { type InvoiceStatus } from '../types/index.js';
 import { type InvoiceRequest } from '../types/api.types.js';
+import { routeParam } from '../utils/routeParams.util.js';
 
 /**
  * Get all invoices
@@ -55,7 +56,7 @@ export const getAllInvoices = asyncHandler(async (req: Request, res: Response): 
  * Get invoice by ID
  */
 export const getInvoiceById = asyncHandler(async (req: Request, res: Response): Promise<void> => {
-  const { id } = req.params;
+  const id = routeParam(req, 'id');
 
   if (typeof id !== 'string') {
     throw new ValidationError('Invalid invoice ID');
@@ -85,7 +86,7 @@ export const getInvoiceById = asyncHandler(async (req: Request, res: Response): 
  * - Consistent error responses (no information disclosure)
  */
 export const getPublicInvoiceById = asyncHandler(async (req: Request, res: Response): Promise<void> => {
-  const { id } = req.params;
+  const id = routeParam(req, 'id');
   const { token } = req.query;
 
   if (typeof id !== 'string') {
@@ -131,7 +132,7 @@ export const getPublicInvoiceById = asyncHandler(async (req: Request, res: Respo
  * Creates a JWT token with 24-hour expiration
  */
 export const generatePublicInvoiceToken = asyncHandler(async (req: Request, res: Response): Promise<void> => {
-  const { id } = req.params;
+  const id = routeParam(req, 'id');
 
   if (typeof id !== 'string') {
     throw new ValidationError('Invalid invoice ID');
@@ -238,7 +239,7 @@ export const updateInvoice = asyncHandler(async (req: Request<{ id: string }, Re
  * Delete invoice
  */
 export const deleteInvoice = asyncHandler(async (req: Request, res: Response): Promise<void> => {
-  const { id } = req.params;
+  const id = routeParam(req, 'id');
 
   if (typeof id !== 'string') {
     throw new ValidationError('Invalid invoice ID');
@@ -353,7 +354,7 @@ export const getOverdueInvoices = asyncHandler(async (req: Request, res: Respons
  * Get invoices by client ID
  */
 export const getInvoicesByClientId = asyncHandler(async (req: Request, res: Response): Promise<void> => {
-  const { client_id } = req.params;
+  const client_id = routeParam(req, 'client_id');
   const { limit = '100', offset = '0' } = req.query;
 
   if (typeof client_id !== 'string') {
@@ -400,7 +401,7 @@ export const getRecentInvoices = asyncHandler(async (req: Request, res: Response
  * Check if invoice number exists
  */
 export const checkInvoiceNumberExists = asyncHandler(async (req: Request, res: Response): Promise<void> => {
-  const { invoice_number } = req.params;
+  const invoice_number = routeParam(req, 'invoice_number');
   const { exclude_id } = req.query;
 
   if (!invoice_number) {

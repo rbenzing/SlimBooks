@@ -4,6 +4,7 @@
 import { Router, type Request, type Response } from 'express';
 import { requireAuth } from '../middleware/index.js';
 import { reportService, type ReportData } from '../services/ReportService.js';
+import { routeParam } from '../utils/routeParams.util.js';
 
 const router: Router = Router();
 
@@ -31,7 +32,7 @@ router.get('/', async (req: Request, res: Response): Promise<void> => {
 // Get report by ID
 router.get('/:id', async (req: Request, res: Response): Promise<void> => {
   try {
-    const { id } = req.params;
+    const id = routeParam(req, 'id');
     const reportId = parseInt(id!);
 
     if (isNaN(reportId)) {
@@ -96,7 +97,7 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
 // Update report
 router.put('/:id', async (req: Request, res: Response): Promise<void> => {
   try {
-    const { id } = req.params;
+    const id = routeParam(req, 'id');
     const { reportData }: { reportData: ReportData } = req.body;
     const reportId = parseInt(id!);
 
@@ -134,7 +135,7 @@ router.put('/:id', async (req: Request, res: Response): Promise<void> => {
 // Delete report
 router.delete('/:id', async (req: Request, res: Response): Promise<void> => {
   try {
-    const { id } = req.params;
+    const id = routeParam(req, 'id');
     const reportId = parseInt(id!);
 
     if (isNaN(reportId)) {

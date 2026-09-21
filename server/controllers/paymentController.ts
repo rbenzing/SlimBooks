@@ -11,6 +11,7 @@ import {
 } from '../middleware/index.js';
 import { type PaymentMethod, type PaymentStatus } from '../types/index.js';
 import { type PaymentRequest } from '../types/api.types.js';
+import { routeParam } from '../utils/routeParams.util.js';
 
 /**
  * Get all payments
@@ -47,7 +48,7 @@ export const getAllPayments = asyncHandler(async (req: Request, res: Response): 
  * Get payment by ID
  */
 export const getPaymentById = asyncHandler(async (req: Request, res: Response): Promise<void> => {
-  const { id } = req.params;
+  const id = routeParam(req, 'id');
 
   if (typeof id !== 'string') {
     throw new ValidationError('Invalid payment ID');
@@ -150,7 +151,7 @@ export const updatePayment = asyncHandler(async (req: Request<{ id: string }, Re
  * Delete payment
  */
 export const deletePayment = asyncHandler(async (req: Request, res: Response): Promise<void> => {
-  const { id } = req.params;
+  const id = routeParam(req, 'id');
 
   if (typeof id !== 'string') {
     throw new ValidationError('Invalid payment ID');
@@ -225,7 +226,7 @@ export const getPaymentStats = asyncHandler(async (req: Request, res: Response):
  * Get payments by invoice ID
  */
 export const getPaymentsByInvoiceId = asyncHandler(async (req: Request, res: Response): Promise<void> => {
-  const { invoice_id } = req.params;
+  const invoice_id = routeParam(req, 'invoice_id');
   const { limit = '100', offset = '0' } = req.query;
 
   if (typeof invoice_id !== 'string') {
@@ -257,7 +258,7 @@ export const getPaymentsByInvoiceId = asyncHandler(async (req: Request, res: Res
  * Get payments by client name
  */
 export const getPaymentsByClientName = asyncHandler(async (req: Request, res: Response): Promise<void> => {
-  const { client_name } = req.params;
+  const client_name = routeParam(req, 'client_name');
   const { limit = '100', offset = '0' } = req.query;
 
   if (!client_name) {

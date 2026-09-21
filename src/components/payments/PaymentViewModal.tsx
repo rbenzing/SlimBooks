@@ -1,13 +1,12 @@
 import React from 'react';
-import { X, Calendar, DollarSign, User, CreditCard, Hash, FileText, Clock, Receipt } from 'lucide-react';
-import { getStatusColor, themeClasses } from '@/utils/themeUtils.util';
+import { Calendar, DollarSign, User, CreditCard, Hash, FileText, Clock, Receipt } from 'lucide-react';
+import Modal from '@/components/ui/modal.cpt';
+import { getStatusColor } from '@/utils/themeUtils.util';
 import { formatDateSync } from '@/components/ui/FormattedDate';
 import { FormattedCurrency } from '@/components/ui/FormattedCurrency';
 import { type PaymentViewModalProps } from '@/types';
 
 export const PaymentViewModal: React.FC<PaymentViewModalProps> = ({ payment, isOpen, onClose }) => {
-  if (!isOpen || !payment) return null;
-
   const getMethodIcon = (method: string) => {
     switch (method) {
       case 'cash':
@@ -43,19 +42,22 @@ export const PaymentViewModal: React.FC<PaymentViewModalProps> = ({ payment, isO
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-      <div className={`${themeClasses.card} rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto`}>
-        <div className={`flex justify-between items-center p-6 ${themeClasses.cardHeader}`}>
-          <h2 className={`text-2xl font-bold ${themeClasses.cardTitle}`}>Payment Details</h2>
-          <button
-            onClick={onClose}
-            className="text-muted-foreground hover:text-foreground transition-colors"
-          >
-            <X className="h-6 w-6" />
-          </button>
-        </div>
-
-        <div className="p-6 space-y-6">
+    <Modal
+      open={isOpen}
+      onClose={onClose}
+      title="Payment Details"
+      size="2xl"
+      footer={
+        <button
+          onClick={onClose}
+          className="px-4 py-2 bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground rounded-lg transition-colors"
+        >
+          Close
+        </button>
+      }
+    >
+      {payment && (
+        <div className="space-y-6">
           {/* Basic Information */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-4">
@@ -160,16 +162,7 @@ export const PaymentViewModal: React.FC<PaymentViewModalProps> = ({ payment, isO
             </div>
           </div>
         </div>
-
-        <div className={`flex justify-end p-6 ${themeClasses.cardFooter}`}>
-          <button
-            onClick={onClose}
-            className="px-4 py-2 bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground rounded-lg transition-colors"
-          >
-            Close
-          </button>
-        </div>
-      </div>
-    </div>
+      )}
+    </Modal>
   );
 };

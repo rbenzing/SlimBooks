@@ -1,7 +1,8 @@
 
 import { toast } from 'sonner';
 import React, { useState } from 'react';
-import { X, Upload, Download, DollarSign } from 'lucide-react';
+import { Upload, Download, DollarSign } from 'lucide-react';
+import Modal from '@/components/ui/modal.cpt';
 import { getStatusColor } from '@/utils/themeUtils.util';
 import { formatDateSync } from '@/components/ui/FormattedDate';
 import { FormattedCurrency } from '@/components/ui/FormattedCurrency';
@@ -37,43 +38,36 @@ export const InvoiceViewModal: React.FC<InvoiceViewModalProps> = ({ invoice, isO
     return cleanedAddress || '';
   };
 
-
-  if (!isOpen || !invoice) return null;
-
-  if (companySettingsLoading) {
-    return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-        <div className="bg-card border rounded-lg shadow-xl p-8">
-          <div className="text-foreground">Loading company settings...</div>
-        </div>
-      </div>
-    );
-  }
-
   // Handle line items - create from description if none exist
   let lineItems: InvoiceViewLineItem[] = [];
-  if (invoice.line_items) {
-    try {
-      lineItems = JSON.parse(invoice.line_items);
-    } catch {
-      lineItems = [];
+  let taxAmount = 0;
+  let shippingAmount = 0;
+  let subtotal = 0;
+
+  if (invoice) {
+    if (invoice.line_items) {
+      try {
+        lineItems = JSON.parse(invoice.line_items);
+      } catch {
+        lineItems = [];
+      }
     }
-  }
 
-  // If no line items exist, create one from the description and amount
-  if (lineItems.length === 0 && invoice.description) {
-    lineItems = [{
-      id: '1',
-      description: invoice.description,
-      quantity: 1,
-      rate: invoice.amount,
-      amount: invoice.amount
-    }];
-  }
+    // If no line items exist, create one from the description and amount
+    if (lineItems.length === 0 && invoice.description) {
+      lineItems = [{
+        id: '1',
+        description: invoice.description,
+        quantity: 1,
+        rate: invoice.amount,
+        amount: invoice.amount
+      }];
+    }
 
-  const taxAmount = invoice.tax_amount || 0;
-  const shippingAmount = invoice.shipping_amount || 0;
-  const subtotal = invoice.amount - taxAmount - shippingAmount;
+    taxAmount = invoice.tax_amount || 0;
+    shippingAmount = invoice.shipping_amount || 0;
+    subtotal = invoice.amount - taxAmount - shippingAmount;
+  }
 
   // Get template from localStorage or default to modern-blue
   const template = localStorage.getItem('invoiceTemplate') || 'modern-blue';
@@ -88,7 +82,6 @@ export const InvoiceViewModal: React.FC<InvoiceViewModalProps> = ({ invoice, isO
       accent: 'text-muted-foreground',
       tableHeader: 'bg-muted/30 border-border',
       totalSection: 'bg-card',
-      closeButton: 'text-muted-foreground hover:text-foreground',
       contentText: 'text-foreground',
       clientSection: 'bg-muted/20 border border-border',
       clientText: 'text-foreground',
@@ -108,7 +101,6 @@ export const InvoiceViewModal: React.FC<InvoiceViewModalProps> = ({ invoice, isO
           accent: 'text-gray-700 dark:text-gray-300',
           tableHeader: 'bg-gray-200 dark:bg-gray-700 border-gray-400 dark:border-gray-500',
           totalSection: 'bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-300 dark:border-gray-600',
-          closeButton: 'text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100',
           contentText: 'text-gray-900 dark:text-gray-100',
           clientSection: 'bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600',
           clientText: 'text-gray-900 dark:text-gray-100',
@@ -126,7 +118,6 @@ export const InvoiceViewModal: React.FC<InvoiceViewModalProps> = ({ invoice, isO
           accent: 'text-slate-200 dark:text-slate-300',
           tableHeader: 'bg-slate-200 dark:bg-slate-700 border-slate-400 dark:border-slate-500',
           totalSection: 'bg-slate-100 dark:bg-slate-700 rounded-lg border border-slate-400 dark:border-slate-600',
-          closeButton: 'text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100',
           contentText: 'text-slate-900 dark:text-slate-100',
           clientSection: 'bg-slate-50 dark:bg-slate-700 border border-slate-300 dark:border-slate-600',
           clientText: 'text-slate-900 dark:text-slate-100',
@@ -144,7 +135,6 @@ export const InvoiceViewModal: React.FC<InvoiceViewModalProps> = ({ invoice, isO
           accent: 'text-blue-100 dark:text-blue-200',
           tableHeader: 'bg-blue-100 dark:bg-blue-900/30 border-blue-300 dark:border-blue-600',
           totalSection: 'bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-300 dark:border-blue-600',
-          closeButton: 'text-blue-700 dark:text-blue-300 hover:text-blue-900 dark:hover:text-blue-100',
           contentText: 'text-blue-900 dark:text-blue-100',
           clientSection: 'bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-600',
           clientText: 'text-blue-900 dark:text-blue-100',
@@ -179,44 +169,44 @@ export const InvoiceViewModal: React.FC<InvoiceViewModalProps> = ({ invoice, isO
     }
   };
 
-  if (!isOpen) return null;
+  const showMarkAsPaid = Boolean(invoice && onMarkAsPaid && invoice.status !== 'paid');
+  const showDownloadPdf = Boolean(invoice && pdfEnabled);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-      <div className={`${styles.container} rounded-lg shadow-xl max-w-5xl w-full mx-4 max-h-[90vh] overflow-y-auto`}>
-        {/* Modal Header */}
-        <div className={`flex justify-between items-center p-4 ${styles.modalHeader} rounded-t-lg`}>
-          <h2 className="text-lg font-semibold text-foreground">Invoice Preview</h2>
-          <div className="flex items-center space-x-2">
-            {onMarkAsPaid && invoice.status !== 'paid' && (
+    <Modal
+      open={isOpen}
+      onClose={onClose}
+      title="Invoice Preview"
+      size="5xl"
+      footer={
+        showMarkAsPaid || showDownloadPdf ? (
+          <>
+            {showMarkAsPaid && invoice && onMarkAsPaid && (
               <button
                 onClick={() => onMarkAsPaid(invoice)}
-                className="flex items-center px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm"
+                className="flex items-center justify-center px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm"
               >
                 <DollarSign className="h-4 w-4 mr-2" />
                 Mark as Paid
               </button>
             )}
-            {pdfEnabled && (
+            {showDownloadPdf && (
               <button
                 onClick={handleDownloadPDF}
                 disabled={isGeneratingPDF}
-                className="flex items-center px-3 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                className="flex items-center justify-center px-3 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
               >
                 <Download className="h-4 w-4 mr-2" />
                 {isGeneratingPDF ? 'Generating...' : 'Download PDF'}
               </button>
             )}
-            <button
-              onClick={onClose}
-              className={styles.closeButton}
-            >
-              <X className="h-6 w-6" />
-            </button>
-          </div>
-        </div>
-
-        {/* Invoice Content */}
+          </>
+        ) : undefined
+      }
+    >
+      {companySettingsLoading ? (
+        <div className="text-foreground">Loading company settings...</div>
+      ) : invoice ? (
         <div className={`p-8 ${styles.companySection}`}>
           {/* Company Header with Branding */}
           <div className={`p-6 mb-6 ${styles.invoiceHeader}`}>
@@ -336,7 +326,7 @@ export const InvoiceViewModal: React.FC<InvoiceViewModalProps> = ({ invoice, isO
             </p>
           </div>
         </div>
-      </div>
-    </div>
+      ) : null}
+    </Modal>
   );
 };

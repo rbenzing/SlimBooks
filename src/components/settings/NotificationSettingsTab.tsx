@@ -1,12 +1,16 @@
 
-import { forwardRef, useImperativeHandle } from 'react';
+import React, { useImperativeHandle } from 'react';
 import { Bell, CheckCircle, AlertTriangle } from 'lucide-react';
 import { themeClasses } from '@/utils/themeUtils.util';
 import { toast } from 'sonner';
 import { useNotificationSettings } from '@/hooks/useSettings.hook';
 import type { SettingsTabRef } from '@/types';
 
-export const NotificationSettingsTab = forwardRef<SettingsTabRef>((props, ref) => {
+interface NotificationSettingsTabProps {
+  ref?: React.Ref<SettingsTabRef>;
+}
+
+export const NotificationSettingsTab = ({ ref }: NotificationSettingsTabProps) => {
   const {
     settings,
     setSettings,
@@ -273,6 +277,4 @@ export const NotificationSettingsTab = forwardRef<SettingsTabRef>((props, ref) =
       </div>
     </div>
   );
-});
-
-NotificationSettingsTab.displayName = 'NotificationSettingsTab';
+};

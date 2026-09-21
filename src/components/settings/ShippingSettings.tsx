@@ -1,11 +1,15 @@
 
-import { useState, useEffect, forwardRef, useImperativeHandle } from 'react';
+import React, { useState, useEffect, useImperativeHandle } from 'react';
 import { Plus, Edit2, Trash2 } from 'lucide-react';
 import { themeClasses } from '@/utils/themeUtils.util';
 import { type ShippingRate, validateShippingRateArray } from '@/types';
 import type { SettingsTabRef } from '@/types';
 
-export const ShippingSettings = forwardRef<SettingsTabRef>((props, ref) => {
+interface ShippingSettingsProps {
+  ref?: React.Ref<SettingsTabRef>;
+}
+
+export const ShippingSettings = ({ ref }: ShippingSettingsProps) => {
   const [shippingRates, setShippingRates] = useState<ShippingRate[]>([]);
   const [isEditing, setIsEditing] = useState<string | null>(null);
   const [editForm, setEditForm] = useState({ name: '', amount: 0 });
@@ -205,6 +209,4 @@ export const ShippingSettings = forwardRef<SettingsTabRef>((props, ref) => {
       </div>
     </div>
   );
-});
-
-ShippingSettings.displayName = 'ShippingSettings';
+};

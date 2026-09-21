@@ -1,4 +1,4 @@
-import { useState, useEffect, forwardRef, useImperativeHandle } from 'react';
+import React, { useState, useEffect, useImperativeHandle } from 'react';
 import { Shield } from 'lucide-react';
 import { themeClasses } from '@/utils/themeUtils.util';
 import { toast } from 'sonner';
@@ -23,7 +23,11 @@ const LOCKOUT_MINUTE = 60000;
  * Email verification is gated on whether the server can actually send mail,
  * because turning it on without that locks every new user out of their account.
  */
-export const SecuritySettingsTab = forwardRef<SecuritySettingsRef>((props, ref) => {
+interface SecuritySettingsTabProps {
+  ref?: React.Ref<SecuritySettingsRef>;
+}
+
+export const SecuritySettingsTab = ({ ref }: SecuritySettingsTabProps) => {
   const [settings, setSettings] = useState<ProjectSettings>({
     stripe: { enabled: false, publishable_key: '', secret_key: '', configured: false },
     email: {
@@ -275,6 +279,4 @@ export const SecuritySettingsTab = forwardRef<SecuritySettingsRef>((props, ref) 
       </div>
     </>
   );
-});
-
-SecuritySettingsTab.displayName = 'SecuritySettingsTab';
+};

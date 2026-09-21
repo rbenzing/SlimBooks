@@ -1,5 +1,5 @@
 
-import { useState, useEffect, useCallback, forwardRef, useImperativeHandle } from 'react';
+import React, { useState, useEffect, useCallback, useImperativeHandle } from 'react';
 import { toast } from 'sonner';
 import { themeClasses } from '@/utils/themeUtils.util';
 import { useAuth } from '@/contexts/AuthContext';
@@ -7,7 +7,11 @@ import { useTheme } from '@/hooks/useTheme.hook';
 import { getToken } from '@/utils/api';
 import type { SettingsTabRef } from '@/types';
 
-export const AppearanceSettingsTab = forwardRef<SettingsTabRef>((props, ref) => {
+interface AppearanceSettingsTabProps {
+  ref?: React.Ref<SettingsTabRef>;
+}
+
+export const AppearanceSettingsTab = ({ ref }: AppearanceSettingsTabProps) => {
   const { isAdmin, user } = useAuth();
   const { theme, setTheme: setGlobalTheme } = useTheme();
   const [invoiceTemplate, setInvoiceTemplate] = useState('modern-blue');
@@ -233,6 +237,4 @@ export const AppearanceSettingsTab = forwardRef<SettingsTabRef>((props, ref) => 
       </div>
     </div>
   );
-});
-
-AppearanceSettingsTab.displayName = 'AppearanceSettingsTab';
+};

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, forwardRef, useImperativeHandle } from 'react';
+import React, { useState, useEffect, useCallback, useImperativeHandle } from 'react';
 import { CreditCard, AlertTriangle, CheckCircle, Copy, ExternalLink, Webhook, Key, Eye, EyeOff } from 'lucide-react';
 import { themeClasses } from '@/utils/themeUtils.util';
 import { toast } from 'sonner';
@@ -21,7 +21,11 @@ import type { SettingsTabRef, ProjectSettings, StripeStatus, StripeAccountSummar
  * back instead is whether each is configured; leaving a field blank keeps the
  * stored value, and typing into it replaces it.
  */
-export const StripeSettingsTab = forwardRef<SettingsTabRef>((props, ref) => {
+interface StripeSettingsTabProps {
+  ref?: React.Ref<SettingsTabRef>;
+}
+
+export const StripeSettingsTab = ({ ref }: StripeSettingsTabProps) => {
   const [status, setStatus] = useState<StripeStatus | null>(null);
   const [envConfigured, setEnvConfigured] = useState(false);
   const [isEnabled, setIsEnabled] = useState(false);
@@ -522,6 +526,4 @@ export const StripeSettingsTab = forwardRef<SettingsTabRef>((props, ref) => {
       </>)}
     </div>
   );
-});
-
-StripeSettingsTab.displayName = 'StripeSettingsTab';
+};

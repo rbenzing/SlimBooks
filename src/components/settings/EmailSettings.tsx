@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, forwardRef, useImperativeHandle } from 'react';
+import React, { useState, useEffect, useMemo, useImperativeHandle } from 'react';
 import { Mail, CheckCircle, XCircle, AlertTriangle, Server, User as UserIcon, Eye, EyeOff } from 'lucide-react';
 import { toast } from 'sonner';
 import { emailService } from '@/services/email.svc';
@@ -28,7 +28,11 @@ const SECURITY_LABELS: Record<SmtpSecurity, string> = {
  * three have to agree and a mismatched pair fails in a way that reads like a
  * wrong password.
  */
-export const EmailSettings = forwardRef<SettingsTabRef>((props, ref) => {
+interface EmailSettingsProps {
+  ref?: React.Ref<SettingsTabRef>;
+}
+
+export const EmailSettings = ({ ref }: EmailSettingsProps) => {
   const { settings, setSettings, saveSettings, isLoading, isLoaded, error } = useEmailSettings();
   const { user } = useAuth();
 
@@ -436,6 +440,4 @@ export const EmailSettings = forwardRef<SettingsTabRef>((props, ref) => {
       </div>
     </div>
   );
-});
-
-EmailSettings.displayName = 'EmailSettings';
+};

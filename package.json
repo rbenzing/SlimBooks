@@ -33,7 +33,7 @@
     "express-validator": "^7.2.1",
     "helmet": "^8.1.0",
     "jsonwebtoken": "^9.0.2",
-    "lucide-react": "^0.462.0",
+    "lucide-react": "^1.50.0",
     "multer": "^2.4.0",
     "mysql2": "^3.24.5",
     "nodemailer": "^10.0.13",

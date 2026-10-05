@@ -21,7 +21,7 @@
     "node": ">=24 <25"
   },
   "dependencies": {
-    "@tanstack/react-query": "^5.103.2",
+    "@tanstack/react-query": "^5.104.1",
     "bcryptjs": "^3.0.2",
     "better-sqlite3": "^12.2.0",
     "clsx": "^2.1.1",
@@ -35,8 +35,8 @@
     "jsonwebtoken": "^9.0.2",
     "lucide-react": "^0.462.0",
     "multer": "^2.4.0",
-    "mysql2": "^3.23.2",
-    "nodemailer": "^10.0.10",
+    "mysql2": "^3.24.5",
+    "nodemailer": "^10.0.13",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
     "react-router-dom": "^7.18.4",

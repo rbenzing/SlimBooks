@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
 import { InvoicesTab } from './invoices/InvoicesTab';
 import { TemplatesTab } from './invoices/TemplatesTab';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -11,20 +11,12 @@ import { themeClasses } from '@/utils/themeUtils.util';
 type InvoiceTab = 'invoices' | 'templates';
 
 export const InvoiceManagement = () => {
-  const [activeTab, setActiveTab] = useState<InvoiceTab>('invoices');
   const location = useLocation();
   const navigate = useNavigate();
+  const activeTab: InvoiceTab = location.hash.replace('#', '') === 'templates' ? 'templates' : 'invoices';
 
   useEffect(() => {
-    const hash = location.hash.replace('#', '');
-
-    if (hash === 'templates') {
-      setActiveTab('templates');
-      return;
-    }
-
-    setActiveTab('invoices');
-    if (location.pathname === '/invoices' && !hash) {
+    if (location.pathname === '/invoices' && !location.hash.replace('#', '')) {
       window.history.replaceState(null, '', '/invoices#invoices');
     }
   }, [location.hash, location.pathname]);

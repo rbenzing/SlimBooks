@@ -38,7 +38,7 @@ const readKey = (key: string): string | null => {
 
 /**
  * Write a key to the chosen storage and remove it from the other one, so a
- * stale value can never shadow the value that was just written.
+ * stale value can never shadow-sm the value that was just written.
  */
 const writeKey = (key: string, value: string, persistence: TokenPersistence): void => {
   if (!isBrowser()) return;

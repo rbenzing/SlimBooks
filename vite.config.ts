@@ -1,5 +1,6 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
+import tailwindcss from "@tailwindcss/vite";
 import path from "path";
 
 // https://vitejs.dev/config/
@@ -44,13 +45,13 @@ export default defineConfig({
   },
   plugins: [
     react(),
+    tailwindcss(),
   ],
   build: {
     chunkSizeWarningLimit: 1000,
     outDir: 'dist/client',    // output directory
     sourcemap: false,   // disable source maps for production to save memory
-    minify: 'esbuild',  // use esbuild for faster, less memory-intensive minification
-    rollupOptions: {
+    rolldownOptions: {
       output: {
         manualChunks: (id) => {
           // External vendor packages
@@ -96,13 +97,9 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      "@": path.resolve(__dirname, "./src"),
-      "@shared": path.resolve(__dirname, "./server/shared"),
+      "@": path.resolve(import.meta.dirname, "./src"),
+      "@shared": path.resolve(import.meta.dirname, "./server/shared"),
     },
-  },
-  esbuild: {
-    // Minimal optimization to save memory
-    treeShaking: true,
   },
   define: {
     'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV),

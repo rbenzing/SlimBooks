@@ -69,45 +69,44 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     window.location.href = '/login';
   }, [clearSession]);
 
-  const initializeAuth = useCallback(async () => {
-    try {
-      setLoading(true);
-
-      // Check for existing session with simple expiry check
-      const token = getToken();
-      if (token) {
-        // Simple expiry check before attempting backend verification
-        if (isTokenExpired(token)) {
-          clearAuthTokens();
-        } else {
-          // Token not expired, try to verify with backend
-          try {
-            const verifiedUser = await authService.verifyToken(token);
-            if (verifiedUser) {
-              setUser(verifiedUser);
-              authService.setCurrentUser(verifiedUser);
-            } else {
-              // Backend verification failed, clear tokens
-              clearAuthTokens();
-            }
-          } catch (error) {
-            console.warn('Token verification failed:', error);
-            // Clear tokens on verification error
-            clearAuthTokens();
-          }
-        }
-      }
-    } catch (error) {
-      console.error('Auth initialization error:', error);
-    } finally {
-      setLoading(false);
-    }
-  }, [authService]);
-
   // Initialize authentication state
   useEffect(() => {
+    const initializeAuth = async () => {
+      try {
+        setLoading(true);
+
+        // Check for existing session with simple expiry check
+        const token = getToken();
+        if (token) {
+          // Simple expiry check before attempting backend verification
+          if (isTokenExpired(token)) {
+            clearAuthTokens();
+          } else {
+            // Token not expired, try to verify with backend
+            try {
+              const verifiedUser = await authService.verifyToken(token);
+              if (verifiedUser) {
+                setUser(verifiedUser);
+                authService.setCurrentUser(verifiedUser);
+              } else {
+                // Backend verification failed, clear tokens
+                clearAuthTokens();
+              }
+            } catch (error) {
+              console.warn('Token verification failed:', error);
+              // Clear tokens on verification error
+              clearAuthTokens();
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Auth initialization error:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
     initializeAuth();
-  }, [initializeAuth]);
+  }, [authService]);
 
   // Activity-aware token expiry monitoring. Depends only on `user`, so the
   // monitor is armed once per session rather than restarted on every warning.

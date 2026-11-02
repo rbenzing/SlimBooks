@@ -558,7 +558,7 @@ export const CreateInvoicePage: React.FC<CreateInvoicePageProps> = ({ editingInv
                     type="date"
                     value={invoiceData.due_date}
                     onChange={(e) => !viewOnly && setInvoiceData({...invoiceData, due_date: e.target.value})}
-                    className={`block w-full border-0 border-b border-border focus:border-primary focus:ring-0 text-right bg-transparent text-card-foreground [color-scheme:light] dark:[color-scheme:dark] ${viewOnly ? 'bg-muted' : ''}`}
+                    className={`block w-full border-0 border-b border-border focus:border-primary focus:ring-0 text-right bg-transparent text-card-foreground scheme-light dark:scheme-dark ${viewOnly ? 'bg-muted' : ''}`}
                     disabled={viewOnly}
                   />
                 </div>
@@ -765,7 +765,7 @@ export const CreateInvoicePage: React.FC<CreateInvoicePageProps> = ({ editingInv
               value={thankYouMessage}
               onChange={(e) => !viewOnly && setThankYouMessage(e.target.value)}
               rows={3}
-              className={`w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-ring bg-background text-foreground ${viewOnly ? 'bg-muted' : ''}`}
+              className={`w-full px-3 py-2 border border-border rounded-lg focus:outline-hidden focus:ring-2 focus:ring-ring bg-background text-foreground ${viewOnly ? 'bg-muted' : ''}`}
               placeholder="Add a personal message to your client..."
               disabled={viewOnly}
             />

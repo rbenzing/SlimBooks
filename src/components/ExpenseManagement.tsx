@@ -69,10 +69,6 @@ export const ExpenseManagement: React.FC = () => {
   const updateFilters = (updates: Partial<typeof filters>) =>
     setFilters(prev => ({ ...prev, ...updates }));
 
-  useEffect(() => {
-    loadExpenses();
-  }, []);
-
   const loadExpenses = async () => {
     try {
       const response = await authenticatedFetch('/api/expenses');
@@ -97,6 +93,14 @@ export const ExpenseManagement: React.FC = () => {
       setExpenses([]); // Set empty array as fallback
     }
   };
+
+  useEffect(() => {
+    // State is only set after the awaited request resolves, never synchronously in the effect body
+    const loadOnMount = async () => {
+      await loadExpenses();
+    };
+    loadOnMount();
+  }, []);
 
   const filteredExpenses = expenses.filter(expense => {
     if (!expense) return false;
@@ -240,7 +244,7 @@ export const ExpenseManagement: React.FC = () => {
   const renderPanelView = () => (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       {pagination.paginatedData.map((expense) => (
-        <div key={expense.id} className="bg-card rounded-lg shadow-sm border border-border p-6">
+        <div key={expense.id} className="bg-card rounded-lg shadow-xs border border-border p-6">
           <div className="flex justify-between items-start mb-4">
             <div>
               <h3 className="font-semibold text-foreground">{expense.vendor}</h3>
@@ -363,7 +367,7 @@ export const ExpenseManagement: React.FC = () => {
               <Calendar className="h-8 w-8 text-orange-600 dark:text-orange-400" />
             </div>
           </div>
-          <div className="bg-card p-6 rounded-lg shadow-sm border border-border">
+          <div className="bg-card p-6 rounded-lg shadow-xs border border-border">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Approved</p>
@@ -372,7 +376,7 @@ export const ExpenseManagement: React.FC = () => {
               <Receipt className="h-8 w-8 text-green-600 dark:text-green-400" />
             </div>
           </div>
-          <div className="bg-card p-6 rounded-lg shadow-sm border border-border">
+          <div className="bg-card p-6 rounded-lg shadow-xs border border-border">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Reimbursed</p>
@@ -384,7 +388,7 @@ export const ExpenseManagement: React.FC = () => {
         </StatCardGrid>
 
         {/* Search and Filter Controls */}
-        <div className="bg-card p-6 rounded-lg shadow-sm border border-border">
+        <div className="bg-card p-6 rounded-lg shadow-xs border border-border">
           <div className="flex justify-between items-center">
             {/* Left section - Search and Filters (80%) */}
             <div className="flex space-x-4 flex-1 mr-6">
@@ -393,13 +397,13 @@ export const ExpenseManagement: React.FC = () => {
                 <input
                   type="text"
                   placeholder="Search expenses..."
-                  className="w-full pl-10 pr-4 py-2 bg-background border border-input rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent"
+                  className="w-full pl-10 pr-4 py-2 bg-background border border-input rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-hidden focus:ring-2 focus:ring-ring focus:border-transparent"
                   value={filters.searchTerm}
                   onChange={(e) => updateFilters({ searchTerm: e.target.value })}
                 />
               </div>
               <select
-                className="px-4 py-2 bg-background border border-input rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent"
+                className="px-4 py-2 bg-background border border-input rounded-lg text-foreground focus:outline-hidden focus:ring-2 focus:ring-ring focus:border-transparent"
                 value={filters.categoryFilter}
                 onChange={(e) => updateFilters({ categoryFilter: e.target.value })}
               >
@@ -412,7 +416,7 @@ export const ExpenseManagement: React.FC = () => {
                 <option value="Other">Other</option>
               </select>
               <select
-                className="px-4 py-2 bg-background border border-input rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent"
+                className="px-4 py-2 bg-background border border-input rounded-lg text-foreground focus:outline-hidden focus:ring-2 focus:ring-ring focus:border-transparent"
                 value={filters.statusFilter}
                 onChange={(e) => updateFilters({ statusFilter: e.target.value })}
               >
@@ -495,7 +499,7 @@ export const ExpenseManagement: React.FC = () => {
 
         {/* Empty State */}
         {dateFilteredExpenses.length === 0 && (
-          <div className="bg-card rounded-lg shadow-sm border border-border p-12">
+          <div className="bg-card rounded-lg shadow-xs border border-border p-12">
             <div className="text-center">
               <Receipt className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
               <h3 className="text-lg font-medium text-foreground mb-2">No expenses found</h3>

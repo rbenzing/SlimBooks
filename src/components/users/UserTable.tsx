@@ -71,7 +71,7 @@ export const UserTable: React.FC<UserTableProps> = ({
   onUnlock
 }) => {
   return (
-    <div className="bg-card rounded-lg shadow-sm border border-border overflow-hidden">
+    <div className="bg-card rounded-lg shadow-xs border border-border overflow-hidden">
       <div className="overflow-x-auto">
         <table className="w-full">
           <thead className="bg-muted/50 border-b border-border">

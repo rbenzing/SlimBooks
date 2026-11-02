@@ -128,7 +128,7 @@ export class PdfService {
       } catch (selectorError) {
         const pageContent = await page.content();
         console.log(`❌ Invoice content failed to load. Page content:`, pageContent.substring(0, 1000));
-        throw new Error(`Invoice content not found on page: ${selectorError}`);
+        throw new Error(`Invoice content not found on page: ${selectorError}`, { cause: selectorError });
       }
 
       // Apply PDF-specific styling that respects user settings

@@ -40,7 +40,7 @@ export class DatabaseHealthService {
       };
     } catch (error) {
       console.error('Database health check error:', error);
-      throw new Error('Database health check failed: ' + (error as Error).message);
+      throw new Error('Database health check failed: ' + (error as Error).message, { cause: error });
     }
   }
 
@@ -71,7 +71,7 @@ export class DatabaseHealthService {
       return stats;
     } catch (error) {
       console.error('Error getting database statistics:', error);
-      throw new Error('Failed to retrieve database statistics: ' + (error as Error).message);
+      throw new Error('Failed to retrieve database statistics: ' + (error as Error).message, { cause: error });
     }
   }
 
@@ -144,7 +144,7 @@ export class DatabaseHealthService {
       };
     } catch (error) {
       console.error('Error getting database schema:', error);
-      throw new Error('Failed to retrieve database schema: ' + (error as Error).message);
+      throw new Error('Failed to retrieve database schema: ' + (error as Error).message, { cause: error });
     }
   }
 
@@ -345,7 +345,7 @@ export class DatabaseHealthService {
       };
     } catch (error) {
       console.error('Error generating comprehensive health report:', error);
-      throw new Error('Failed to generate health report: ' + (error as Error).message);
+      throw new Error('Failed to generate health report: ' + (error as Error).message, { cause: error });
     }
   }
 

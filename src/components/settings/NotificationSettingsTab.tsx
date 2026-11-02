@@ -65,7 +65,7 @@ export const NotificationSettingsTab = ({ ref }: NotificationSettingsTabProps) =
   // Show loading state
   if (isLoading) {
     return (
-      <div className="bg-card rounded-lg shadow-sm border border-border p-6">
+      <div className="bg-card rounded-lg shadow-xs border border-border p-6">
         <div className="flex items-center mb-6">
           <Bell className="h-5 w-5 text-primary mr-2" />
           <h3 className="text-lg font-medium text-card-foreground">Toast Notifications</h3>
@@ -80,7 +80,7 @@ export const NotificationSettingsTab = ({ ref }: NotificationSettingsTabProps) =
   // Show error state
   if (error) {
     return (
-      <div className="bg-card rounded-lg shadow-sm border border-border p-6">
+      <div className="bg-card rounded-lg shadow-xs border border-border p-6">
         <div className="flex items-center mb-6">
           <Bell className="h-5 w-5 text-primary mr-2" />
           <h3 className="text-lg font-medium text-card-foreground">Toast Notifications</h3>
@@ -96,7 +96,7 @@ export const NotificationSettingsTab = ({ ref }: NotificationSettingsTabProps) =
   return (
     <div className="space-y-6">
       {/* Toast Notifications */}
-      <div className="bg-card rounded-lg shadow-sm border border-border p-6">
+      <div className="bg-card rounded-lg shadow-xs border border-border p-6">
         <div className="flex items-center mb-6">
           <Bell className="h-5 w-5 text-primary mr-2" />
           <h3 className="text-lg font-medium text-card-foreground">Toast Notifications</h3>
@@ -116,7 +116,7 @@ export const NotificationSettingsTab = ({ ref }: NotificationSettingsTabProps) =
                 onChange={(e) => handleSettingChange('showToastNotifications', e.target.checked)}
                 className="sr-only peer"
               />
-              <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
+              <div className="w-11 h-6 bg-gray-200 peer-focus:outline-hidden peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
             </label>
           </div>
 
@@ -261,7 +261,7 @@ export const NotificationSettingsTab = ({ ref }: NotificationSettingsTabProps) =
       </div>
 
       {/* Information Section */}
-      <div className="bg-card rounded-lg shadow-sm border border-border p-6">
+      <div className="bg-card rounded-lg shadow-xs border border-border p-6">
         <h4 className="text-sm font-medium text-card-foreground mb-3">About Notifications</h4>
         <div className="space-y-2 text-sm text-muted-foreground">
           <p>

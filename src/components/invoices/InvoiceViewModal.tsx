@@ -106,7 +106,7 @@ export const InvoiceViewModal: React.FC<InvoiceViewModalProps> = ({ invoice, isO
       case 'professional-gray':
         return {
           ...baseStyles,
-          invoiceHeader: 'bg-gradient-to-r from-slate-700 to-slate-800 dark:from-slate-600 dark:to-slate-700 text-white border-b-2 border-slate-600 dark:border-slate-500 rounded-t-lg',
+          invoiceHeader: 'bg-linear-to-r from-slate-700 to-slate-800 dark:from-slate-600 dark:to-slate-700 text-white border-b-2 border-slate-600 dark:border-slate-500 rounded-t-lg',
           companySection: 'bg-white dark:bg-gray-800',
           title: 'text-white',
           accent: 'text-slate-200 dark:text-slate-300',
@@ -121,7 +121,7 @@ export const InvoiceViewModal: React.FC<InvoiceViewModalProps> = ({ invoice, isO
       default: // modern-blue
         return {
           ...baseStyles,
-          invoiceHeader: 'bg-gradient-to-r from-blue-600 to-blue-700 dark:from-blue-700 dark:to-blue-800 text-white border-b-2 border-blue-500 dark:border-blue-600 rounded-t-lg',
+          invoiceHeader: 'bg-linear-to-r from-blue-600 to-blue-700 dark:from-blue-700 dark:to-blue-800 text-white border-b-2 border-blue-500 dark:border-blue-600 rounded-t-lg',
           companySection: 'bg-white dark:bg-gray-800',
           title: 'text-white',
           accent: 'text-blue-100 dark:text-blue-200',

@@ -156,14 +156,14 @@ describe('Invoice Lifecycle Integration Tests', () => {
     it('should handle invoice cancellation', async () => {
       // Create invoice
       mockFetchSuccess({ id: 1, status: 'draft' });
-      let response = await fetch('/api/invoices', {
+      await fetch('/api/invoices', {
         method: 'POST',
         body: JSON.stringify({ invoiceData: { status: 'draft' } })
       });
 
       // Cancel invoice
       mockFetchSuccess({ id: 1, status: 'cancelled' });
-      response = await fetch('/api/invoices/1', {
+      const response = await fetch('/api/invoices/1', {
         method: 'PUT',
         body: JSON.stringify({
           invoiceData: { status: 'cancelled' }
@@ -185,7 +185,7 @@ describe('Invoice Lifecycle Integration Tests', () => {
         due_date: yesterday.toISOString().split('T')[0]
       });
 
-      let response = await fetch('/api/invoices', {
+      await fetch('/api/invoices', {
         method: 'POST',
         body: JSON.stringify({
           invoiceData: {
@@ -197,7 +197,7 @@ describe('Invoice Lifecycle Integration Tests', () => {
 
       // System should mark as overdue
       mockFetchSuccess({ id: 1, status: 'overdue' });
-      response = await fetch('/api/invoices/1', {
+      const response = await fetch('/api/invoices/1', {
         method: 'PUT',
         body: JSON.stringify({
           invoiceData: { status: 'overdue' }

@@ -61,7 +61,7 @@ export class SQLiteDatabase implements IDatabase {
     } catch (error) {
       this._connected = false;
       console.error('Database connection error:', error);
-      throw new Error(`Failed to connect to database: ${(error as Error).message}`);
+      throw new Error(`Failed to connect to database: ${(error as Error).message}`, { cause: error });
     }
   }
 
@@ -79,7 +79,7 @@ export class SQLiteDatabase implements IDatabase {
           console.log('✓ Database disconnected');
         }
       } catch (error) {
-        throw new Error(`Failed to disconnect from database: ${(error as Error).message}`);
+        throw new Error(`Failed to disconnect from database: ${(error as Error).message}`, { cause: error });
       }
     }
   }
@@ -110,7 +110,7 @@ export class SQLiteDatabase implements IDatabase {
       console.error('Database query execution error:', error);
       console.error('Query:', query);
       console.error('Params:', params);
-      throw new Error(`Database operation failed: ${(error as Error).message}`);
+      throw new Error(`Database operation failed: ${(error as Error).message}`, { cause: error });
     }
   }
 
@@ -128,7 +128,7 @@ export class SQLiteDatabase implements IDatabase {
       console.error('Database get one error:', error);
       console.error('Query:', query);
       console.error('Params:', params);
-      throw new Error(`Database fetch operation failed: ${(error as Error).message}`);
+      throw new Error(`Database fetch operation failed: ${(error as Error).message}`, { cause: error });
     }
   }
 
@@ -146,7 +146,7 @@ export class SQLiteDatabase implements IDatabase {
       console.error('Database get many error:', error);
       console.error('Query:', query);
       console.error('Params:', params);
-      throw new Error(`Database fetch operation failed: ${(error as Error).message}`);
+      throw new Error(`Database fetch operation failed: ${(error as Error).message}`, { cause: error });
     }
   }
 
@@ -187,7 +187,7 @@ export class SQLiteDatabase implements IDatabase {
       };
     } catch (error) {
       console.error('Database paginated query error:', error);
-      throw new Error(`Database paginated fetch failed: ${(error as Error).message}`);
+      throw new Error(`Database paginated fetch failed: ${(error as Error).message}`, { cause: error });
     }
   }
 
@@ -263,7 +263,7 @@ export class SQLiteDatabase implements IDatabase {
       await this.db!.backup(path);
       console.log(`✓ Database backed up to: ${path}`);
     } catch (error) {
-      throw new Error(`Database backup failed: ${(error as Error).message}`);
+      throw new Error(`Database backup failed: ${(error as Error).message}`, { cause: error });
     }
   }
 

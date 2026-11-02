@@ -45,9 +45,7 @@ interface UsePaginationReturn<T> {
 }
 
 export function usePagination<T>({ 
-  data, 
-  searchTerm, 
-  filters 
+  data
 }: UsePaginationProps<T>): UsePaginationReturn<T> {
   const [paginationSettings, setPaginationSettings] = useState<PaginationSettings | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
@@ -92,12 +90,10 @@ export function usePagination<T>({
     );
   }, [currentPage, paginationInfo.totalPages, paginationSettings]);
 
-  // Reset to page 1 when data changes (search/filters)
-  useEffect(() => {
-    if (currentPage > paginationInfo.totalPages && paginationInfo.totalPages > 0) {
-      setCurrentPage(1);
-    }
-  }, [searchTerm, filters, paginationInfo.totalPages, currentPage]);
+  // Reset to page 1 when data changes (search/filters) leave the current page out of range
+  if (currentPage > paginationInfo.totalPages && paginationInfo.totalPages > 0) {
+    setCurrentPage(1);
+  }
 
   // Pagination actions
   const goToNextPage = () => {

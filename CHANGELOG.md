@@ -12,6 +12,19 @@ Upgrade instructions live in
 
 ## [Unreleased]
 
+### Changed
+
+- **TypeScript 6, Vite 8, Tailwind 4.** The Tailwind bump had landed without the
+  migration and the client build was failing; it now builds through
+  `@tailwindcss/vite` with the existing `tailwind.config.ts` linked via
+  `@config`. `postcss` and `autoprefixer` are gone. `shadow-sm`/`shadow` and
+  `outline-none` were renamed to keep their Tailwind 3 appearance, and buttons
+  keep their pointer cursor. `@types/node` is held at 24 to match the runtime,
+  `@eslint/js` moved to 10 to match ESLint, and `@types/nodemailer` was removed
+  because nodemailer ships its own types.
+- Rethrown errors now carry `{ cause }`, and effects flagged by the
+  react-hooks 7 rules were rewritten rather than the rules disabled.
+
 ## [3.1.0] — 2026-09-21
 
 Nothing here needs an operator to do anything: no environment variable changed,

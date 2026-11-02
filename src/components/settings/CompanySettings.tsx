@@ -49,7 +49,7 @@ export const CompanySettings = ({ ref }: CompanySettingsProps) => {
   // Show loading state
   if (isLoading) {
     return (
-      <div className="bg-card rounded-lg shadow-sm border border-border p-6">
+      <div className="bg-card rounded-lg shadow-xs border border-border p-6">
         <div className="flex items-center mb-6">
           <Building className="h-5 w-5 text-primary mr-2" />
           <h3 className="text-lg font-medium text-card-foreground">Company Information</h3>
@@ -64,7 +64,7 @@ export const CompanySettings = ({ ref }: CompanySettingsProps) => {
   // Show error state
   if (error) {
     return (
-      <div className="bg-card rounded-lg shadow-sm border border-border p-6">
+      <div className="bg-card rounded-lg shadow-xs border border-border p-6">
         <div className="flex items-center mb-6">
           <Building className="h-5 w-5 text-primary mr-2" />
           <h3 className="text-lg font-medium text-card-foreground">Company Information</h3>
@@ -78,7 +78,7 @@ export const CompanySettings = ({ ref }: CompanySettingsProps) => {
   }
 
   return (
-    <div className="bg-card rounded-lg shadow-sm border border-border p-6">
+    <div className="bg-card rounded-lg shadow-xs border border-border p-6">
       <div className="flex items-center mb-6">
         <Building className="h-5 w-5 text-primary mr-2" />
         <h3 className="text-lg font-medium text-card-foreground">Company Information</h3>

@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ArrowLeft, Download, Save, Calendar } from 'lucide-react';
 import { authenticatedFetch } from '@/utils/api';
 import { themeClasses, getButtonClasses } from '@/utils/themeUtils.util';
@@ -20,32 +20,31 @@ export const ClientReport: React.FC<ClientReportProps> = ({ onBack, onSave }) =>
     return { start: toCalendarDay(range.start), end: toCalendarDay(range.end), preset: 'this_month' };
   });
 
-  const generateReportData = useCallback(async () => {
-    setLoading(true);
-    try {
-      const response = await authenticatedFetch('/api/reports/generate/client', {
-        method: 'POST',
-        body: JSON.stringify({
-          startDate: dateRange.start,
-          endDate: dateRange.end
-        })
-      });
-      const result = await response.json();
-      if (result.success) {
-        setReportData(result.data);
-      } else {
-        console.error('Error generating report:', result.error);
-      }
-    } catch (error) {
-      console.error('Error generating client report data:', error);
-    } finally {
-      setLoading(false);
-    }
-  }, [dateRange.start, dateRange.end]);
-
   useEffect(() => {
+    const generateReportData = async () => {
+      setLoading(true);
+      try {
+        const response = await authenticatedFetch('/api/reports/generate/client', {
+          method: 'POST',
+          body: JSON.stringify({
+            startDate: dateRange.start,
+            endDate: dateRange.end
+          })
+        });
+        const result = await response.json();
+        if (result.success) {
+          setReportData(result.data);
+        } else {
+          console.error('Error generating report:', result.error);
+        }
+      } catch (error) {
+        console.error('Error generating client report data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
     generateReportData();
-  }, [generateReportData]);
+  }, [dateRange.start, dateRange.end]);
 
   const handleDatePresetChange = (preset: DateRangePeriod): void => {
     if (preset === 'custom') {
@@ -76,7 +75,7 @@ export const ClientReport: React.FC<ClientReportProps> = ({ onBack, onSave }) =>
           </button>
           <h1 className="text-2xl font-bold text-foreground">Generating Client Report...</h1>
         </div>
-        <div className="bg-card rounded-lg shadow-sm border border-border p-12 text-center">
+        <div className="bg-card rounded-lg shadow-xs border border-border p-12 text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
           <p className="mt-4 text-muted-foreground">Please wait while we generate your report...</p>
         </div>
@@ -118,7 +117,7 @@ export const ClientReport: React.FC<ClientReportProps> = ({ onBack, onSave }) =>
         </div>
 
       {/* Date Range Selector */}
-      <div className="bg-card p-6 rounded-lg shadow-sm border border-border">
+      <div className="bg-card p-6 rounded-lg shadow-xs border border-border">
         <h3 className="text-lg font-medium text-foreground mb-4 flex items-center">
           <Calendar className="h-5 w-5 mr-2" />
           Report Date Range

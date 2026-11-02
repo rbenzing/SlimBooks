@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import Modal from '@/components/ui/modal.cpt';
 import { type Client, type ClientFormData } from '@/types';
 
@@ -11,52 +11,29 @@ interface ClientFormProps {
   client?: Client | null;
 }
 
-export const ClientForm: React.FC<ClientFormProps> = ({ isOpen = true, onClose, onSave, onCancel, client }) => {
-  const [formData, setFormData] = useState<ClientFormData>({
-    name: '',
-    first_name: '',
-    last_name: '',
-    email: '',
-    phone: '',
-    company: '',
-    address: '',
-    city: '',
-    state: '',
-    zipCode: '',
-    country: 'USA'
-  });
+const buildFormData = (client?: Client | null): ClientFormData => ({
+  name: client?.name || '',
+  first_name: client?.first_name || '',
+  last_name: client?.last_name || '',
+  email: client?.email || '',
+  phone: client?.phone || '',
+  company: client?.company || '',
+  address: client?.address || '',
+  city: client?.city || '',
+  state: client?.state || '',
+  zipCode: client?.zipCode || '',
+  country: client?.country || 'USA'
+});
 
-  useEffect(() => {
-    if (client) {
-      setFormData({
-        name: client.name || '',
-        first_name: client.first_name || '',
-        last_name: client.last_name || '',
-        email: client.email || '',
-        phone: client.phone || '',
-        company: client.company || '',
-        address: client.address || '',
-        city: client.city || '',
-        state: client.state || '',
-        zipCode: client.zipCode || '',
-        country: client.country || 'USA'
-      });
-    } else {
-      setFormData({
-        name: '',
-        first_name: '',
-        last_name: '',
-        email: '',
-        phone: '',
-        company: '',
-        address: '',
-        city: '',
-        state: '',
-        zipCode: '',
-        country: 'USA'
-      });
-    }
-  }, [client]);
+export const ClientForm: React.FC<ClientFormProps> = ({ isOpen = true, onClose, onSave, onCancel, client }) => {
+  const [formData, setFormData] = useState<ClientFormData>(() => buildFormData(client));
+  const [previousClient, setPreviousClient] = useState(client);
+
+  // Reset the form whenever a different client is supplied
+  if (client !== previousClient) {
+    setPreviousClient(client);
+    setFormData(buildFormData(client));
+  }
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -89,7 +66,7 @@ export const ClientForm: React.FC<ClientFormProps> = ({ isOpen = true, onClose, 
               required
               value={formData.first_name}
               onChange={(e) => setFormData({ ...formData, first_name: e.target.value })}
-              className="w-full px-3 py-2 bg-background border border-input rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent"
+              className="w-full px-3 py-2 bg-background border border-input rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-hidden focus:ring-2 focus:ring-ring focus:border-transparent"
             />
           </div>
           <div>
@@ -99,7 +76,7 @@ export const ClientForm: React.FC<ClientFormProps> = ({ isOpen = true, onClose, 
               required
               value={formData.last_name}
               onChange={(e) => setFormData({ ...formData, last_name: e.target.value })}
-              className="w-full px-3 py-2 bg-background border border-input rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent"
+              className="w-full px-3 py-2 bg-background border border-input rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-hidden focus:ring-2 focus:ring-ring focus:border-transparent"
             />
           </div>
           <div>
@@ -109,7 +86,7 @@ export const ClientForm: React.FC<ClientFormProps> = ({ isOpen = true, onClose, 
               required
               value={formData.email}
               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-              className="w-full px-3 py-2 bg-background border border-input rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent"
+              className="w-full px-3 py-2 bg-background border border-input rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-hidden focus:ring-2 focus:ring-ring focus:border-transparent"
             />
           </div>
         </div>
@@ -121,7 +98,7 @@ export const ClientForm: React.FC<ClientFormProps> = ({ isOpen = true, onClose, 
               type="tel"
               value={formData.phone}
               onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-              className="w-full px-3 py-2 bg-background border border-input rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent"
+              className="w-full px-3 py-2 bg-background border border-input rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-hidden focus:ring-2 focus:ring-ring focus:border-transparent"
             />
           </div>
           <div>
@@ -130,7 +107,7 @@ export const ClientForm: React.FC<ClientFormProps> = ({ isOpen = true, onClose, 
               type="text"
               value={formData.company}
               onChange={(e) => setFormData({ ...formData, company: e.target.value })}
-              className="w-full px-3 py-2 bg-background border border-input rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent"
+              className="w-full px-3 py-2 bg-background border border-input rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-hidden focus:ring-2 focus:ring-ring focus:border-transparent"
             />
           </div>
         </div>
@@ -141,7 +118,7 @@ export const ClientForm: React.FC<ClientFormProps> = ({ isOpen = true, onClose, 
             type="text"
             value={formData.address}
             onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-            className="w-full px-3 py-2 bg-background border border-input rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent"
+            className="w-full px-3 py-2 bg-background border border-input rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-hidden focus:ring-2 focus:ring-ring focus:border-transparent"
           />
         </div>
 
@@ -152,7 +129,7 @@ export const ClientForm: React.FC<ClientFormProps> = ({ isOpen = true, onClose, 
               type="text"
               value={formData.city}
               onChange={(e) => setFormData({ ...formData, city: e.target.value })}
-              className="w-full px-3 py-2 bg-background border border-input rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent"
+              className="w-full px-3 py-2 bg-background border border-input rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-hidden focus:ring-2 focus:ring-ring focus:border-transparent"
             />
           </div>
           <div>
@@ -161,7 +138,7 @@ export const ClientForm: React.FC<ClientFormProps> = ({ isOpen = true, onClose, 
               type="text"
               value={formData.state}
               onChange={(e) => setFormData({ ...formData, state: e.target.value })}
-              className="w-full px-3 py-2 bg-background border border-input rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent"
+              className="w-full px-3 py-2 bg-background border border-input rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-hidden focus:ring-2 focus:ring-ring focus:border-transparent"
             />
           </div>
           <div>
@@ -170,7 +147,7 @@ export const ClientForm: React.FC<ClientFormProps> = ({ isOpen = true, onClose, 
               type="text"
               value={formData.zipCode}
               onChange={(e) => setFormData({ ...formData, zipCode: e.target.value })}
-              className="w-full px-3 py-2 bg-background border border-input rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent"
+              className="w-full px-3 py-2 bg-background border border-input rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-hidden focus:ring-2 focus:ring-ring focus:border-transparent"
             />
           </div>
         </div>
@@ -180,7 +157,7 @@ export const ClientForm: React.FC<ClientFormProps> = ({ isOpen = true, onClose, 
           <select
             value={formData.country}
             onChange={(e) => setFormData({ ...formData, country: e.target.value })}
-            className="w-full px-3 py-2 bg-background border border-input rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent"
+            className="w-full px-3 py-2 bg-background border border-input rounded-lg text-foreground focus:outline-hidden focus:ring-2 focus:ring-ring focus:border-transparent"
           >
             <option value="USA">United States</option>
             <option value="CAN">Canada</option>

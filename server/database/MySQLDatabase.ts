@@ -82,7 +82,8 @@ export class MySQLDatabase implements IDatabase {
 
       throw new Error(
         `Failed to connect to MySQL at ${settings.user}@${settings.host}:${settings.port}/` +
-          `${settings.database}: ${(error as Error).message}`
+          `${settings.database}: ${(error as Error).message}`,
+        { cause: error }
       );
     }
   }
@@ -120,7 +121,7 @@ export class MySQLDatabase implements IDatabase {
       console.error('Database query execution error:', error);
       console.error('Query:', query);
       console.error('Params:', params);
-      throw new Error(`Database operation failed: ${(error as Error).message}`);
+      throw new Error(`Database operation failed: ${(error as Error).message}`, { cause: error });
     }
   }
 
@@ -143,7 +144,7 @@ export class MySQLDatabase implements IDatabase {
       console.error('Database get many error:', error);
       console.error('Query:', query);
       console.error('Params:', params);
-      throw new Error(`Database fetch operation failed: ${(error as Error).message}`);
+      throw new Error(`Database fetch operation failed: ${(error as Error).message}`, { cause: error });
     }
   }
 
@@ -174,7 +175,7 @@ export class MySQLDatabase implements IDatabase {
       return { data, total: totalResult?.total ?? 0 };
     } catch (error) {
       console.error('Database paginated query error:', error);
-      throw new Error(`Database paginated fetch failed: ${(error as Error).message}`);
+      throw new Error(`Database paginated fetch failed: ${(error as Error).message}`, { cause: error });
     }
   }
 

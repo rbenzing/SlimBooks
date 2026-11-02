@@ -33,7 +33,7 @@ export class InvoiceNumberService {
       return this.formatInvoiceNumber(counter, settings.prefix);
     } catch (error) {
       console.error('Error generating invoice number:', error);
-      throw new Error('Failed to generate invoice number');
+      throw new Error('Failed to generate invoice number', { cause: error });
     }
   }
 
@@ -133,7 +133,7 @@ export class InvoiceNumberService {
       return this.formatInvoiceNumber(nextNumber, settings.prefix);
     } catch (error) {
       console.error('Error getting next invoice number:', error);
-      throw new Error('Failed to get next invoice number');
+      throw new Error('Failed to get next invoice number', { cause: error });
     }
   }
 }

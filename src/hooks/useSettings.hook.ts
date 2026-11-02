@@ -286,7 +286,7 @@ export function useSettings<T extends Record<string, unknown>>({
           }
         } catch (networkError) {
           if (networkError instanceof TypeError && networkError.message.includes('fetch')) {
-            throw new Error('Network error: Unable to connect to server. Please check your connection.');
+            throw new Error('Network error: Unable to connect to server. Please check your connection.', { cause: networkError });
           }
           throw networkError;
         }

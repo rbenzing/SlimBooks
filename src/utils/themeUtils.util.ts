@@ -52,16 +52,16 @@ export const themeClasses = {
   sectionSubtitle: "text-muted-foreground",
 
   // Cards - Dashboard card design system
-  card: "bg-card text-card-foreground p-6 rounded-lg shadow-sm border border-border",
-  cardCompact: "bg-card text-card-foreground p-4 rounded-lg shadow-sm border border-border",
+  card: "bg-card text-card-foreground p-6 rounded-lg shadow-xs border border-border",
+  cardCompact: "bg-card text-card-foreground p-4 rounded-lg shadow-xs border border-border",
   cardHeader: "border-b border-border pb-4 mb-4",
   cardTitle: "text-lg font-medium text-card-foreground",
   cardContent: "space-y-4",
   cardFooter: "flex items-center p-6 pt-0",
-  cardHover: "bg-card text-card-foreground p-6 rounded-lg shadow-sm border border-border hover:shadow-md transition-shadow cursor-pointer",
+  cardHover: "bg-card text-card-foreground p-6 rounded-lg shadow-xs border border-border hover:shadow-md transition-shadow cursor-pointer",
 
   // Statistics Cards - Dashboard stats styling
-  statCard: "bg-card p-6 rounded-lg shadow-sm border border-border",
+  statCard: "bg-card p-6 rounded-lg shadow-xs border border-border",
   statCardContent: "flex items-center justify-between",
   statLabel: "text-sm font-medium text-muted-foreground",
   statValue: "text-3xl font-bold text-card-foreground",
@@ -76,12 +76,12 @@ export const themeClasses = {
 
   // Form elements
   label: "block text-sm font-medium text-card-foreground mb-2",
-  input: "w-full px-3 py-2 bg-background border border-input rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent",
-  dateInput: "w-full px-3 py-2 bg-background border border-input rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent [color-scheme:light] dark:[color-scheme:dark]",
-  select: "px-4 py-2 bg-background border border-input rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent",
-  dropdown: "px-4 py-2 bg-background border border-input rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent",
-  textarea: "w-full px-3 py-2 bg-background border border-input rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent",
-  searchInput: "w-full pl-10 pr-4 py-2 bg-background border border-input rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent",
+  input: "w-full px-3 py-2 bg-background border border-input rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-hidden focus:ring-2 focus:ring-ring focus:border-transparent",
+  dateInput: "w-full px-3 py-2 bg-background border border-input rounded-lg text-foreground focus:outline-hidden focus:ring-2 focus:ring-ring focus:border-transparent scheme-light dark:scheme-dark",
+  select: "px-4 py-2 bg-background border border-input rounded-lg text-foreground focus:outline-hidden focus:ring-2 focus:ring-ring focus:border-transparent",
+  dropdown: "px-4 py-2 bg-background border border-input rounded-lg text-foreground focus:outline-hidden focus:ring-2 focus:ring-ring focus:border-transparent",
+  textarea: "w-full px-3 py-2 bg-background border border-input rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-hidden focus:ring-2 focus:ring-ring focus:border-transparent",
+  searchInput: "w-full pl-10 pr-4 py-2 bg-background border border-input rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-hidden focus:ring-2 focus:ring-ring focus:border-transparent",
 
   // Invoice form specific elements
   invoiceInput: "w-full border-0 border-b-2 border-border dark:border-gray-500 focus:border-primary focus:ring-0 bg-transparent text-card-foreground placeholder:text-muted-foreground",
@@ -128,7 +128,7 @@ export const themeClasses = {
   badgeNeutral: "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-200",
 
   // Search and filters
-  searchContainer: "bg-card p-6 rounded-lg shadow-sm border border-border",
+  searchContainer: "bg-card p-6 rounded-lg shadow-xs border border-border",
   searchWrapper: "relative max-w-md",
   searchIcon: "absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground",
 

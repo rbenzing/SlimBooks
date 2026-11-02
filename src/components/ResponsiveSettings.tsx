@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useRef, useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Save, ChevronDown } from 'lucide-react';
 import { ShippingSettings } from './settings/ShippingSettings';
@@ -43,7 +43,6 @@ const settingsTabs: SettingsTab[] = [
 ];
 
 export const ResponsiveSettings = () => {
-  const [activeTab, setActiveTab] = useState('company');
   const [isLoading, setIsLoading] = useState(false);
   const [isMobileTabsOpen, setIsMobileTabsOpen] = useState(false);
   const location = useLocation();
@@ -62,25 +61,22 @@ export const ResponsiveSettings = () => {
 
   const availableTabs = useMemo<SettingsTab[]>(() => settingsTabs, []);
 
-  useEffect(() => {
+  const activeTab = (() => {
     const hash = location.hash.replace('#', '');
     const tabIds = availableTabs.map(tab => tab.id);
 
     if (hash && tabIds.includes(hash)) {
-      setActiveTab(hash);
-    } else if (hash === 'project') {
-      // The old combined Project Settings link. Security is what replaced it.
-      setActiveTab('security');
-    } else if (hash === 'tax') {
-      // Tax Rates merged into Company & Tax; keep the old deep link alive.
-      setActiveTab('company');
-    } else {
-      setActiveTab('company');
+      return hash;
     }
-  }, [location.hash, availableTabs]);
+    if (hash === 'project') {
+      // The old combined Project Settings link. Security is what replaced it.
+      return 'security';
+    }
+    // 'tax' (Tax Rates merged into Company & Tax) and unknown hashes land on company.
+    return 'company';
+  })();
 
   const handleTabChange = (tabId: string) => {
-    setActiveTab(tabId);
     navigate(`/settings#${tabId}`);
     setIsMobileTabsOpen(false);
   };

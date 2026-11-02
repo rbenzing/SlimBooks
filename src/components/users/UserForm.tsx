@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import Modal from '@/components/ui/modal.cpt';
 import { type ManagedUser, type UserFormData, type UserSubmission } from '@/types';
 
@@ -33,22 +33,25 @@ const EMPTY_FORM: UserFormData = {
   password: ''
 };
 
-export const UserForm: React.FC<UserFormProps> = ({ user, isLastAdmin, onSave, onCancel }) => {
-  const [formData, setFormData] = useState<UserFormData>(EMPTY_FORM);
-
-  useEffect(() => {
-    if (user) {
-      setFormData({
+const toFormData = (user?: ManagedUser | null): UserFormData =>
+  user
+    ? {
         name: user.name,
         email: user.email,
         username: user.username,
         role: displayedRole(user),
         password: undefined
-      });
-    } else {
-      setFormData(EMPTY_FORM);
-    }
-  }, [user]);
+      }
+    : EMPTY_FORM;
+
+export const UserForm: React.FC<UserFormProps> = ({ user, isLastAdmin, onSave, onCancel }) => {
+  const [formData, setFormData] = useState<UserFormData>(() => toFormData(user));
+  const [prevUser, setPrevUser] = useState(user);
+
+  if (user !== prevUser) {
+    setPrevUser(user);
+    setFormData(toFormData(user));
+  }
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -86,7 +89,7 @@ export const UserForm: React.FC<UserFormProps> = ({ user, isLastAdmin, onSave, o
             required
             value={formData.name}
             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-            className="w-full px-3 py-2 bg-background border border-input rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent"
+            className="w-full px-3 py-2 bg-background border border-input rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-hidden focus:ring-2 focus:ring-ring focus:border-transparent"
           />
         </div>
 
@@ -98,7 +101,7 @@ export const UserForm: React.FC<UserFormProps> = ({ user, isLastAdmin, onSave, o
               required
               value={formData.email}
               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-              className="w-full px-3 py-2 bg-background border border-input rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent"
+              className="w-full px-3 py-2 bg-background border border-input rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-hidden focus:ring-2 focus:ring-ring focus:border-transparent"
             />
           </div>
           <div>
@@ -108,7 +111,7 @@ export const UserForm: React.FC<UserFormProps> = ({ user, isLastAdmin, onSave, o
               required
               value={formData.username}
               onChange={(e) => setFormData({ ...formData, username: e.target.value })}
-              className="w-full px-3 py-2 bg-background border border-input rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent"
+              className="w-full px-3 py-2 bg-background border border-input rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-hidden focus:ring-2 focus:ring-ring focus:border-transparent"
             />
           </div>
         </div>
@@ -121,7 +124,7 @@ export const UserForm: React.FC<UserFormProps> = ({ user, isLastAdmin, onSave, o
             title={isLastAdmin ? "This is the only administrator. Promote another account before changing this one's role." : undefined}
             value={formData.role}
             onChange={(e) => setFormData({ ...formData, role: e.target.value as UserFormData['role'] })}
-            className="w-full px-3 py-2 bg-background border border-input rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full px-3 py-2 bg-background border border-input rounded-lg text-foreground focus:outline-hidden focus:ring-2 focus:ring-ring focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <option value="admin">Administrator</option>
             <option value="user">User</option>
@@ -139,7 +142,7 @@ export const UserForm: React.FC<UserFormProps> = ({ user, isLastAdmin, onSave, o
               autoComplete="new-password"
               value={formData.password ?? ''}
               onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-              className="w-full px-3 py-2 bg-background border border-input rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent"
+              className="w-full px-3 py-2 bg-background border border-input rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-hidden focus:ring-2 focus:ring-ring focus:border-transparent"
             />
           </div>
         )}

@@ -298,24 +298,9 @@ export const EditInvoicePage = () => {
   // Dirty tracking (snapshot-based)
   // ─────────────────────────────────────────────────────────
 
-  useEffect(() => {
-    if (!originalSnapshot) {
-      setIsDirty(false);
-      return;
-    }
-
-    const changed =
-      invoiceData.invoice_number !== originalSnapshot.invoiceData.invoice_number ||
-      invoiceData.due_date !== originalSnapshot.invoiceData.due_date ||
-      invoiceData.status !== originalSnapshot.invoiceData.status ||
-      selectedClient?.id !== originalSnapshot.clientId ||
-      thankYouMessage !== originalSnapshot.thankYouMessage ||
-      (selectedTaxRate?.id ?? null) !== originalSnapshot.taxRateId ||
-      (selectedShippingRate?.id ?? null) !== originalSnapshot.shippingRateId ||
-      !areLineItemsEqual(lineItems, originalSnapshot.lineItems);
-
-    setIsDirty(changed);
-  }, [
+  // Recomputed during render whenever an input changes, so the explicit
+  // setIsDirty(false) after a save still holds until the next edit.
+  const dirtyInputs = [
     invoiceData,
     selectedClient,
     lineItems,
@@ -323,7 +308,23 @@ export const EditInvoicePage = () => {
     selectedTaxRate,
     selectedShippingRate,
     originalSnapshot,
-  ]);
+  ] as const;
+  const [previousDirtyInputs, setPreviousDirtyInputs] = useState(dirtyInputs);
+
+  if (dirtyInputs.some((input, index) => input !== previousDirtyInputs[index])) {
+    setPreviousDirtyInputs(dirtyInputs);
+    setIsDirty(
+      originalSnapshot !== null &&
+        (invoiceData.invoice_number !== originalSnapshot.invoiceData.invoice_number ||
+          invoiceData.due_date !== originalSnapshot.invoiceData.due_date ||
+          invoiceData.status !== originalSnapshot.invoiceData.status ||
+          selectedClient?.id !== originalSnapshot.clientId ||
+          thankYouMessage !== originalSnapshot.thankYouMessage ||
+          (selectedTaxRate?.id ?? null) !== originalSnapshot.taxRateId ||
+          (selectedShippingRate?.id ?? null) !== originalSnapshot.shippingRateId ||
+          !areLineItemsEqual(lineItems, originalSnapshot.lineItems))
+    );
+  }
 
   // ─────────────────────────────────────────────────────────
   // Line item helpers
@@ -687,7 +688,7 @@ export const EditInvoicePage = () => {
                     onChange={(e) =>
                       setInvoiceData({ ...invoiceData, due_date: e.target.value })
                     }
-                    className="block w-full border-0 border-b-2 border-border dark:border-gray-500 focus:border-primary focus:ring-0 text-right bg-transparent text-card-foreground [color-scheme:light] dark:[color-scheme:dark]"
+                    className="block w-full border-0 border-b-2 border-border dark:border-gray-500 focus:border-primary focus:ring-0 text-right bg-transparent text-card-foreground scheme-light dark:scheme-dark"
                     required
                   />
                 </div>
@@ -815,7 +816,7 @@ export const EditInvoicePage = () => {
                       const rate = taxRates.find((r) => r.id === e.target.value) ?? null;
                       setSelectedTaxRate(rate);
                     }}
-                    className="w-48 px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-background text-card-foreground"
+                    className="w-48 px-3 py-2 border border-border rounded-lg focus:outline-hidden focus:ring-2 focus:ring-primary bg-background text-card-foreground"
                   >
                     <option value="">No Tax</option>
                     {taxRates.map((rate) => (
@@ -839,7 +840,7 @@ export const EditInvoicePage = () => {
                       const rate = shippingRates.find((r) => r.id === e.target.value) ?? null;
                       setSelectedShippingRate(rate);
                     }}
-                    className="w-48 px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-background text-card-foreground"
+                    className="w-48 px-3 py-2 border border-border rounded-lg focus:outline-hidden focus:ring-2 focus:ring-primary bg-background text-card-foreground"
                   >
                     <option value="">No Shipping</option>
                     {shippingRates.map((rate) => (
@@ -880,7 +881,7 @@ export const EditInvoicePage = () => {
               value={thankYouMessage}
               onChange={(e) => setThankYouMessage(e.target.value)}
               rows={3}
-              className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-background text-card-foreground"
+              className="w-full px-3 py-2 border border-border rounded-lg focus:outline-hidden focus:ring-2 focus:ring-primary bg-background text-card-foreground"
               placeholder="Add a personal message to your client..."
             />
           </div>

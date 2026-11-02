@@ -54,7 +54,7 @@ export const ForgotPasswordPage: React.FC = () => {
               Back to Login
             </Link>
             
-            <div className="bg-card rounded-lg shadow-sm border border-border p-8">
+            <div className="bg-card rounded-lg shadow-xs border border-border p-8">
               <CheckCircle className="h-16 w-16 text-green-500 mx-auto mb-4" />
               
               <h2 className="text-2xl font-bold text-green-600 mb-4">
@@ -73,7 +73,7 @@ export const ForgotPasswordPage: React.FC = () => {
               <div className="space-y-4">
                 <Link
                   to="/login"
-                  className="w-full inline-flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
+                  className="w-full inline-flex justify-center py-2 px-4 border border-transparent rounded-md shadow-xs text-sm font-medium text-white bg-primary hover:bg-primary/90 focus:outline-hidden focus:ring-2 focus:ring-offset-2 focus:ring-primary"
                 >
                   Back to Login
                 </Link>
@@ -83,7 +83,7 @@ export const ForgotPasswordPage: React.FC = () => {
                     setSuccess(false);
                     setEmail('');
                   }}
-                  className="w-full inline-flex justify-center py-2 px-4 border border-border rounded-md shadow-sm text-sm font-medium text-card-foreground bg-background hover:bg-accent focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
+                  className="w-full inline-flex justify-center py-2 px-4 border border-border rounded-md shadow-xs text-sm font-medium text-card-foreground bg-background hover:bg-accent focus:outline-hidden focus:ring-2 focus:ring-offset-2 focus:ring-primary"
                 >
                   Send Another Email
                 </button>
@@ -104,7 +104,7 @@ export const ForgotPasswordPage: React.FC = () => {
             Back to Login
           </Link>
           
-          <div className="bg-card rounded-lg shadow-sm border border-border p-8">
+          <div className="bg-card rounded-lg shadow-xs border border-border p-8">
             <Mail className="h-16 w-16 text-primary mx-auto mb-4" />
             
             <h2 className="text-2xl font-bold text-card-foreground mb-4">
@@ -134,7 +134,7 @@ export const ForgotPasswordPage: React.FC = () => {
                     id="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-background text-card-foreground"
+                    className="w-full pl-10 pr-4 py-2 border border-border rounded-lg focus:outline-hidden focus:ring-2 focus:ring-primary bg-background text-card-foreground"
                     placeholder="Enter your email address"
                     required
                     disabled={loading}
@@ -145,7 +145,7 @@ export const ForgotPasswordPage: React.FC = () => {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-xs text-sm font-medium text-white bg-primary hover:bg-primary/90 focus:outline-hidden focus:ring-2 focus:ring-offset-2 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {loading ? (
                   <div className="flex items-center">

@@ -152,7 +152,7 @@ export const ResetPasswordPage: React.FC = () => {
               Back to Login
             </Link>
             
-            <div className="bg-card rounded-lg shadow-sm border border-border p-8">
+            <div className="bg-card rounded-lg shadow-xs border border-border p-8">
               <AlertCircle className="h-16 w-16 text-red-500 mx-auto mb-4" />
               
               <h2 className="text-2xl font-bold text-red-600 mb-4">
@@ -166,14 +166,14 @@ export const ResetPasswordPage: React.FC = () => {
               <div className="space-y-4">
                 <Link
                   to="/forgot-password"
-                  className="w-full inline-flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
+                  className="w-full inline-flex justify-center py-2 px-4 border border-transparent rounded-md shadow-xs text-sm font-medium text-white bg-primary hover:bg-primary/90 focus:outline-hidden focus:ring-2 focus:ring-offset-2 focus:ring-primary"
                 >
                   Request New Reset Link
                 </Link>
                 
                 <Link
                   to="/login"
-                  className="w-full inline-flex justify-center py-2 px-4 border border-border rounded-md shadow-sm text-sm font-medium text-card-foreground bg-background hover:bg-accent focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
+                  className="w-full inline-flex justify-center py-2 px-4 border border-border rounded-md shadow-xs text-sm font-medium text-card-foreground bg-background hover:bg-accent focus:outline-hidden focus:ring-2 focus:ring-offset-2 focus:ring-primary"
                 >
                   Back to Login
                 </Link>
@@ -190,7 +190,7 @@ export const ResetPasswordPage: React.FC = () => {
       <div className="min-h-screen bg-background flex items-center justify-center p-4">
         <div className="max-w-md w-full space-y-8">
           <div className="text-center">
-            <div className="bg-card rounded-lg shadow-sm border border-border p-8">
+            <div className="bg-card rounded-lg shadow-xs border border-border p-8">
               <CheckCircle className="h-16 w-16 text-green-500 mx-auto mb-4" />
               
               <h2 className="text-2xl font-bold text-green-600 mb-4">
@@ -208,7 +208,7 @@ export const ResetPasswordPage: React.FC = () => {
               <Link
                 to="/login"
                 state={{ email }}
-                className="w-full inline-flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
+                className="w-full inline-flex justify-center py-2 px-4 border border-transparent rounded-md shadow-xs text-sm font-medium text-white bg-primary hover:bg-primary/90 focus:outline-hidden focus:ring-2 focus:ring-offset-2 focus:ring-primary"
               >
                 Go to Login
               </Link>
@@ -223,7 +223,7 @@ export const ResetPasswordPage: React.FC = () => {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center p-4">
         <div className="max-w-md w-full space-y-8">
-          <div className="bg-card rounded-lg shadow-sm border border-border p-8">
+          <div className="bg-card rounded-lg shadow-xs border border-border p-8">
             <div className="animate-pulse">
               <div className="h-4 bg-muted rounded w-1/4 mb-4 mx-auto"></div>
               <div className="space-y-3">
@@ -246,7 +246,7 @@ export const ResetPasswordPage: React.FC = () => {
             Back to Login
           </Link>
           
-          <div className="bg-card rounded-lg shadow-sm border border-border p-8">
+          <div className="bg-card rounded-lg shadow-xs border border-border p-8">
             <Lock className="h-16 w-16 text-primary mx-auto mb-4" />
             
             <h2 className="text-2xl font-bold text-card-foreground mb-4">
@@ -277,7 +277,7 @@ export const ResetPasswordPage: React.FC = () => {
                     name="password"
                     value={formData.password}
                     onChange={handleInputChange}
-                    className="w-full pl-10 pr-10 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-background text-card-foreground"
+                    className="w-full pl-10 pr-10 py-2 border border-border rounded-lg focus:outline-hidden focus:ring-2 focus:ring-primary bg-background text-card-foreground"
                     placeholder="Enter your new password"
                     required
                     disabled={loading}
@@ -329,7 +329,7 @@ export const ResetPasswordPage: React.FC = () => {
                     name="confirmPassword"
                     value={formData.confirmPassword}
                     onChange={handleInputChange}
-                    className="w-full pl-10 pr-10 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-background text-card-foreground"
+                    className="w-full pl-10 pr-10 py-2 border border-border rounded-lg focus:outline-hidden focus:ring-2 focus:ring-primary bg-background text-card-foreground"
                     placeholder="Confirm your new password"
                     required
                     disabled={loading}
@@ -347,7 +347,7 @@ export const ResetPasswordPage: React.FC = () => {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-xs text-sm font-medium text-white bg-primary hover:bg-primary/90 focus:outline-hidden focus:ring-2 focus:ring-offset-2 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {loading ? (
                   <div className="flex items-center">

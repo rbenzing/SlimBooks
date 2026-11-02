@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ArrowLeft, Download, TrendingUp, TrendingDown, Save, Calendar } from 'lucide-react';
 import { authenticatedFetch } from '@/utils/api';
 import { themeClasses, getButtonClasses } from '@/utils/themeUtils.util';
@@ -21,7 +21,11 @@ export const ProfitLossReport: React.FC<ProfitLossReportProps> = ({ onBack, onSa
   const [loading, setLoading] = useState(false);
   const [isExportingPDF, setIsExportingPDF] = useState(false);
   const [accountingMethod, setAccountingMethod] = useState<AccountingMethod>(defaultMethod);
-  useEffect(() => { setAccountingMethod(defaultMethod); }, [defaultMethod]);
+  const [prevDefaultMethod, setPrevDefaultMethod] = useState(defaultMethod);
+  if (defaultMethod !== prevDefaultMethod) {
+    setPrevDefaultMethod(defaultMethod);
+    setAccountingMethod(defaultMethod);
+  }
   const [breakdownPeriod, setBreakdownPeriod] = useState<BreakdownPeriod>('quarterly');
   const [dateRange, setDateRange] = useState<ReportDateRange>(() => {
     const range = getDateRangeForPeriod('this_month', fiscalYearStartMonth, new Date());
@@ -34,36 +38,35 @@ export const ProfitLossReport: React.FC<ProfitLossReportProps> = ({ onBack, onSa
 
   const { formatAmountSync } = useCurrencyFormatter();
 
-  const generateReportData = useCallback(async () => {
-    setLoading(true);
-    try {
-      const response = await authenticatedFetch('/api/reports/generate/profit-loss', {
-        method: 'POST',
-        body: JSON.stringify({
-          startDate: dateRange.start,
-          endDate: dateRange.end,
-          accountingMethod,
-          preset: dateRange.preset,
-          breakdownPeriod,
-          fiscalYearStartMonth
-        })
-      });
-      const result = await response.json();
-      if (result.success) {
-        setReportData(result.data);
-      } else {
-        console.error('Error generating report:', result.error);
-      }
-    } catch (error) {
-      console.error('Error generating report data:', error);
-    } finally {
-      setLoading(false);
-    }
-  }, [dateRange.start, dateRange.end, dateRange.preset, accountingMethod, breakdownPeriod, fiscalYearStartMonth]);
-
   useEffect(() => {
+    const generateReportData = async () => {
+      setLoading(true);
+      try {
+        const response = await authenticatedFetch('/api/reports/generate/profit-loss', {
+          method: 'POST',
+          body: JSON.stringify({
+            startDate: dateRange.start,
+            endDate: dateRange.end,
+            accountingMethod,
+            preset: dateRange.preset,
+            breakdownPeriod,
+            fiscalYearStartMonth
+          })
+        });
+        const result = await response.json();
+        if (result.success) {
+          setReportData(result.data);
+        } else {
+          console.error('Error generating report:', result.error);
+        }
+      } catch (error) {
+        console.error('Error generating report data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
     generateReportData();
-  }, [generateReportData]);
+  }, [dateRange.start, dateRange.end, dateRange.preset, accountingMethod, breakdownPeriod, fiscalYearStartMonth]);
 
   const handleDatePresetChange = (preset: DateRangePeriod): void => {
     if (preset === 'custom') {
@@ -110,7 +113,7 @@ export const ProfitLossReport: React.FC<ProfitLossReportProps> = ({ onBack, onSa
           </button>
           <h1 className="text-2xl font-bold text-gray-900">Generating Report...</h1>
         </div>
-        <div className="bg-card rounded-lg shadow-sm border border-border p-12 text-center">
+        <div className="bg-card rounded-lg shadow-xs border border-border p-12 text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
           <p className="mt-4 text-gray-600">Please wait while we generate your report...</p>
         </div>

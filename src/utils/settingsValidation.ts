@@ -177,7 +177,7 @@ export function validateProjectSettings(data: unknown): ProjectSettings {
     return ProjectSettingsSchema.parse(data) as ProjectSettings;
   } catch (error) {
     console.error('ProjectSettings validation failed:', error);
-    throw new Error(`Invalid project settings: ${error instanceof z.ZodError ? error.message : 'Unknown error'}`);
+    throw new Error(`Invalid project settings: ${error instanceof z.ZodError ? error.message : 'Unknown error'}`, { cause: error });
   }
 }
 
@@ -186,7 +186,7 @@ export function validateCurrencySettings(data: unknown): CurrencySettings {
     return CurrencySettingsSchema.parse(data) as CurrencySettings;
   } catch (error) {
     console.error('CurrencySettings validation failed:', error);
-    throw new Error(`Invalid currency settings: ${error instanceof z.ZodError ? error.message : 'Unknown error'}`);
+    throw new Error(`Invalid currency settings: ${error instanceof z.ZodError ? error.message : 'Unknown error'}`, { cause: error });
   }
 }
 
@@ -195,7 +195,7 @@ export function validateDateTimeSettings(data: unknown): DateTimeSettings {
     return DateTimeSettingsSchema.parse(data) as DateTimeSettings;
   } catch (error) {
     console.error('DateTimeSettings validation failed:', error);
-    throw new Error(`Invalid date/time settings: ${error instanceof z.ZodError ? error.message : 'Unknown error'}`);
+    throw new Error(`Invalid date/time settings: ${error instanceof z.ZodError ? error.message : 'Unknown error'}`, { cause: error });
   }
 }
 
@@ -204,7 +204,7 @@ export function validateInvoiceNumberSettings(data: unknown): InvoiceNumberSetti
     return InvoiceNumberSettingsSchema.parse(data) as InvoiceNumberSettings;
   } catch (error) {
     console.error('InvoiceNumberSettings validation failed:', error);
-    throw new Error(`Invalid invoice number settings: ${error instanceof z.ZodError ? error.message : 'Unknown error'}`);
+    throw new Error(`Invalid invoice number settings: ${error instanceof z.ZodError ? error.message : 'Unknown error'}`, { cause: error });
   }
 }
 
@@ -213,7 +213,7 @@ export function validatePaginationSettings(data: unknown): PaginationSettings {
     return PaginationSettingsSchema.parse(data) as PaginationSettings;
   } catch (error) {
     console.error('PaginationSettings validation failed:', error);
-    throw new Error(`Invalid pagination settings: ${error instanceof z.ZodError ? error.message : 'Unknown error'}`);
+    throw new Error(`Invalid pagination settings: ${error instanceof z.ZodError ? error.message : 'Unknown error'}`, { cause: error });
   }
 }
 
@@ -222,7 +222,7 @@ export function validateStripeSettings(data: unknown): z.infer<typeof StripeSett
     return StripeSettingsSchema.parse(data);
   } catch (error) {
     console.error('StripeSettings validation failed:', error);
-    throw new Error(`Invalid Stripe settings: ${error instanceof z.ZodError ? error.message : 'Unknown error'}`);
+    throw new Error(`Invalid Stripe settings: ${error instanceof z.ZodError ? error.message : 'Unknown error'}`, { cause: error });
   }
 }
 
@@ -231,7 +231,7 @@ export function validateEmailSettings(data: unknown): z.infer<typeof EmailSettin
     return EmailSettingsSchema.parse(data);
   } catch (error) {
     console.error('EmailSettings validation failed:', error);
-    throw new Error(`Invalid email settings: ${error instanceof z.ZodError ? error.message : 'Unknown error'}`);
+    throw new Error(`Invalid email settings: ${error instanceof z.ZodError ? error.message : 'Unknown error'}`, { cause: error });
   }
 }
 
@@ -240,7 +240,7 @@ export function validateThemeSettings(data: unknown): z.infer<typeof ThemeSettin
     return ThemeSettingsSchema.parse(data);
   } catch (error) {
     console.error('ThemeSettings validation failed:', error);
-    throw new Error(`Invalid theme settings: ${error instanceof z.ZodError ? error.message : 'Unknown error'}`);
+    throw new Error(`Invalid theme settings: ${error instanceof z.ZodError ? error.message : 'Unknown error'}`, { cause: error });
   }
 }
 
@@ -249,7 +249,7 @@ export function validateNotificationSettings(data: unknown): z.infer<typeof Noti
     return NotificationSettingsSchema.parse(data);
   } catch (error) {
     console.error('NotificationSettings validation failed:', error);
-    throw new Error(`Invalid notification settings: ${error instanceof z.ZodError ? error.message : 'Unknown error'}`);
+    throw new Error(`Invalid notification settings: ${error instanceof z.ZodError ? error.message : 'Unknown error'}`, { cause: error });
   }
 }
 

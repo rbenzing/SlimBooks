@@ -57,31 +57,29 @@ export const SecuritySettingsTab = ({ ref }: SecuritySettingsTabProps) => {
   });
 
   useEffect(() => {
+    const loadSettings = async () => {
+      try {
+        const { sqliteService } = await import('@/services/sqlite.svc');
+
+        if (!sqliteService.isReady()) {
+          await sqliteService.initialize();
+        }
+
+        const projectSettings = await sqliteService.getProjectSettings();
+        if (projectSettings) {
+          setSettings(projectSettings);
+          setOriginalSettings(projectSettings);
+        }
+      } catch (error) {
+        console.error('Error loading project settings:', error);
+        toast.error('Failed to load project settings');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
     loadSettings();
   }, []);
-
-  useImperativeHandle(ref, () => ({ saveSettings }));
-
-  const loadSettings = async () => {
-    try {
-      const { sqliteService } = await import('@/services/sqlite.svc');
-
-      if (!sqliteService.isReady()) {
-        await sqliteService.initialize();
-      }
-
-      const projectSettings = await sqliteService.getProjectSettings();
-      if (projectSettings) {
-        setSettings(projectSettings);
-        setOriginalSettings(projectSettings);
-      }
-    } catch (error) {
-      console.error('Error loading project settings:', error);
-      toast.error('Failed to load project settings');
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   // Email verification is gated on the store the mail service actually reads,
   // not on a second copy of the credentials kept alongside these settings.
@@ -135,9 +133,11 @@ export const SecuritySettingsTab = ({ ref }: SecuritySettingsTabProps) => {
     }
   };
 
+  useImperativeHandle(ref, () => ({ saveSettings }));
+
   if (isLoading) {
     return (
-      <div className="bg-card rounded-lg shadow-sm border border-border p-6">
+      <div className="bg-card rounded-lg shadow-xs border border-border p-6">
         <div className="animate-pulse">
           <div className="h-4 bg-muted rounded w-1/4 mb-4"></div>
           <div className="space-y-3">
@@ -161,7 +161,7 @@ export const SecuritySettingsTab = ({ ref }: SecuritySettingsTabProps) => {
         </div>
 
         {/* Account security */}
-        <div className="bg-card rounded-lg shadow-sm border border-border p-6">
+        <div className="bg-card rounded-lg shadow-xs border border-border p-6">
           <div className="flex items-center mb-4">
             <Shield className="h-5 w-5 text-primary mr-2" />
             <h4 className="text-md font-medium text-card-foreground">Account Security</h4>
@@ -195,7 +195,7 @@ export const SecuritySettingsTab = ({ ref }: SecuritySettingsTabProps) => {
                   disabled={!canRequireVerification}
                   className="sr-only peer disabled:opacity-50"
                 />
-                <div className={`w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600 ${!canRequireVerification ? 'opacity-50 cursor-not-allowed' : ''}`}></div>
+                <div className={`w-11 h-6 bg-gray-200 peer-focus:outline-hidden peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600 ${!canRequireVerification ? 'opacity-50 cursor-not-allowed' : ''}`}></div>
               </label>
             </div>
 
@@ -232,7 +232,7 @@ export const SecuritySettingsTab = ({ ref }: SecuritySettingsTabProps) => {
         </div>
 
         {/* Password policy */}
-        <div className="bg-card rounded-lg shadow-sm border border-border p-6">
+        <div className="bg-card rounded-lg shadow-xs border border-border p-6">
           <div className="flex items-center mb-4">
             <Shield className="h-5 w-5 text-primary mr-2" />
             <h4 className="text-md font-medium text-card-foreground">Password Policy</h4>

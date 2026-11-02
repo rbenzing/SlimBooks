@@ -12,17 +12,35 @@ interface TemplateFormProps {
   template?: InvoiceTemplate | null;
 }
 
+interface TemplateFormState {
+  name: string;
+  client_id: string;
+  frequency: string;
+  amount: string;
+  description: string;
+  payment_terms: string;
+  next_invoice_date: string;
+}
+
+const toFormData = (template?: InvoiceTemplate | null): TemplateFormState => ({
+  name: template?.name || '',
+  client_id: template?.client_id?.toString() || '',
+  frequency: template?.frequency || 'monthly',
+  amount: template?.amount?.toString() || '',
+  description: template?.description || '',
+  payment_terms: template?.payment_terms || 'net_30',
+  next_invoice_date: template?.next_invoice_date || ''
+});
+
 export const TemplateForm: React.FC<TemplateFormProps> = ({ isOpen, onClose, onSave, template }) => {
   const [clients, setClients] = useState<Client[]>([]);
-  const [formData, setFormData] = useState({
-    name: '',
-    client_id: '',
-    frequency: 'monthly',
-    amount: '',
-    description: '',
-    payment_terms: 'net_30',
-    next_invoice_date: ''
-  });
+  const [formData, setFormData] = useState<TemplateFormState>(() => toFormData(template));
+  const [prevTemplate, setPrevTemplate] = useState(template);
+
+  if (template !== prevTemplate) {
+    setPrevTemplate(template);
+    setFormData(toFormData(template));
+  }
 
   useEffect(() => {
     const loadClients = async () => {
@@ -40,30 +58,6 @@ export const TemplateForm: React.FC<TemplateFormProps> = ({ isOpen, onClose, onS
 
     loadClients();
   }, [isOpen]);
-
-  useEffect(() => {
-    if (template) {
-      setFormData({
-        name: template.name || '',
-        client_id: template.client_id?.toString() || '',
-        frequency: template.frequency || 'monthly',
-        amount: template.amount?.toString() || '',
-        description: template.description || '',
-        payment_terms: template.payment_terms || 'net_30',
-        next_invoice_date: template.next_invoice_date || ''
-      });
-    } else {
-      setFormData({
-        name: '',
-        client_id: '',
-        frequency: 'monthly',
-        amount: '',
-        description: '',
-        payment_terms: 'net_30',
-        next_invoice_date: ''
-      });
-    }
-  }, [template]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();

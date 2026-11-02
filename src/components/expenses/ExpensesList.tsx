@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Edit, Receipt, Eye, Trash2, Delete, Tag, Building } from 'lucide-react';
 import { formatDateSync } from '@/components/ui/FormattedDate';
 import { FormattedCurrency } from '@/components/ui/FormattedCurrency';
@@ -20,9 +20,11 @@ export const ExpensesList: React.FC<ExpensesListProps> = ({
   const [bulkVendor, setBulkVendor] = useState('');
 
   // Reset selection when expenses change
-  useEffect(() => {
+  const [previousExpenses, setPreviousExpenses] = useState(expenses);
+  if (expenses !== previousExpenses) {
+    setPreviousExpenses(expenses);
     setSelectedExpenses([]);
-  }, [expenses]);
+  }
 
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
@@ -75,7 +77,7 @@ export const ExpensesList: React.FC<ExpensesListProps> = ({
   const isPartialSelected = selectedExpenses.length > 0 && selectedExpenses.length < expenses.length;
 
   return (
-    <div className="bg-card rounded-lg shadow-sm border border-border overflow-hidden">
+    <div className="bg-card rounded-lg shadow-xs border border-border overflow-hidden">
       {/* Bulk Actions Bar */}
       {selectedExpenses.length > 0 && (
         <div className="bg-blue-50 dark:bg-blue-900/20 border-b border-border p-4">

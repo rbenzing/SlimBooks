@@ -37,10 +37,6 @@ export const ClientManagement: React.FC = () => {
   const updateFilters = (updates: Partial<typeof filters>) =>
     setFilters(prev => ({ ...prev, ...updates }));
 
-  useEffect(() => {
-    loadClients();
-  }, []);
-
   const loadClients = async () => {
     try {
       const response = await authenticatedFetch('/api/clients');
@@ -54,6 +50,14 @@ export const ClientManagement: React.FC = () => {
       toast.error('Failed to load clients');
     }
   };
+
+  useEffect(() => {
+    // State is only set after the awaited request resolves, never synchronously in the effect body
+    const loadOnMount = async () => {
+      await loadClients();
+    };
+    loadOnMount();
+  }, []);
 
   const filteredClients = clients.filter(client =>
     client.name.toLowerCase().includes(filters.searchTerm.toLowerCase()) ||
@@ -135,7 +139,7 @@ export const ClientManagement: React.FC = () => {
   };
 
   const renderTableView = () => (
-    <div className="bg-card rounded-lg shadow-sm border border-border overflow-hidden">
+    <div className="bg-card rounded-lg shadow-xs border border-border overflow-hidden">
       <div className="overflow-x-auto">
         <table className="w-full">
           <thead className="bg-muted/50 border-b border-border">
@@ -385,7 +389,7 @@ export const ClientManagement: React.FC = () => {
 
         {/* Empty State */}
         {filteredClients.length === 0 && (
-          <div className="bg-card rounded-lg shadow-sm border border-border p-12">
+          <div className="bg-card rounded-lg shadow-xs border border-border p-12">
             <div className="text-center">
               <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
               <h3 className="text-lg font-medium text-foreground mb-2">

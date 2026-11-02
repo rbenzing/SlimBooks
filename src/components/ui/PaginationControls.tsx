@@ -47,7 +47,7 @@ export const PaginationControls: React.FC<PaginationControlsProps> = ({
   }
 
   return (
-    <div className={`bg-card rounded-lg shadow-sm border border-border p-4 ${className}`}>
+    <div className={`bg-card rounded-lg shadow-xs border border-border p-4 ${className}`}>
       <div className="flex items-center justify-between flex-wrap gap-4">
         {/* Results info */}
         <div className="flex items-center gap-4">

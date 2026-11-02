@@ -1,26 +1,35 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { ArrowLeft, Upload, X, Receipt } from 'lucide-react';
 import { useFormNavigation } from '@/hooks/useFormNavigation';
 import { themeClasses, getButtonClasses } from '@/utils/themeUtils.util';
 import { EXPENSE_CATEGORIES, EXPENSE_STATUSES, type ExpenseStatus, type ExpenseFormProps } from '@/types';
 
+const buildFormData = (expense: ExpenseFormProps['expense']) => ({
+  date: expense?.date || new Date().toISOString().split('T')[0],
+  vendor: expense?.vendor || '',
+  category: expense?.category || 'Office Supplies',
+  amount: expense?.amount?.toString() || '',
+  description: expense?.description || '',
+  receipt_url: expense?.receipt_url || '',
+  status: expense?.status || 'pending' as const
+});
+
 export const ExpenseForm: React.FC<ExpenseFormProps> = ({ expense, onSave, onCancel }) => {
-  const [formData, setFormData] = useState({
-    date: expense?.date || new Date().toISOString().split('T')[0],
-    vendor: expense?.vendor || '',
-    category: expense?.category || 'Office Supplies',
-    amount: expense?.amount?.toString() || '',
-    description: expense?.description || '',
-    receipt_url: expense?.receipt_url || '',
-    status: expense?.status || 'pending' as const
-  });
+  const [formData, setFormData] = useState(() => buildFormData(expense));
 
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
-  const [originalFormData, setOriginalFormData] = useState<typeof formData | null>(null);
+  const [originalFormData, setOriginalFormData] = useState(() => buildFormData(expense));
+  const [previousExpense, setPreviousExpense] = useState(expense);
+
+  // Re-baseline the dirty check whenever a different expense is supplied
+  if (expense !== previousExpense) {
+    setPreviousExpense(expense);
+    setOriginalFormData(buildFormData(expense));
+  }
 
   // Track if form has been modified
-  const isDirty = originalFormData ? JSON.stringify(formData) !== JSON.stringify(originalFormData) : false;
+  const isDirty = JSON.stringify(formData) !== JSON.stringify(originalFormData);
   
   const { confirmNavigation, NavigationGuard } = useFormNavigation({
     isDirty,
@@ -38,19 +47,6 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({ expense, onSave, onCan
     // Show confirmation dialog if form is dirty
     confirmNavigation('cancel');
   };
-
-  useEffect(() => {
-    const initialData = {
-      date: expense?.date || new Date().toISOString().split('T')[0],
-      vendor: expense?.vendor || '',
-      category: expense?.category || 'Office Supplies',
-      amount: expense?.amount?.toString() || '',
-      description: expense?.description || '',
-      receipt_url: expense?.receipt_url || '',
-      status: expense?.status || 'pending' as const
-    };
-    setOriginalFormData(initialData);
-  }, [expense]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();

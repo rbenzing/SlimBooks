@@ -31,6 +31,8 @@ export const UserManagement: React.FC = () => {
   });
 
   const [users, setUsers] = useState<ManagedUser[]>([]);
+  // Lock expiry is judged against the time the list was fetched; Date.now() is impure in render
+  const [usersLoadedAt, setUsersLoadedAt] = useState(() => Date.now());
   const [resetTarget, setResetTarget] = useState<ManagedUser | null>(null);
 
   const updateUiState = (updates: Partial<typeof uiState>) =>
@@ -39,20 +41,25 @@ export const UserManagement: React.FC = () => {
   const updateFilters = (updates: Partial<typeof filters>) =>
     setFilters(prev => ({ ...prev, ...updates }));
 
-  useEffect(() => {
-    loadUsers();
-  }, []);
-
   const loadUsers = async () => {
     try {
       const data = await usersService.list();
       setUsers(data);
+      setUsersLoadedAt(Date.now());
     } catch (error) {
       // A non-admin who reaches this screen directly gets a 403 here — the
       // sidebar hides the entry, but this is the actual access control.
       toast.error(error instanceof Error ? error.message : 'Failed to load users');
     }
   };
+
+  useEffect(() => {
+    // State is only set after the awaited request resolves, never synchronously in the effect body
+    const loadOnMount = async () => {
+      await loadUsers();
+    };
+    loadOnMount();
+  }, []);
 
   const filteredUsers = users.filter(user =>
     user.name.toLowerCase().includes(filters.searchTerm.toLowerCase()) ||
@@ -159,7 +166,7 @@ export const UserManagement: React.FC = () => {
   };
 
   const lockedCount = users.filter(
-    user => user.account_locked_until !== null && user.account_locked_until > Date.now()
+    user => user.account_locked_until !== null && user.account_locked_until > usersLoadedAt
   ).length;
 
   const unverifiedCount = users.filter(user => !user.email_verified).length;
@@ -273,7 +280,7 @@ export const UserManagement: React.FC = () => {
 
         {/* Empty State */}
         {filteredUsers.length === 0 && (
-          <div className="bg-card rounded-lg shadow-sm border border-border p-12">
+          <div className="bg-card rounded-lg shadow-xs border border-border p-12">
             <div className="text-center">
               <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
               <h3 className="text-lg font-medium text-foreground mb-2">

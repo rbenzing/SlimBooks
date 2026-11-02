@@ -44,9 +44,33 @@ export const CreateRecurringInvoicePage: React.FC<CreateRecurringInvoicePageProp
   const [shippingRates, setShippingRates] = useState<ShippingRate[]>([]);
   const [thankYouMessage, setThankYouMessage] = useState('Thank you for your business!');
   const [companyLogo, setCompanyLogo] = useState<string | null>(null);
-  const [isDirty, setIsDirty] = useState(false);
   const [loadedTemplate, setLoadedTemplate] = useState<InvoiceTemplate | null>(null);
   const [loading, setLoading] = useState(false);
+
+  const computeIsDirty = (): boolean => {
+    const template: InvoiceTemplate | null = editingTemplate || loadedTemplate;
+    if (template) {
+      // For editing, check if current values differ from original template
+      return (
+        templateData.name !== (template.name || '') ||
+        templateData.frequency !== (template.frequency || 'monthly') ||
+        templateData.next_invoice_date !== (template.next_invoice_date || '') ||
+        templateData.is_active !== Boolean(template.is_active) ||
+        templateData.payment_terms !== (template.payment_terms || 'net_30') ||
+        selectedClient?.id !== template.client_id ||
+        thankYouMessage !== (template.notes || 'Thank you for your business!') ||
+        JSON.stringify(lineItems) !== (template.line_items || JSON.stringify([{ id: '1', description: '', quantity: 1, unit_price: 0, total: 0 }]))
+      );
+    }
+    // For creating new template, check if any fields have content
+    return (
+      selectedClient !== null ||
+      templateData.name.trim() !== '' ||
+      lineItems.some(item => item.description.trim() !== '')
+    );
+  };
+
+  const [isDirty, setIsDirty] = useState(computeIsDirty);
 
   const { confirmNavigation, NavigationGuard } = useFormNavigation({
     isDirty,
@@ -159,7 +183,11 @@ export const CreateRecurringInvoicePage: React.FC<CreateRecurringInvoicePageProp
   }, [editingTemplate, loadedTemplate]);
 
   // Update tax and shipping rates when rates are loaded and we have a template
-  useEffect(() => {
+  const rateSyncInputs = [editingTemplate, loadedTemplate, taxRates, shippingRates] as const;
+  const [previousRateSyncInputs, setPreviousRateSyncInputs] = useState(rateSyncInputs);
+
+  if (rateSyncInputs.some((input, index) => input !== previousRateSyncInputs[index])) {
+    setPreviousRateSyncInputs(rateSyncInputs);
     const template: InvoiceTemplate | null = editingTemplate || loadedTemplate;
     if (template && taxRates.length > 0 && shippingRates.length > 0) {
       // Set tax rate if saved in template
@@ -178,34 +206,17 @@ export const CreateRecurringInvoicePage: React.FC<CreateRecurringInvoicePageProp
         }
       }
     }
-  }, [editingTemplate, loadedTemplate, taxRates, shippingRates]);
+  }
 
-  // Track form changes - set dirty when any field changes
-  useEffect(() => {
-    const template: InvoiceTemplate | null = editingTemplate || loadedTemplate;
-    if (template) {
-      // For editing, check if current values differ from original template
-      const hasChanges =
-        templateData.name !== (template.name || '') ||
-        templateData.frequency !== (template.frequency || 'monthly') ||
-        templateData.next_invoice_date !== (template.next_invoice_date || '') ||
-        templateData.is_active !== Boolean(template.is_active) ||
-        templateData.payment_terms !== (template.payment_terms || 'net_30') ||
-        selectedClient?.id !== template.client_id ||
-        thankYouMessage !== (template.notes || 'Thank you for your business!') ||
-        JSON.stringify(lineItems) !== (template.line_items || JSON.stringify([{ id: '1', description: '', quantity: 1, unit_price: 0, total: 0 }]));
+  // Track form changes - recomputed during render whenever an input changes, so
+  // the explicit setIsDirty(false) after a save still holds until the next edit.
+  const dirtyInputs = [editingTemplate, loadedTemplate, templateData, selectedClient, lineItems, thankYouMessage] as const;
+  const [previousDirtyInputs, setPreviousDirtyInputs] = useState(dirtyInputs);
 
-      setIsDirty(hasChanges);
-    } else {
-      // For creating new template, check if any fields have content
-      const hasContent =
-        selectedClient !== null ||
-        templateData.name.trim() !== '' ||
-        lineItems.some(item => item.description.trim() !== '');
-
-      setIsDirty(hasContent);
-    }
-  }, [editingTemplate, loadedTemplate, templateData, selectedClient, lineItems, thankYouMessage]);
+  if (dirtyInputs.some((input, index) => input !== previousDirtyInputs[index])) {
+    setPreviousDirtyInputs(dirtyInputs);
+    setIsDirty(computeIsDirty());
+  }
 
   const addLineItem = () => {
     const newItem: LineItem = {
@@ -566,7 +577,7 @@ export const CreateRecurringInvoicePage: React.FC<CreateRecurringInvoicePageProp
               value={thankYouMessage}
               onChange={(e) => setThankYouMessage(e.target.value)}
               rows={3}
-              className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-ring bg-background text-foreground"
+              className="w-full px-3 py-2 border border-border rounded-lg focus:outline-hidden focus:ring-2 focus:ring-ring bg-background text-foreground"
               placeholder="Add a personal message to your client..."
             />
           </div>

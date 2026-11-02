@@ -181,7 +181,7 @@ export const GeneralSettingsTab = ({ ref }: GeneralSettingsTabProps) => {
   };
 
   return (
-    <div className="bg-card rounded-lg shadow-sm border border-border p-6">
+    <div className="bg-card rounded-lg shadow-xs border border-border p-6">
       <h3 className="text-lg font-medium text-card-foreground mb-6">General Settings</h3>
       <div className="space-y-6">
         {/* Currency Settings */}

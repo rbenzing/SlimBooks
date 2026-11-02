@@ -865,7 +865,7 @@ ${company.email ? company.email + '\n' : ''}${company.phone ? company.phone + '\
       return result.data.invoice_number;
     } catch (error) {
       console.error('Error generating invoice number:', error);
-      throw new Error('Failed to generate invoice number from server');
+      throw new Error('Failed to generate invoice number from server', { cause: error });
     }
   }
 
@@ -896,7 +896,7 @@ ${company.email ? company.email + '\n' : ''}${company.phone ? company.phone + '\
       return result.data.invoice_number;
     } catch (error) {
       console.error('Error previewing invoice number:', error);
-      throw new Error('Failed to preview invoice number from server');
+      throw new Error('Failed to preview invoice number from server', { cause: error });
     }
   }
 

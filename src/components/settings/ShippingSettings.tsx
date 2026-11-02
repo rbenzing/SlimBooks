@@ -121,7 +121,7 @@ export const ShippingSettings = ({ ref }: ShippingSettingsProps) => {
   };
 
   return (
-    <div className="bg-card rounded-lg shadow-sm border border-border p-6">
+    <div className="bg-card rounded-lg shadow-xs border border-border p-6">
       <div className="flex justify-between items-center mb-6">
         <h3 className="text-lg font-medium text-card-foreground">Shipping Rates</h3>
         <button

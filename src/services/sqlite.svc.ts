@@ -76,7 +76,7 @@ class SQLiteService {
     } catch (error) {
       this.initializationPromise = null; // Reset promise on failure
       console.error('Failed to initialize database service after retries:', error);
-      throw new Error('Backend server not available');
+      throw new Error('Backend server not available', { cause: error });
     }
   }
 
@@ -136,7 +136,7 @@ class SQLiteService {
       // Re-throw with more context for connection monitoring
       if (error instanceof TypeError && error.message.includes('fetch')) {
         // Network error - likely connection issue
-        throw new Error('Network connection failed');
+        throw new Error('Network connection failed', { cause: error });
       }
 
       // Re-throw other errors as-is

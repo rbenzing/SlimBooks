@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Edit, CreditCard, Eye, Trash2, Delete, Receipt, Building } from 'lucide-react';
 import { getStatusColor } from '@/utils/themeUtils.util';
 import { formatDateSync } from '@/components/ui/FormattedDate';
@@ -19,9 +19,11 @@ export const PaymentsList: React.FC<PaymentsListProps> = ({
   const [bulkMethod, setBulkMethod] = useState('');
 
   // Reset selection when payments change
-  useEffect(() => {
+  const [prevPayments, setPrevPayments] = useState(payments);
+  if (payments !== prevPayments) {
+    setPrevPayments(payments);
     setSelectedPayments([]);
-  }, [payments]);
+  }
 
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
@@ -104,7 +106,7 @@ export const PaymentsList: React.FC<PaymentsListProps> = ({
   const isPartialSelected = selectedPayments.length > 0 && selectedPayments.length < payments.length;
 
   return (
-    <div className="bg-card rounded-lg shadow-sm border border-border overflow-hidden">
+    <div className="bg-card rounded-lg shadow-xs border border-border overflow-hidden">
       {/* Bulk Actions Bar */}
       {selectedPayments.length > 0 && (
         <div className="bg-blue-50 dark:bg-blue-900/20 border-b border-border p-4">

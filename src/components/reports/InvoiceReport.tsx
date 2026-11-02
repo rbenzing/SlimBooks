@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ArrowLeft, Download, Save, Calendar } from 'lucide-react';
 import { getStatusColor, themeClasses, getButtonClasses } from '@/utils/themeUtils.util';
 import { StatCard, StatCardGrid } from '@/components/ui/StatCard';
@@ -21,32 +21,31 @@ export const InvoiceReport: React.FC<InvoiceReportProps> = ({ onBack, onSave }) 
   });
 
 
-  const generateReportData = useCallback(async () => {
-    setLoading(true);
-    try {
-      const response = await authenticatedFetch('/api/reports/generate/invoice', {
-        method: 'POST',
-        body: JSON.stringify({
-          startDate: dateRange.start,
-          endDate: dateRange.end
-        })
-      });
-      const result = await response.json();
-      if (result.success) {
-        setReportData(result.data);
-      } else {
-        console.error('Error generating report:', result.error);
-      }
-    } catch (error) {
-      console.error('Error generating invoice report data:', error);
-    } finally {
-      setLoading(false);
-    }
-  }, [dateRange.start, dateRange.end]);
-
   useEffect(() => {
+    const generateReportData = async () => {
+      setLoading(true);
+      try {
+        const response = await authenticatedFetch('/api/reports/generate/invoice', {
+          method: 'POST',
+          body: JSON.stringify({
+            startDate: dateRange.start,
+            endDate: dateRange.end
+          })
+        });
+        const result = await response.json();
+        if (result.success) {
+          setReportData(result.data);
+        } else {
+          console.error('Error generating report:', result.error);
+        }
+      } catch (error) {
+        console.error('Error generating invoice report data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
     generateReportData();
-  }, [generateReportData]);
+  }, [dateRange.start, dateRange.end]);
 
   const handleDatePresetChange = (preset: DateRangePeriod): void => {
     if (preset === 'custom') {
@@ -214,7 +213,7 @@ export const InvoiceReport: React.FC<InvoiceReportProps> = ({ onBack, onSave }) 
                             <span className={`font-semibold ${themeClasses.bodyText}`}>
                               <FormattedCurrency amount={amount as number} />
                             </span>
-                            <span className={`${themeClasses.mutedText} text-sm min-w-[3rem] text-right`}>
+                            <span className={`${themeClasses.mutedText} text-sm min-w-12 text-right`}>
                               {percentage.toFixed(1)}%
                             </span>
                           </div>
@@ -241,7 +240,7 @@ export const InvoiceReport: React.FC<InvoiceReportProps> = ({ onBack, onSave }) 
                             <span className={`font-semibold ${themeClasses.bodyText}`}>
                               <FormattedCurrency amount={amount as number} />
                             </span>
-                            <span className={`${themeClasses.mutedText} text-sm min-w-[3rem] text-right`}>
+                            <span className={`${themeClasses.mutedText} text-sm min-w-12 text-right`}>
                               {percentage.toFixed(1)}%
                             </span>
                           </div>

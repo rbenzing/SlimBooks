@@ -27,10 +27,6 @@ export const DatabaseBackupSection = () => {
     webhookLogs: 0
   });
 
-  useEffect(() => {
-    loadDatabaseStats();
-  }, []);
-
   const loadDatabaseStats = async () => {
     try {
       // Use dynamic import to avoid circular dependencies
@@ -98,6 +94,14 @@ export const DatabaseBackupSection = () => {
     }
   };
 
+  useEffect(() => {
+    // loadDatabaseStats sets state only after its first await.
+    const initialLoad = async () => {
+      await loadDatabaseStats();
+    };
+    initialLoad();
+  }, []);
+
   const handleExportDatabase = async () => {
     setIsExporting(true);
     try {
@@ -163,7 +167,7 @@ export const DatabaseBackupSection = () => {
   };
 
   return (
-    <div className="bg-card rounded-lg shadow-sm border border-border p-6">
+    <div className="bg-card rounded-lg shadow-xs border border-border p-6">
       <div className="flex items-center mb-6">
         <Database className="h-5 w-5 text-primary mr-2" />
         <h3 className="text-lg font-medium text-card-foreground">Database Backup & Restore</h3>

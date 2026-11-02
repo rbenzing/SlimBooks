@@ -339,7 +339,7 @@ export class SettingsService {
       };
     } catch (error) {
       console.error('SettingsService.getProjectSettings error:', error);
-      throw new Error(`Failed to get project settings: ${(error as Error).message}`);
+      throw new Error(`Failed to get project settings: ${(error as Error).message}`, { cause: error });
     }
   }
 

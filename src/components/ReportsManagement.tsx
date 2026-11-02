@@ -18,10 +18,6 @@ export const ReportsManagement: React.FC = () => {
   const [selectedReport, setSelectedReport] = useState<ReportType | null>(null);
   const [savedReports, setSavedReports] = useState<Report[]>([]);
 
-  useEffect(() => {
-    loadSavedReports();
-  }, []);
-
   const loadSavedReports = async () => {
     try {
       const response = await authenticatedFetch('/api/reports');
@@ -36,6 +32,14 @@ export const ReportsManagement: React.FC = () => {
       setSavedReports([]);
     }
   };
+
+  useEffect(() => {
+    // State is only set after the awaited request resolves, never synchronously in the effect body
+    const loadOnMount = async () => {
+      await loadSavedReports();
+    };
+    loadOnMount();
+  }, []);
 
   const reportTypes = [
     {

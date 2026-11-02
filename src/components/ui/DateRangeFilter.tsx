@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Calendar, X } from 'lucide-react';
 import { type DateRange } from '@/types';
 import {
@@ -28,20 +28,23 @@ export const DateRangeFilter: React.FC<DateRangeFilterProps> = ({
   disabled = false
 }) => {
   const { fiscalYearStartMonth } = useFiscalSettings();
-  const [isCustomMode, setIsCustomMode] = useState(value === 'custom');
-  const [customStartDate, setCustomStartDate] = useState('');
-  const [customEndDate, setCustomEndDate] = useState('');
+  const hasCustomRange = value === 'custom' && customRange !== undefined;
+  const [isCustomMode, setIsCustomMode] = useState(hasCustomRange);
+  const [customStartDate, setCustomStartDate] = useState(customRange && hasCustomRange ? toCalendarDay(customRange.start) : '');
+  const [customEndDate, setCustomEndDate] = useState(customRange && hasCustomRange ? toCalendarDay(customRange.end) : '');
+  const [prevValue, setPrevValue] = useState(value);
+  const [prevCustomRange, setPrevCustomRange] = useState(customRange);
 
-  // Update custom date inputs when customRange prop changes
-  useEffect(() => {
-    if (value === 'custom' && customRange) {
+  // Update custom date inputs when value or customRange prop changes
+  if (value !== prevValue || customRange !== prevCustomRange) {
+    setPrevValue(value);
+    setPrevCustomRange(customRange);
+    if (customRange && hasCustomRange) {
       setCustomStartDate(toCalendarDay(customRange.start));
       setCustomEndDate(toCalendarDay(customRange.end));
-      setIsCustomMode(true);
-    } else {
-      setIsCustomMode(false);
     }
-  }, [value, customRange]);
+    setIsCustomMode(hasCustomRange);
+  }
 
   const handlePeriodChange = (period: DateRangePeriod) => {
     if (period === 'custom') {
@@ -102,7 +105,7 @@ export const DateRangeFilter: React.FC<DateRangeFilterProps> = ({
             onChange={(e) => handlePeriodChange(e.target.value as DateRangePeriod)}
             disabled={disabled}
             className={cn(
-              "pl-10 pr-4 py-2 bg-background border border-input rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent",
+              "pl-10 pr-4 py-2 bg-background border border-input rounded-lg text-foreground focus:outline-hidden focus:ring-2 focus:ring-ring focus:border-transparent",
               disabled && "opacity-50 cursor-not-allowed"
             )}
           >
@@ -128,7 +131,7 @@ export const DateRangeFilter: React.FC<DateRangeFilterProps> = ({
               onBlur={handleCustomDateChange}
               disabled={disabled}
               className={cn(
-                "px-3 py-2 bg-background border border-input rounded-md text-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent",
+                "px-3 py-2 bg-background border border-input rounded-md text-foreground focus:outline-hidden focus:ring-2 focus:ring-ring focus:border-transparent",
                 disabled && "opacity-50 cursor-not-allowed"
               )}
             />
@@ -143,7 +146,7 @@ export const DateRangeFilter: React.FC<DateRangeFilterProps> = ({
               onBlur={handleCustomDateChange}
               disabled={disabled}
               className={cn(
-                "px-3 py-2 bg-background border border-input rounded-md text-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent",
+                "px-3 py-2 bg-background border border-input rounded-md text-foreground focus:outline-hidden focus:ring-2 focus:ring-ring focus:border-transparent",
                 disabled && "opacity-50 cursor-not-allowed"
               )}
             />

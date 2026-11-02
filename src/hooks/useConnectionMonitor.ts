@@ -79,38 +79,43 @@ export const useConnectionMonitor = (options: ConnectionMonitorOptions = {}) => 
   }, [baseUrl]);
 
   const setupInterval = useCallback((isRetryMode: boolean) => {
-    if (intervalRef.current) {
-      clearInterval(intervalRef.current);
-    }
+    // Self-referencing, so it is a named function rather than the callback itself.
+    const schedule = (isRetryMode: boolean): void => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
 
-    const interval = isRetryMode ? retryInterval : checkInterval;
+      const interval = isRetryMode ? retryInterval : checkInterval;
 
-    intervalRef.current = setInterval(async () => {
-      if (isRetryMode) {
-        // In retry mode, increment retry count first
-        setConnectionState(prev => {
-          if (prev.retryCount >= maxRetries) {
-            // Stop retrying after max attempts
-            if (intervalRef.current) {
-              clearInterval(intervalRef.current);
-              intervalRef.current = null;
+      intervalRef.current = setInterval(async () => {
+        if (isRetryMode) {
+          // In retry mode, increment retry count first
+          setConnectionState(prev => {
+            if (prev.retryCount >= maxRetries) {
+              // Stop retrying after max attempts
+              if (intervalRef.current) {
+                clearInterval(intervalRef.current);
+                intervalRef.current = null;
+              }
+              return prev;
             }
-            return prev;
-          }
-          return { ...prev, retryCount: prev.retryCount + 1 };
-        });
-      }
+            return { ...prev, retryCount: prev.retryCount + 1 };
+          });
+        }
 
-      const isConnected = await checkConnection();
+        const isConnected = await checkConnection();
 
-      if (isRetryMode && isConnected) {
-        // Connection restored, switch back to normal monitoring
-        setupInterval(false);
-      } else if (!isRetryMode && !isConnected) {
-        // Connection lost, start retry logic
-        setupInterval(true);
-      }
-    }, interval);
+        if (isRetryMode && isConnected) {
+          // Connection restored, switch back to normal monitoring
+          schedule(false);
+        } else if (!isRetryMode && !isConnected) {
+          // Connection lost, start retry logic
+          schedule(true);
+        }
+      }, interval);
+    };
+
+    schedule(isRetryMode);
   }, [checkConnection, checkInterval, retryInterval, maxRetries]);
 
   const startMonitoring = useCallback(() => {

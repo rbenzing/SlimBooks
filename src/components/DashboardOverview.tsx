@@ -21,32 +21,6 @@ export const DashboardOverview = () => {
     totalClients: 0
   });
 
-  const loadDashboardData = async () => {
-    try {
-      const [invoicesResponse, clientsResponse, expensesResponse] = await Promise.all([
-        authenticatedFetch('/api/invoices'),
-        authenticatedFetch('/api/clients'),
-        authenticatedFetch('/api/expenses')
-      ]);
-
-      const invoicesData = invoicesResponse.ok ? await invoicesResponse.json() : { data: { invoices: [] } };
-      const clientsData = clientsResponse.ok ? await clientsResponse.json() : { data: [] };
-      const expensesData = expensesResponse.ok ? await expensesResponse.json() : { data: { data: [] } };
-
-      const invoices = invoicesData.data?.invoices || [];
-      const clients = clientsData.data || [];
-      const expenses = expensesData.data?.data || [];
-
-      setLoadedData({
-        totalClients: clients.length,
-        allInvoices: invoices,
-        allExpenses: expenses
-      });
-    } catch (error) {
-      console.error('Error loading dashboard data:', error);
-    }
-  };
-
   const dateRange = useMemo(
     () => selectedPeriod === 'custom' && customRange
       ? customRange
@@ -109,6 +83,32 @@ export const DashboardOverview = () => {
   }, [filteredInvoices, filteredExpenses, loadedData.totalClients]);
 
   useEffect(() => {
+    const loadDashboardData = async () => {
+      try {
+        const [invoicesResponse, clientsResponse, expensesResponse] = await Promise.all([
+          authenticatedFetch('/api/invoices'),
+          authenticatedFetch('/api/clients'),
+          authenticatedFetch('/api/expenses')
+        ]);
+
+        const invoicesData = invoicesResponse.ok ? await invoicesResponse.json() : { data: { invoices: [] } };
+        const clientsData = clientsResponse.ok ? await clientsResponse.json() : { data: [] };
+        const expensesData = expensesResponse.ok ? await expensesResponse.json() : { data: { data: [] } };
+
+        const invoices = invoicesData.data?.invoices || [];
+        const clients = clientsData.data || [];
+        const expenses = expensesData.data?.data || [];
+
+        setLoadedData({
+          totalClients: clients.length,
+          allInvoices: invoices,
+          allExpenses: expenses
+        });
+      } catch (error) {
+        console.error('Error loading dashboard data:', error);
+      }
+    };
+
     loadDashboardData();
   }, []);
 

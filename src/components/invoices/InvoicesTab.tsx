@@ -28,10 +28,6 @@ export const InvoicesTab = () => {
   const [dateFilter, customDateRange, setDateFilter] = useRememberedPeriod('invoices');
   const [viewMode, setViewMode] = useState<'panel' | 'table'>('panel');
 
-  useEffect(() => {
-    loadInvoices();
-  }, []);
-
   const loadInvoices = async () => {
     try {
       const response = await authenticatedFetch('/api/invoices');
@@ -48,6 +44,14 @@ export const InvoicesTab = () => {
       setInvoices([]);
     }
   };
+
+  useEffect(() => {
+    // State is only set after the awaited request resolves, never synchronously in the effect body
+    const loadOnMount = async () => {
+      await loadInvoices();
+    };
+    loadOnMount();
+  }, []);
 
   const filteredInvoices = invoices.filter(invoice => {
     const matchesSearch = (invoice.invoice_number || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -140,7 +144,7 @@ export const InvoicesTab = () => {
   const renderPanelView = () => (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       {pagination.paginatedData.map((invoice) => (
-        <div key={invoice.id} className="bg-card rounded-lg shadow-sm border border-border p-6">
+        <div key={invoice.id} className="bg-card rounded-lg shadow-xs border border-border p-6">
           <div className="flex justify-between items-start mb-4">
             <div>
               <h3 className="font-semibold text-foreground">{invoice.invoice_number || `Invoice #${invoice.id}`}</h3>
@@ -202,7 +206,7 @@ export const InvoicesTab = () => {
   );
 
   const renderTableView = () => (
-    <div className="bg-card rounded-lg shadow-sm border border-border overflow-hidden">
+    <div className="bg-card rounded-lg shadow-xs border border-border overflow-hidden">
       <div className="overflow-x-auto">
         <table className="w-full">
           <thead className="bg-muted/50">
@@ -270,7 +274,7 @@ export const InvoicesTab = () => {
 
       {/* Statistics Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
-        <div className="bg-card p-6 rounded-lg shadow-sm border border-border">
+        <div className="bg-card p-6 rounded-lg shadow-xs border border-border">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-muted-foreground">Total Invoices</p>
@@ -279,7 +283,7 @@ export const InvoicesTab = () => {
             <FileText className="h-8 w-8 text-blue-600" />
           </div>
         </div>
-        <div className="bg-card p-6 rounded-lg shadow-sm border border-border">
+        <div className="bg-card p-6 rounded-lg shadow-xs border border-border">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-muted-foreground">Total Amount</p>
@@ -290,7 +294,7 @@ export const InvoicesTab = () => {
             <Calendar className="h-8 w-8 text-green-600" />
           </div>
         </div>
-        <div className="bg-card p-6 rounded-lg shadow-sm border border-border">
+        <div className="bg-card p-6 rounded-lg shadow-xs border border-border">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-muted-foreground">Paid Amount</p>
@@ -301,7 +305,7 @@ export const InvoicesTab = () => {
             <User className="h-8 w-8 text-orange-600" />
           </div>
         </div>
-        <div className="bg-card p-6 rounded-lg shadow-sm border border-border">
+        <div className="bg-card p-6 rounded-lg shadow-xs border border-border">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-muted-foreground">Pending Amount</p>
@@ -315,7 +319,7 @@ export const InvoicesTab = () => {
       </div>
 
       {/* Search, Filters and View Toggle */}
-      <div className="bg-card p-6 rounded-lg shadow-sm border border-border mb-6">
+      <div className="bg-card p-6 rounded-lg shadow-xs border border-border mb-6">
         <div className="flex justify-between items-center">
           {/* Left section - Search and Filters (80%) */}
           <div className="flex space-x-4 flex-1 mr-6">
@@ -324,13 +328,13 @@ export const InvoicesTab = () => {
               <input
                 type="text"
                 placeholder="Search invoices..."
-                className="w-full pl-10 pr-4 py-2 bg-background border border-input rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent"
+                className="w-full pl-10 pr-4 py-2 bg-background border border-input rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-hidden focus:ring-2 focus:ring-ring focus:border-transparent"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
             <select
-              className="px-4 py-2 bg-background border border-input rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent"
+              className="px-4 py-2 bg-background border border-input rounded-lg text-foreground focus:outline-hidden focus:ring-2 focus:ring-ring focus:border-transparent"
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
             >
@@ -340,7 +344,7 @@ export const InvoicesTab = () => {
               <option value="paid">Paid</option>
             </select>
             <select
-              className="px-4 py-2 bg-background border border-input rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent"
+              className="px-4 py-2 bg-background border border-input rounded-lg text-foreground focus:outline-hidden focus:ring-2 focus:ring-ring focus:border-transparent"
               value={clientFilter}
               onChange={(e) => setClientFilter(e.target.value)}
             >

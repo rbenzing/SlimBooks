@@ -18,7 +18,7 @@ interface WizardStepProps {
 }
 
 const INPUT_CLASSES =
-  'w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-background text-card-foreground';
+  'w-full px-3 py-2 border border-border rounded-lg focus:outline-hidden focus:ring-2 focus:ring-primary bg-background text-card-foreground';
 
 /** Step 1: create the first administrator. Mandatory — there is no skip. */
 const AdminAccountStep = ({ onAdvance }: WizardStepProps) => {
@@ -91,7 +91,7 @@ const AdminAccountStep = ({ onAdvance }: WizardStepProps) => {
       <button
         type="submit"
         disabled={isSubmitting}
-        className="w-full bg-primary text-primary-foreground py-2 px-4 rounded-lg hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+        className="w-full bg-primary text-primary-foreground py-2 px-4 rounded-lg hover:bg-primary/90 focus:outline-hidden focus:ring-2 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
       >
         {isSubmitting ? 'Creating account…' : 'Create administrator account'}
       </button>

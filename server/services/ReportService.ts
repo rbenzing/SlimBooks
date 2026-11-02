@@ -502,7 +502,7 @@ export class ReportService {
       ORDER BY name ASC
     `);
 
-    let invoiceFilter = '';
+    let invoiceFilter: string;
     // Calendar days, bound directly — `issue_date` is `YYYY-MM-DD` text, so it
     // must not go through `instantRange()`. Same reasoning as the profit-and-loss
     // and invoice queries above.

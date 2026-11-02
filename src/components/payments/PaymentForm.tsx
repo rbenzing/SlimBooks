@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { ArrowLeft, Search, X } from 'lucide-react';
 import Modal from '@/components/ui/modal.cpt';
 import { useFormNavigation } from '@/hooks/useFormNavigation';
@@ -29,11 +29,21 @@ export const PaymentForm: React.FC<PaymentFormProps> = ({
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [showInvoiceSearch, setShowInvoiceSearch] = useState(false);
   const [invoiceSearchTerm, setInvoiceSearchTerm] = useState('');
-  const [originalFormData, setOriginalFormData] = useState<typeof formData | null>(null);
   const [loadingInvoices, setLoadingInvoices] = useState(false);
 
+  const originalFormData = useMemo(() => ({
+    date: payment?.date || new Date().toISOString().split('T')[0],
+    client_name: payment?.client_name || preselectedClientName || '',
+    invoice_id: payment?.invoice_id?.toString() || preselectedInvoiceId?.toString() || '',
+    amount: payment?.amount?.toString() || preselectedAmount?.toString() || '',
+    method: payment?.method || 'bank_transfer' as const,
+    reference: payment?.reference || '',
+    description: payment?.description || '',
+    status: payment?.status || 'received' as const
+  }), [payment, preselectedInvoiceId, preselectedClientName, preselectedAmount]);
+
   // Track if form has been modified
-  const isDirty = originalFormData ? JSON.stringify(formData) !== JSON.stringify(originalFormData) : false;
+  const isDirty = JSON.stringify(formData) !== JSON.stringify(originalFormData);
   
   const { confirmNavigation, NavigationGuard } = useFormNavigation({
     isDirty,
@@ -51,20 +61,6 @@ export const PaymentForm: React.FC<PaymentFormProps> = ({
     // Show confirmation dialog if form is dirty
     confirmNavigation('cancel');
   };
-
-  useEffect(() => {
-    const initialData = {
-      date: payment?.date || new Date().toISOString().split('T')[0],
-      client_name: payment?.client_name || preselectedClientName || '',
-      invoice_id: payment?.invoice_id?.toString() || preselectedInvoiceId?.toString() || '',
-      amount: payment?.amount?.toString() || preselectedAmount?.toString() || '',
-      method: payment?.method || 'bank_transfer' as const,
-      reference: payment?.reference || '',
-      description: payment?.description || '',
-      status: payment?.status || 'received' as const
-    };
-    setOriginalFormData(initialData);
-  }, [payment, preselectedInvoiceId, preselectedClientName, preselectedAmount]);
 
   const loadInvoices = async (searchTerm = '') => {
     try {
@@ -87,12 +83,6 @@ export const PaymentForm: React.FC<PaymentFormProps> = ({
       setLoadingInvoices(false);
     }
   };
-
-  useEffect(() => {
-    if (showInvoiceSearch) {
-      loadInvoices();
-    }
-  }, [showInvoiceSearch]);
 
   useEffect(() => {
     if (showInvoiceSearch && invoiceSearchTerm) {
@@ -244,7 +234,10 @@ export const PaymentForm: React.FC<PaymentFormProps> = ({
                 {!formData.invoice_id ? (
                   <button
                     type="button"
-                    onClick={() => setShowInvoiceSearch(true)}
+                    onClick={() => {
+                      setShowInvoiceSearch(true);
+                      loadInvoices();
+                    }}
                     className={`${themeClasses.input} text-left text-muted-foreground hover:text-foreground`}
                   >
                     <Search className="inline h-4 w-4 mr-2" />

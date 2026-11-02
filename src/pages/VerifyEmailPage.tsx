@@ -122,7 +122,7 @@ export const VerifyEmailPage: React.FC = () => {
             Back to Home
           </Link>
           
-          <div className="bg-card rounded-lg shadow-sm border border-border p-8">
+          <div className="bg-card rounded-lg shadow-xs border border-border p-8">
             {getStatusIcon()}
             
             <h2 className={`text-2xl font-bold ${getStatusColor()} mb-4`}>
@@ -144,7 +144,7 @@ export const VerifyEmailPage: React.FC = () => {
                 <Link
                   to="/login"
                   state={{ email }}
-                  className="w-full inline-flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
+                  className="w-full inline-flex justify-center py-2 px-4 border border-transparent rounded-md shadow-xs text-sm font-medium text-white bg-primary hover:bg-primary/90 focus:outline-hidden focus:ring-2 focus:ring-offset-2 focus:ring-primary"
                 >
                   Go to Login
                 </Link>
@@ -162,21 +162,21 @@ export const VerifyEmailPage: React.FC = () => {
                     id="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-background text-card-foreground"
+                    className="w-full px-3 py-2 border border-border rounded-lg focus:outline-hidden focus:ring-2 focus:ring-primary bg-background text-card-foreground"
                     placeholder="Enter your email address"
                   />
                 </div>
                 
                 <button
                   onClick={handleResendVerification}
-                  className="w-full py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
+                  className="w-full py-2 px-4 border border-transparent rounded-md shadow-xs text-sm font-medium text-white bg-primary hover:bg-primary/90 focus:outline-hidden focus:ring-2 focus:ring-offset-2 focus:ring-primary"
                 >
                   Resend Verification Email
                 </button>
                 
                 <Link
                   to="/login"
-                  className="w-full inline-flex justify-center py-2 px-4 border border-border rounded-md shadow-sm text-sm font-medium text-card-foreground bg-background hover:bg-accent focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
+                  className="w-full inline-flex justify-center py-2 px-4 border border-border rounded-md shadow-xs text-sm font-medium text-card-foreground bg-background hover:bg-accent focus:outline-hidden focus:ring-2 focus:ring-offset-2 focus:ring-primary"
                 >
                   Back to Login
                 </Link>

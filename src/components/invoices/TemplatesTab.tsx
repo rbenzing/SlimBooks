@@ -9,6 +9,21 @@ import { themeClasses, getButtonClasses, getIconColorClasses } from '@/utils/the
 import { FormattedCurrency } from '@/components/ui/FormattedCurrency';
 import type { InvoiceTemplateFormData, RecurringTemplateWithClient } from '@/types';
 
+const fetchTemplates = async (): Promise<RecurringTemplateWithClient[]> => {
+  try {
+    const response = await authenticatedFetch('/api/recurring-templates/active');
+    if (response.ok) {
+      const data = await response.json();
+      return data.data || [];
+    }
+    console.error('Failed to load templates');
+    return [];
+  } catch (error) {
+    console.error('Error loading templates:', error);
+    return [];
+  }
+};
+
 export const TemplatesTab = () => {
   const navigate = useNavigate();
   const [templates, setTemplates] = useState<RecurringTemplateWithClient[]>([]);
@@ -20,25 +35,13 @@ export const TemplatesTab = () => {
   const [clientFilter, setClientFilter] = useState('all');
   const [viewMode, setViewMode] = useState<'panel' | 'table'>('panel');
 
-  useEffect(() => {
-    loadTemplates();
-  }, []);
-
   const loadTemplates = async () => {
-    try {
-      const response = await authenticatedFetch('/api/recurring-templates/active');
-      if (response.ok) {
-        const data = await response.json();
-        setTemplates(data.data || []);
-      } else {
-        console.error('Failed to load templates');
-        setTemplates([]);
-      }
-    } catch (error) {
-      console.error('Error loading templates:', error);
-      setTemplates([]);
-    }
+    setTemplates(await fetchTemplates());
   };
+
+  useEffect(() => {
+    fetchTemplates().then(setTemplates);
+  }, []);
 
   const filteredTemplates = templates.filter(template => {
     const matchesSearch = template.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -198,7 +201,7 @@ export const TemplatesTab = () => {
   );
 
   const renderTableView = () => (
-    <div className="bg-card rounded-lg shadow-sm border border-border overflow-hidden">
+    <div className="bg-card rounded-lg shadow-xs border border-border overflow-hidden">
       <div className="overflow-x-auto">
         <table className="w-full">
           <thead className="bg-muted/50">
@@ -270,7 +273,7 @@ export const TemplatesTab = () => {
     <div>
       {/* Statistics Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
-        <div className="bg-card p-6 rounded-lg shadow-sm border border-border">
+        <div className="bg-card p-6 rounded-lg shadow-xs border border-border">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-muted-foreground">Total MRR</p>
@@ -281,7 +284,7 @@ export const TemplatesTab = () => {
             <DollarSign className="h-8 w-8 text-green-600" />
           </div>
         </div>
-        <div className="bg-card p-6 rounded-lg shadow-sm border border-border">
+        <div className="bg-card p-6 rounded-lg shadow-xs border border-border">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-muted-foreground">Active Templates</p>
@@ -290,7 +293,7 @@ export const TemplatesTab = () => {
             <FileText className="h-8 w-8 text-blue-600" />
           </div>
         </div>
-        <div className="bg-card p-6 rounded-lg shadow-sm border border-border">
+        <div className="bg-card p-6 rounded-lg shadow-xs border border-border">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-muted-foreground">Net MRR</p>
@@ -301,7 +304,7 @@ export const TemplatesTab = () => {
             <TrendingUp className="h-8 w-8 text-purple-600" />
           </div>
         </div>
-        <div className="bg-card p-6 rounded-lg shadow-sm border border-border">
+        <div className="bg-card p-6 rounded-lg shadow-xs border border-border">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-muted-foreground">Avg Template Value</p>

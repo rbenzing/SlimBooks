@@ -81,9 +81,11 @@ export const ResponsiveSidebar: React.FC<ResponsiveSidebarProps> = ({ onNavigati
   });
 
   // Close mobile menu on route change
-  useEffect(() => {
+  const [previousPathname, setPreviousPathname] = useState(location.pathname);
+  if (location.pathname !== previousPathname) {
+    setPreviousPathname(location.pathname);
     setIsMobileMenuOpen(false);
-  }, [location.pathname]);
+  }
 
   // Handle screen size changes
   useEffect(() => {
@@ -138,7 +140,7 @@ export const ResponsiveSidebar: React.FC<ResponsiveSidebarProps> = ({ onNavigati
       if (path.includes('#')) {
         const [basePath, hash] = path.split('#');
         if (location.pathname === basePath) {
-          window.location.hash = hash;
+          window.location.assign(`#${hash}`);
           return;
         }
       }
@@ -147,7 +149,7 @@ export const ResponsiveSidebar: React.FC<ResponsiveSidebarProps> = ({ onNavigati
   };
 
 
-  const SidebarContent = ({ isMobile = false }) => (
+  const renderSidebarContent = (isMobile = false) => (
     <div className="h-full flex flex-col">
       {/* Mobile Header */}
       {isMobile && (
@@ -203,7 +205,7 @@ export const ResponsiveSidebar: React.FC<ResponsiveSidebarProps> = ({ onNavigati
               >
                 <Icon
                   className={cn(
-                    'h-5 w-5 flex-shrink-0',
+                    'h-5 w-5 shrink-0',
                     !isCollapsed && 'mr-3',
                     itemActive 
                       ? 'text-primary' 
@@ -274,7 +276,7 @@ export const ResponsiveSidebar: React.FC<ResponsiveSidebarProps> = ({ onNavigati
         "lg:hidden fixed left-0 top-0 z-50 h-full w-80 bg-card shadow-xl transform transition-transform duration-300",
         isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"
       )}>
-        <SidebarContent isMobile={true} />
+        {renderSidebarContent(true)}
       </div>
 
       {/* Desktop Sidebar */}
@@ -283,7 +285,7 @@ export const ResponsiveSidebar: React.FC<ResponsiveSidebarProps> = ({ onNavigati
         isCollapsed ? "w-16" : "w-64 min-w-[200px]"
       )}>
         <div className="w-full">
-          <SidebarContent />
+          {renderSidebarContent()}
         </div>
       </div>
 

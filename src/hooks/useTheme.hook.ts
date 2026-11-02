@@ -28,14 +28,16 @@ export const useTheme = () => {
   const [theme, setTheme] = useState<ThemeType>(globalTheme);
   const [effectiveTheme, setEffectiveTheme] = useState<'light' | 'dark'>(globalEffectiveTheme);
 
-  // Sync local state with the module-level theme. The equality guard makes this
-  // idempotent, so re-running when either value changes settles immediately.
-  useEffect(() => {
+  // Sync local state with the module-level theme whenever either local value
+  // changes. The equality guard makes this idempotent, so it settles immediately.
+  const [syncedTheme, setSyncedTheme] = useState<[ThemeType, 'light' | 'dark']>([theme, effectiveTheme]);
+  if (theme !== syncedTheme[0] || effectiveTheme !== syncedTheme[1]) {
+    setSyncedTheme([theme, effectiveTheme]);
     if (isThemeInitialized && (theme !== globalTheme || effectiveTheme !== globalEffectiveTheme)) {
       setTheme(globalTheme);
       setEffectiveTheme(globalEffectiveTheme);
     }
-  }, [theme, effectiveTheme]);
+  }
 
   const getEffectiveTheme = useCallback((selectedTheme: ThemeType): 'light' | 'dark' => {
     if (selectedTheme === 'system') {

@@ -31,6 +31,11 @@ updates:
     # Majors are deliberately not grouped: vite 8, vitest 5, express 5 and
     # react-router 7 each needed real code changes, and each deserves its own
     # pull request and its own two-engine CI run.
+    # typescript-eslint declares typescript <6.1.0, so a TypeScript 7 bump
+    # makes npm ci fail to resolve in every job. Drop this once it supports 7.
+    ignore:
+      - dependency-name: typescript
+        update-types: [version-update:semver-major]
     labels: [dependencies]
 
   # The workflows pin actions by major tag, which still moves. This keeps the

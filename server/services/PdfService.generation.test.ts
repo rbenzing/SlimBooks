@@ -277,7 +277,7 @@ describe('generatePagePDF', () => {
     const page = makePage({ goto: vi.fn().mockRejectedValue(new Error('unreachable')) });
     await withPage(page);
 
-    await expect(pdfService.generatePagePDF('http://x')).rejects.toThrow(/unreachable/);
+    await expect(pdfService.generatePagePDF('http://localhost:8080/reports')).rejects.toThrow(/unreachable/);
     expect(page.close).toHaveBeenCalledTimes(1);
   });
 });

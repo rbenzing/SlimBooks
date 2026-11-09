@@ -12,6 +12,17 @@ Upgrade instructions live in
 
 ## [Unreleased]
 
+### Changed
+
+- **Install fix.** Dependabot had bumped TypeScript to 7, which typescript-eslint
+  cannot use (it needs the JavaScript API TS 7 does not ship), so `npm ci` failed
+  in every CI job. TypeScript is back on 6.0.x and Dependabot now skips the
+  TypeScript major until typescript-eslint supports it.
+- All dependencies moved to their latest compatible releases. `minimatch` is
+  overridden to 11 to clear the open advisory inside ESLint; `npm audit` is clean.
+- Removed `tailwindcss-animate` (abandoned, Tailwind 3 plugin, none of its
+  classes were used).
+
 ## [3.1.1] — 2026-11-02
 
 Nothing here needs an operator to do anything: no environment variable changed,

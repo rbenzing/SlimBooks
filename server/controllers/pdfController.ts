@@ -125,12 +125,42 @@ export const downloadPublicInvoicePDF = asyncHandler(async (req: Request, res: R
 export const generatePagePDF = asyncHandler(async (req: Request, res: Response): Promise<void> => {
   const { url, filename, options } = req.body;
 
-  if (!url) {
+  if (!url || typeof url !== 'string') {
     throw new ValidationError('URL is required');
   }
 
+  let safeUrl: URL;
   try {
-    const pdfBuffer = await pdfService.generatePagePDF(url, options);
+    safeUrl = new URL(url);
+  } catch {
+    throw new ValidationError('Invalid URL');
+  }
+
+  if (!['http:', 'https:'].includes(safeUrl.protocol)) {
+    throw new ValidationError('Only HTTP/HTTPS URLs are allowed');
+  }
+
+  if (safeUrl.username || safeUrl.password) {
+    throw new ValidationError('URLs with embedded credentials are not allowed');
+  }
+
+  const allowedHosts = (process.env.PDF_ALLOWED_HOSTS ?? 'localhost,127.0.0.1')
+    .split(',')
+    .map((host) => host.trim().toLowerCase())
+    .filter(Boolean);
+
+  if (!allowedHosts.includes(safeUrl.hostname.toLowerCase())) {
+    throw new ValidationError('URL host is not allowed');
+  }
+
+  if (safeUrl.pathname.includes('..')) {
+    throw new ValidationError('Invalid URL path');
+  }
+
+  const normalizedUrl = safeUrl.toString();
+
+  try {
+    const pdfBuffer = await pdfService.generatePagePDF(normalizedUrl, options);
 
     // Set appropriate headers for PDF download
     res.setHeader('Content-Type', 'application/pdf');
@@ -144,7 +174,7 @@ export const generatePagePDF = asyncHandler(async (req: Request, res: Response):
     res.end(pdfBuffer);
 
   } catch (error) {
-    console.error(`Error generating PDF for URL ${url}:`, error);
+    console.error(`Error generating PDF for URL ${normalizedUrl}:`, error);
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     throw new AppError(`Failed to generate PDF: ${errorMessage}`, 500);
   }

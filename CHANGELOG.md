@@ -12,6 +12,11 @@ Upgrade instructions live in
 
 ## [Unreleased]
 
+## [3.1.2] — 2026-11-09
+
+Nothing here needs an operator to do anything: no environment variable changed,
+no migration was added, and no manual upgrade step applies.
+
 ### Changed
 
 - **Install fix.** Dependabot had bumped TypeScript to 7, which typescript-eslint
@@ -622,6 +627,7 @@ Earlier history is in the git log.
 
 ---
 
+[3.1.2]: https://github.com/rbenzing/SlimBooks/releases/tag/v3.1.2
 [3.1.1]: https://github.com/rbenzing/SlimBooks/releases/tag/v3.1.1
 [3.1.0]: https://github.com/rbenzing/SlimBooks/releases/tag/v3.1.0
 [3.0.0]: https://github.com/rbenzing/SlimBooks/releases/tag/v3.0.0

@@ -237,6 +237,36 @@ export class PdfService {
       throw new Error('Browser not initialized');
     }
 
+    let safeUrl: URL;
+    try {
+      safeUrl = new URL(url);
+    } catch {
+      throw new Error('Invalid URL');
+    }
+
+    if (!['http:', 'https:'].includes(safeUrl.protocol)) {
+      throw new Error('Only HTTP/HTTPS URLs are allowed');
+    }
+
+    if (safeUrl.username || safeUrl.password) {
+      throw new Error('URLs with embedded credentials are not allowed');
+    }
+
+    const allowedHosts = (process.env.PDF_ALLOWED_HOSTS ?? 'localhost,127.0.0.1')
+      .split(',')
+      .map((host) => host.trim().toLowerCase())
+      .filter(Boolean);
+
+    if (!allowedHosts.includes(safeUrl.hostname.toLowerCase())) {
+      throw new Error('URL host is not allowed');
+    }
+
+    if (safeUrl.pathname.includes('..')) {
+      throw new Error('Invalid URL path');
+    }
+
+    const normalizedUrl = safeUrl.toString();
+
     const page: Page = await this.browser.newPage();
     
     try {
@@ -246,7 +276,7 @@ export class PdfService {
         deviceScaleFactor: 2
       });
 
-      await page.goto(url, {
+      await page.goto(normalizedUrl, {
         waitUntil: 'networkidle0',
         timeout: 30000
       });
@@ -267,7 +297,7 @@ export class PdfService {
       return pdfBuffer;
 
     } catch (error) {
-      console.error(`Error generating PDF for URL ${url}:`, error);
+      console.error(`Error generating PDF for URL ${normalizedUrl}:`, error);
       throw error;
     } finally {
       await page.close();

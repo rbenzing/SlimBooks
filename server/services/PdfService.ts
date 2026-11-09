@@ -252,12 +252,15 @@ export class PdfService {
       throw new Error('URLs with embedded credentials are not allowed');
     }
 
+    const normalizeHost = (host: string): string => host.trim().toLowerCase().replace(/\.$/, '');
+    const hostname = normalizeHost(safeUrl.hostname);
+
     const allowedHosts = (process.env.PDF_ALLOWED_HOSTS ?? 'localhost,127.0.0.1')
       .split(',')
-      .map((host) => host.trim().toLowerCase())
+      .map((host) => normalizeHost(host))
       .filter(Boolean);
 
-    if (!allowedHosts.includes(safeUrl.hostname.toLowerCase())) {
+    if (!allowedHosts.includes(hostname)) {
       throw new Error('URL host is not allowed');
     }
 
